@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DavidAnson/markdownlint-cli2-action@v19
+      - uses: DavidAnson/markdownlint-cli2-action@v22
         with:
           globs: '**/*.md'
 
@@ -67,6 +67,11 @@ jobs:
           ERRORS=0
           while IFS= read -r sha; do
             MSG=$(git log --format='%s' -n 1 "$sha")
+
+            # Skip merge commits (e.g. from branch updates, Dependabot)
+            if echo "$MSG" | grep -qE '^Merge '; then
+              continue
+            fi
 
             # Conventional commit format
             if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
