@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/schwichtgit/claude-project-foundation/blob/main/FOUNDATION.md
+    about: Read the full reference documentation before opening an issue.

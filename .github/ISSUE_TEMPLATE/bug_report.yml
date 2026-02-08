@@ -1,0 +1,71 @@
+name: Bug Report
+description: Report a defect in the foundation scaffold
+title: '[bug] '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report defects in the Claude Project Foundation scaffold.
+        Search existing issues before submitting.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the foundation is affected?
+      options:
+        - Claude Code hooks (.claude/hooks/)
+        - Git hooks (scripts/hooks/)
+        - Spec workflow (/specforge)
+        - Bootstrap script (scripts/bootstrap.sh)
+        - CI workflows (.github/workflows/)
+        - Prompts (prompts/)
+        - Templates (.specify/templates/)
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Run scripts/bootstrap.sh on a new directory
+        2. Run scripts/install-hooks.sh
+        3. Attempt a commit with ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, shell, relevant tool versions.
+      placeholder: |
+        - OS: macOS 15.3 / Ubuntu 24.04
+        - Shell: bash 5.x / zsh 5.x
+        - Claude Code version: x.y.z
+        - Node.js version (if relevant): 22.x
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Paste any error messages or log output.
+      render: shell
+    validations:
+      required: false
