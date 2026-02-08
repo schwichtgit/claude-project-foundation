@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "name": "claude-project-foundation",
+  "description": "Development tooling for the Claude Project Foundation scaffold.",
+  "devDependencies": {
+    "prettier": "^3.5.0"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  }
+}

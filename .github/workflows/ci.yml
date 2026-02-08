@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Markdown lint
+  # ---------------------------------------------------------------------------
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: '**/*.md'
+
+  # ---------------------------------------------------------------------------
+  # Prettier format check
+  # ---------------------------------------------------------------------------
+  prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx prettier --check .
+
+  # ---------------------------------------------------------------------------
+  # Shell script lint
+  # ---------------------------------------------------------------------------
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run shellcheck
+        run: |
+          find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck
+          find scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck
+
+  # ---------------------------------------------------------------------------
+  # Commit standards (PR only)
+  # ---------------------------------------------------------------------------
+  commit-standards:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate commits
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          ERRORS=0
+          while IFS= read -r sha; do
+            MSG=$(git log --format='%s' -n 1 "$sha")
+
+            # Conventional commit format
+            if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
+              echo "FAIL [$sha]: Not conventional commit format: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # Subject length
+            if [ ${#MSG} -gt 72 ]; then
+              echo "WARN [$sha]: Subject exceeds 72 chars: $MSG"
+            fi
+
+            # Emoji
+            if echo "$MSG" | python3 -c "
+          import sys, re
+          text = sys.stdin.read()
+          pattern = re.compile('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', re.UNICODE)
+          sys.exit(0 if pattern.search(text) else 1)
+          " 2>/dev/null; then
+              echo "FAIL [$sha]: Emoji in commit message: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # AI-isms
+            if echo "$MSG" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
+              echo "FAIL [$sha]: AI-ism detected: $MSG"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+          done < <(git rev-list "$BASE".."$HEAD")
+
+          if [ $ERRORS -gt 0 ]; then
+            echo ""
+            echo "Commit standards check failed: $ERRORS error(s)."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Summary (ONLY job to require in branch protection)
+  # ---------------------------------------------------------------------------
+  summary:
+    if: always()
+    needs: [markdownlint, prettier, shellcheck, commit-standards]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "Markdown:  ${{ needs.markdownlint.result }}"
+          echo "Prettier:  ${{ needs.prettier.result }}"
+          echo "Shell:     ${{ needs.shellcheck.result }}"
+          echo "Commits:   ${{ needs.commit-standards.result }}"
+
+          for result in "${{ needs.markdownlint.result }}" "${{ needs.prettier.result }}" "${{ needs.shellcheck.result }}" "${{ needs.commit-standards.result }}"; do
+            if [[ "$result" == "failure" ]]; then
+              echo "One or more checks failed."
+              exit 1
+            fi
+          done
+
+          echo "All checks passed."
