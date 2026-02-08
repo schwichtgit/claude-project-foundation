@@ -23,6 +23,11 @@ jobs:
           while IFS= read -r sha; do
             MSG=$(git log --format='%s' -n 1 "$sha")
 
+            # Skip merge commits (e.g. from branch updates, Dependabot)
+            if echo "$MSG" | grep -qE '^Merge '; then
+              continue
+            fi
+
             # Conventional commit format
             if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
               echo "FAIL [$sha]: Not conventional commit: $MSG"
