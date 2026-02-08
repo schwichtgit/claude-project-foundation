@@ -1,0 +1,16 @@
+# Claude Mind memory files
+.claude/mind.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+package-lock.json
+
