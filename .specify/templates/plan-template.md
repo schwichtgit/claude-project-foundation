@@ -12,7 +12,7 @@
 
 ## Project Structure
 
-```
+```text
 [PROJECT_NAME]/
 ├── [directory]/
 │   ├── [file]                 # [purpose]

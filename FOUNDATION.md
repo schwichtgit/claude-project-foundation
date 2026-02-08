@@ -1,6 +1,6 @@
 # Claude Project Foundation
 
-A reusable scaffold for spec-driven, autonomous Claude Code projects. It provides an interactive specification phase where humans and Claude Code collaboratively author project requirements, an autonomous execution phase using a two-agent pattern (initializer + coding agent) that implements features across multiple sessions, and quality gates that enforce SDLC best practices at every stage -- from commit to release.
+A reusable scaffold for spec-driven, autonomous Claude Code projects. It provides an interactive specification phase where humans and Claude Code collaboratively author project requirements, an autonomous execution phase using a two-agent pattern (initializer + coding agent) that implements features across multiple sessions, and quality gates that enforce SDLC best practices at every stage.
 
 This foundation synthesizes patterns from [Anthropic's autonomous-coding quickstart](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding), [AutoForge](https://github.com/AutoForgeAI/autoforge), and battle-tested production practices into a generalized, portable scaffold that works with any tech stack.
 
