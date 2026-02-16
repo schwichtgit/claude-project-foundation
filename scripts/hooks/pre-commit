@@ -144,7 +144,9 @@ lint_staged_files() {
                     echo "  FORMATTED: $file"
                 fi
             fi
-            if command -v go >/dev/null 2>&1; then
+            if command -v golangci-lint >/dev/null 2>&1; then
+                (cd "$project_root" && golangci-lint run "./$dir/...") || return 1
+            elif command -v go >/dev/null 2>&1; then
                 (cd "$project_root" && go vet "./$dir/..." 2>/dev/null) || return 1
             fi
             ;;
