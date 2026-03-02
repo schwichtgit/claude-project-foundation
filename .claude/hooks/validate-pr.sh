@@ -15,7 +15,8 @@ if ! echo "$COMMAND" | grep -qE 'gh\s+pr\s+create'; then
 fi
 
 # Extract title and body from command
-VIOLATIONS=$(python3 << 'PYTHON_SCRIPT'
+VALIDATOR_SCRIPT=$(mktemp)
+cat > "$VALIDATOR_SCRIPT" << 'PYTHON_SCRIPT'
 import re
 import sys
 
@@ -91,10 +92,12 @@ if violations:
 else:
     sys.exit(0)
 PYTHON_SCRIPT
-"$COMMAND") || {
+VIOLATIONS=$(python3 "$VALIDATOR_SCRIPT" "$COMMAND" 2>&1) || {
     echo "PR validation failed:" >&2
     echo "$VIOLATIONS" >&2
+    rm -f "$VALIDATOR_SCRIPT"
     exit 2
 }
+rm -f "$VALIDATOR_SCRIPT"
 
 exit 0
