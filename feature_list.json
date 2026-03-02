@@ -82,7 +82,7 @@
         "For each referenced hook script, verify `head -n 1 <script>` outputs '#!/bin/bash'",
         "For each referenced hook script, run `shellcheck <script>` and verify no errors"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -100,7 +100,7 @@
         "Verify the summary job needs array includes 'plugin-validation'",
         "Verify the workflow has a top-level permissions block"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -119,7 +119,7 @@
         "Verify the workflow has permissions including contents: write, id-token: write, attestations: write",
         "Verify the workflow references actions/attest-build-provenance for artifact attestation"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {

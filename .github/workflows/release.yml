@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Validate tag version matches plugin.json
+  # ---------------------------------------------------------------------------
+  validate-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Extract and compare versions
+        id: version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PLUGIN_VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
+
+          echo "Tag version:    $TAG_VERSION"
+          echo "Plugin version: $PLUGIN_VERSION"
+
+          if [ "$TAG_VERSION" != "$PLUGIN_VERSION" ]; then
+            echo "FAIL: Tag version ($TAG_VERSION) does not match plugin.json version ($PLUGIN_VERSION)"
+            exit 1
+          fi
+
+          echo "version=$TAG_VERSION" >> "$GITHUB_OUTPUT"
+          echo "PASS: versions match"
+
+  # ---------------------------------------------------------------------------
+  # Lint and validation (mirrors CI checks)
+  # ---------------------------------------------------------------------------
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run shellcheck
+        run: |
+          find . -name '*.sh' -not -path './.git/*' -print0 | xargs -0 shellcheck -x
+          find scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DavidAnson/markdownlint-cli2-action@v22
+        with:
+          globs: '**/*.md'
+
+  prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npx prettier --check .
+
+  plugin-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate plugin.json
+        run: |
+          jq empty .claude-plugin/plugin.json
+          jq -e '.name' .claude-plugin/plugin.json > /dev/null
+          jq -e '.version' .claude-plugin/plugin.json > /dev/null
+          jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
+      - name: Validate referenced file paths
+        run: |
+          for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
+            test -f ".claude-plugin/$path" || { echo "FAIL: $path"; exit 1; }
+          done
+          for path in $(jq -r '.agents[]?.path // empty' .claude-plugin/plugin.json); do
+            test -f ".claude-plugin/$path" || { echo "FAIL: $path"; exit 1; }
+          done
+      - name: Validate hooks.json
+        run: |
+          HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
+          jq empty ".claude-plugin/$HOOKS_REL"
+          jq -r '.. | .command? // empty' ".claude-plugin/$HOOKS_REL" | while IFS= read -r cmd; do
+            SCRIPT=$(echo "$cmd" | sed 's|\${CLAUDE_PLUGIN_ROOT}|.claude-plugin|g')
+            test -f "$SCRIPT" || { echo "FAIL: $SCRIPT"; exit 1; }
+          done
+
+  # ---------------------------------------------------------------------------
+  # Create GitHub release with artifact attestation
+  # ---------------------------------------------------------------------------
+  release:
+    needs:
+      [validate-version, shellcheck, markdownlint, prettier, plugin-validation]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Create release tarball
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          tar -czf "specforge-${VERSION}.tar.gz" \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            .claude-plugin/
+          echo "ARTIFACT=specforge-${VERSION}.tar.gz" >> "$GITHUB_ENV"
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ env.ARTIFACT }}
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          gh release create "$GITHUB_REF_NAME" \
+            "${{ env.ARTIFACT }}" \
+            --title "specforge v${VERSION}" \
+            --generate-notes
