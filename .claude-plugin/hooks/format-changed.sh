@@ -14,7 +14,7 @@ fi
 
 # Source the shared formatter dispatch library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=_formatter-dispatch.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/_formatter-dispatch.sh"
 
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"

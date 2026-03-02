@@ -55,19 +55,29 @@ format_file() {
             fi
             ;;
         rs)
-            command -v rustfmt >/dev/null 2>&1 && rustfmt "$file_path" 2>/dev/null || true
+            if command -v rustfmt >/dev/null 2>&1; then
+                rustfmt "$file_path" 2>/dev/null || true
+            fi
             ;;
         sh)
-            command -v shfmt >/dev/null 2>&1 && shfmt -w "$file_path" 2>/dev/null || true
+            if command -v shfmt >/dev/null 2>&1; then
+                shfmt -w "$file_path" 2>/dev/null || true
+            fi
             ;;
         go)
-            command -v gofmt >/dev/null 2>&1 && gofmt -w "$file_path" 2>/dev/null || true
+            if command -v gofmt >/dev/null 2>&1; then
+                gofmt -w "$file_path" 2>/dev/null || true
+            fi
             ;;
         rb)
-            command -v rubocop >/dev/null 2>&1 && rubocop -a "$file_path" 2>/dev/null || true
+            if command -v rubocop >/dev/null 2>&1; then
+                rubocop -a "$file_path" 2>/dev/null || true
+            fi
             ;;
         java|kt)
-            command -v google-java-format >/dev/null 2>&1 && google-java-format --replace "$file_path" 2>/dev/null || true
+            if command -v google-java-format >/dev/null 2>&1; then
+                google-java-format --replace "$file_path" 2>/dev/null || true
+            fi
             ;;
     esac
 }

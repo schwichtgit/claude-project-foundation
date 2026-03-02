@@ -94,9 +94,11 @@ echo "=== INFRA-008: Settings Safety Block ==="
 check "blockedCommands exists" jq -e '.blockedCommands' .claude-plugin/plugin.json
 check "protectedFiles exists" jq -e '.protectedFiles' .claude-plugin/plugin.json
 for cmd in "rm -rf /" "rm -rf ~" "git push --force" "git reset --hard" "git clean -fd" "chmod 777" "mkfs"; do
+    # shellcheck disable=SC2016
     check "blocked: $cmd" jq -e --arg c "$cmd" '.blockedCommands | index($c) != null' .claude-plugin/plugin.json
 done
 for f in ".env" ".env.*" "*.pem" "*.key" "*.crt" "id_rsa" "id_ed25519" "credentials.json"; do
+    # shellcheck disable=SC2016
     check "protected: $f" jq -e --arg f "$f" '.protectedFiles | index($f) != null' .claude-plugin/plugin.json
 done
 check "plugin.json still valid" jq empty .claude-plugin/plugin.json
@@ -111,6 +113,7 @@ check "find_prettier_root() defined" bash -c 'grep -c "find_prettier_root()" .cl
 check "post-edit sources dispatch" grep -qE '(source|\.).*_formatter-dispatch\.sh' .claude-plugin/hooks/post-edit.sh
 check "format-changed sources dispatch" grep -qE '(source|\.).*_formatter-dispatch\.sh' .claude-plugin/hooks/format-changed.sh
 # Verify no duplicated formatter logic
+# shellcheck disable=SC2016
 if grep -q 'case.*\$ext' .claude-plugin/hooks/post-edit.sh 2>/dev/null; then
     echo "  FAIL: post-edit.sh has duplicated case statement"
     FAIL=$((FAIL + 1))

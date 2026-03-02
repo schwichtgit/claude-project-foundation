@@ -14,7 +14,7 @@ fi
 
 # Source the shared formatter dispatch library
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=_formatter-dispatch.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/_formatter-dispatch.sh"
 
 format_file "$FILE_PATH"
