@@ -22,7 +22,7 @@ if echo "$COMMAND" | grep -qE 'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?(-[a-zA-Z]*r[a-zA-
 fi
 
 # Force push
-if echo "$COMMAND" | grep -qE 'git\s+push\s+.*(-f|--force)'; then
+if echo "$COMMAND" | grep -qE 'git\s+push\s+(.*\s)?(-f|--force)(\s|$)'; then
     BLOCKED="git push --force"
 fi
 
