@@ -174,10 +174,7 @@
         "Run `echo 'not-json' | bash .claude/hooks/protect-files.sh` and verify exit code is 0 (fail open on malformed JSON)"
       ],
       "passes": false,
-      "dependencies": [
-        "fix-shebang-corruption",
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["fix-shebang-corruption", "standardize-hook-json-key"]
     },
     {
       "id": "validate-bash-hook",
@@ -198,9 +195,7 @@
         "Run `echo 'not-json' | bash .claude/hooks/validate-bash.sh` and verify exit code is 0 (fail open)"
       ],
       "passes": false,
-      "dependencies": [
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["standardize-hook-json-key"]
     },
     {
       "id": "validate-pr-hook",
@@ -217,9 +212,7 @@
         "Run `echo 'not-json' | bash .claude/hooks/validate-pr.sh` and verify exit code is 0 (fail open)"
       ],
       "passes": false,
-      "dependencies": [
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["standardize-hook-json-key"]
     },
     {
       "id": "post-edit-hook",
@@ -236,10 +229,7 @@
         "Run `echo '{\"tool_input\":{\"file_path\":\"test.xyz\"}}' | bash .claude/hooks/post-edit.sh` and verify exit code is 0 (unrecognized extension, silent skip)"
       ],
       "passes": false,
-      "dependencies": [
-        "standardize-hook-json-key",
-        "shared-formatter-dispatch"
-      ]
+      "dependencies": ["standardize-hook-json-key", "shared-formatter-dispatch"]
     },
     {
       "id": "format-changed-hook",
@@ -278,9 +268,7 @@
         "Run `echo '{}' | bash .claude/hooks/verify-quality.sh` in a directory with no recognized project type and verify exit code is 0"
       ],
       "passes": false,
-      "dependencies": [
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["standardize-hook-json-key"]
     },
     {
       "id": "specforge-constitution",
@@ -296,9 +284,7 @@
         "Verify the template contains sections for: Project Identity, Non-Negotiable Principles, Quality Standards, Architectural Constraints, Security Requirements, Out of Scope"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure"
-      ]
+      "dependencies": ["plugin-directory-structure"]
     },
     {
       "id": "specforge-spec",
@@ -313,10 +299,7 @@
         "Verify the spec section references the spec-template.md as a template source"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure",
-        "specforge-constitution"
-      ]
+      "dependencies": ["plugin-directory-structure", "specforge-constitution"]
     },
     {
       "id": "specforge-clarify",
@@ -330,9 +313,7 @@
         "Verify the clarify section instructs updating spec.md with resolved decisions"
       ],
       "passes": false,
-      "dependencies": [
-        "specforge-spec"
-      ]
+      "dependencies": ["specforge-spec"]
     },
     {
       "id": "specforge-plan",
@@ -347,9 +328,7 @@
         "Verify the plan template exists at `.claude-plugin/templates/plan-template.md` or `.specify/templates/plan-template.md`"
       ],
       "passes": false,
-      "dependencies": [
-        "specforge-spec"
-      ]
+      "dependencies": ["specforge-spec"]
     },
     {
       "id": "specforge-features",
@@ -366,9 +345,7 @@
         "Verify the features section requires minimum 3 testing steps per feature and 20% with 10+ steps"
       ],
       "passes": false,
-      "dependencies": [
-        "specforge-plan"
-      ]
+      "dependencies": ["specforge-plan"]
     },
     {
       "id": "specforge-analyze",
@@ -384,9 +361,7 @@
         "Verify the analyze section mentions remediation steps for dimensions below 70"
       ],
       "passes": false,
-      "dependencies": [
-        "specforge-features"
-      ]
+      "dependencies": ["specforge-features"]
     },
     {
       "id": "specforge-setup",
@@ -401,9 +376,7 @@
         "Verify the setup section mentions using gh api commands for branch protection configuration"
       ],
       "passes": false,
-      "dependencies": [
-        "specforge-plan"
-      ]
+      "dependencies": ["specforge-plan"]
     },
     {
       "id": "specforge-init",
@@ -420,10 +393,7 @@
         "Verify the init section mentions git init -b main for non-git directories"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure",
-        "plugin-hooks-manifest"
-      ]
+      "dependencies": ["plugin-directory-structure", "plugin-hooks-manifest"]
     },
     {
       "id": "specforge-upgrade",
@@ -440,10 +410,7 @@
         "Verify upgrade-tiers.json lists files in skip tier including CLAUDE.md, .specify/memory/constitution.md, feature_list.json"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure",
-        "specforge-init"
-      ]
+      "dependencies": ["plugin-directory-structure", "specforge-init"]
     },
     {
       "id": "initializer-agent",
@@ -460,10 +427,7 @@
         "Verify the file explicitly states not to implement features (only scaffolding)"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure",
-        "specforge-features"
-      ]
+      "dependencies": ["plugin-directory-structure", "specforge-features"]
     },
     {
       "id": "coder-agent",
@@ -480,10 +444,7 @@
         "Verify the file mentions conventional commit format with no emoji, no AI-isms, no Co-Authored-By"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure",
-        "initializer-agent"
-      ]
+      "dependencies": ["plugin-directory-structure", "initializer-agent"]
     },
     {
       "id": "pre-commit-git-hook",
@@ -502,9 +463,7 @@
         "Verify the script skips generated files like protobuf outputs"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure"
-      ]
+      "dependencies": ["plugin-directory-structure"]
     },
     {
       "id": "commit-msg-git-hook",
@@ -524,9 +483,7 @@
         "Create temp file with message containing 'Co-Authored-By: Bot <bot@example.com>', run the hook, verify exit 1"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure"
-      ]
+      "dependencies": ["plugin-directory-structure"]
     },
     {
       "id": "install-hooks-script",
@@ -564,10 +521,7 @@
         "Run the script and verify exit code is 0 when all validations pass"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure",
-        "plugin-hooks-manifest"
-      ]
+      "dependencies": ["plugin-directory-structure", "plugin-hooks-manifest"]
     },
     {
       "id": "hook-smoke-tests",
@@ -616,10 +570,7 @@
         "Verify each check prints 'PASS:' or 'FAIL:' and a final summary line"
       ],
       "passes": false,
-      "dependencies": [
-        "plugin-directory-structure",
-        "specforge-init"
-      ]
+      "dependencies": ["plugin-directory-structure", "specforge-init"]
     },
     {
       "id": "upgrade-tier-test",
@@ -639,10 +590,7 @@
         "Verify the script uses trap to clean up on exit"
       ],
       "passes": false,
-      "dependencies": [
-        "specforge-init",
-        "specforge-upgrade"
-      ]
+      "dependencies": ["specforge-init", "specforge-upgrade"]
     },
     {
       "id": "commit-msg-validation-tests",
@@ -661,9 +609,7 @@
         "Verify the script exits 0 if all tests pass"
       ],
       "passes": false,
-      "dependencies": [
-        "commit-msg-git-hook"
-      ]
+      "dependencies": ["commit-msg-git-hook"]
     },
     {
       "id": "json-key-standardization-test",
@@ -680,9 +626,7 @@
         "Run the script after standardization is complete and verify exit code is 0 with message about no legacy keys found"
       ],
       "passes": false,
-      "dependencies": [
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["standardize-hook-json-key"]
     }
   ]
 }

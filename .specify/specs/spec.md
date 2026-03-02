@@ -264,12 +264,12 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| JSON parsing fails (malformed stdin) | Exit 0 (fail open) | None |
-| `tool_input` key missing from JSON | Exit 0 (fail open) | None |
-| `file_path` is empty string | Exit 0 (no file to check) | None |
-| `jq` not available | Exit 0 (fail open) | None |
+| Error Condition                      | Expected Behavior         | User-Facing Message |
+| ------------------------------------ | ------------------------- | ------------------- |
+| JSON parsing fails (malformed stdin) | Exit 0 (fail open)        | None                |
+| `tool_input` key missing from JSON   | Exit 0 (fail open)        | None                |
+| `file_path` is empty string          | Exit 0 (no file to check) | None                |
+| `jq` not available                   | Exit 0 (fail open)        | None                |
 
 **Edge Cases:**
 
@@ -360,11 +360,11 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| JSON parsing fails | Exit 0 (fail open) | None |
-| `tool_input.command` is empty | Exit 0 (no command to check) | None |
-| `jq` not available | Exit 0 (fail open) | None |
+| Error Condition               | Expected Behavior            | User-Facing Message |
+| ----------------------------- | ---------------------------- | ------------------- |
+| JSON parsing fails            | Exit 0 (fail open)           | None                |
+| `tool_input.command` is empty | Exit 0 (no command to check) | None                |
+| `jq` not available            | Exit 0 (fail open)           | None                |
 
 **Edge Cases:**
 
@@ -426,13 +426,13 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| JSON parsing fails | Exit 0 (fail open) | None |
-| `jq` not available | Exit 0 (fail open) | None |
-| `--title` not found in command | Validate body only, exit 0 if clean | None |
-| `--body` not found in command | Validate title only, exit 0 if clean | None |
-| Heredoc body `$(cat <<'EOF'...EOF)` | Parse heredoc content for validation | None |
+| Error Condition                     | Expected Behavior                    | User-Facing Message |
+| ----------------------------------- | ------------------------------------ | ------------------- |
+| JSON parsing fails                  | Exit 0 (fail open)                   | None                |
+| `jq` not available                  | Exit 0 (fail open)                   | None                |
+| `--title` not found in command      | Validate body only, exit 0 if clean  | None                |
+| `--body` not found in command       | Validate title only, exit 0 if clean | None                |
+| Heredoc body `$(cat <<'EOF'...EOF)` | Parse heredoc content for validation | None                |
 
 **Edge Cases:**
 
@@ -496,14 +496,14 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| JSON parsing fails | Exit 0 | None |
-| File path is empty | Exit 0 | None |
-| File does not exist | Exit 0 | None |
-| Formatter crashes | Exit 0 (each formatter call is wrapped in `\|\| true`) | None |
-| No `package.json` found for Prettier | Fall back to global `prettier` command if available | None |
-| Global `prettier` also not found | Skip Prettier formatting | None |
+| Error Condition                      | Expected Behavior                                      | User-Facing Message |
+| ------------------------------------ | ------------------------------------------------------ | ------------------- |
+| JSON parsing fails                   | Exit 0                                                 | None                |
+| File path is empty                   | Exit 0                                                 | None                |
+| File does not exist                  | Exit 0                                                 | None                |
+| Formatter crashes                    | Exit 0 (each formatter call is wrapped in `\|\| true`) | None                |
+| No `package.json` found for Prettier | Fall back to global `prettier` command if available    | None                |
+| Global `prettier` also not found     | Skip Prettier formatting                               | None                |
 
 **Edge Cases:**
 
@@ -550,14 +550,14 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| `stop_hook_active` is `true` (JSON boolean) | Exit 0 immediately | None |
-| Not in a git repository | Exit 0 | "Not in a git repository. Skipping format." |
-| No changed files | Exit 0 | "No changed files to format" |
-| Formatter not found for a file type | Skip file, continue | None |
-| Formatter crashes on a file | Skip file (`\|\| true`), continue | None |
-| JSON parsing of stdin fails | Default to `stop_hook_active=False`, proceed | None |
+| Error Condition                             | Expected Behavior                            | User-Facing Message                         |
+| ------------------------------------------- | -------------------------------------------- | ------------------------------------------- |
+| `stop_hook_active` is `true` (JSON boolean) | Exit 0 immediately                           | None                                        |
+| Not in a git repository                     | Exit 0                                       | "Not in a git repository. Skipping format." |
+| No changed files                            | Exit 0                                       | "No changed files to format"                |
+| Formatter not found for a file type         | Skip file, continue                          | None                                        |
+| Formatter crashes on a file                 | Skip file (`\|\| true`), continue            | None                                        |
+| JSON parsing of stdin fails                 | Default to `stop_hook_active=False`, proceed | None                                        |
 
 **Edge Cases:**
 
@@ -617,12 +617,12 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| `stop_hook_active` is `true` (JSON boolean) | Exit 0 immediately | None |
-| No recognized project type | Exit 0 | "No recognized project type found. Skipping quality checks." |
-| A linting tool not installed | Skip that check | None |
-| JSON parsing of stdin fails | Default to `stop_hook_active=False`, proceed | None |
+| Error Condition                             | Expected Behavior                            | User-Facing Message                                          |
+| ------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------ |
+| `stop_hook_active` is `true` (JSON boolean) | Exit 0 immediately                           | None                                                         |
+| No recognized project type                  | Exit 0                                       | "No recognized project type found. Skipping quality checks." |
+| A linting tool not installed                | Skip that check                              | None                                                         |
+| JSON parsing of stdin fails                 | Default to `stop_hook_active=False`, proceed | None                                                         |
 
 **Edge Cases:**
 
@@ -677,11 +677,11 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Template file not found | Use known section structure from memory | "Constitution template not found. Using default section structure." |
-| `.specify/memory/` directory missing | Create the directory | None (silent mkdir -p) |
-| User provides empty response for a required field | Re-prompt | "This field is required. Please provide a value." |
+| Error Condition                                   | Expected Behavior                       | User-Facing Message                                                 |
+| ------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------- |
+| Template file not found                           | Use known section structure from memory | "Constitution template not found. Using default section structure." |
+| `.specify/memory/` directory missing              | Create the directory                    | None (silent mkdir -p)                                              |
+| User provides empty response for a required field | Re-prompt                               | "This field is required. Please provide a value."                   |
 
 **Edge Cases:**
 
@@ -733,11 +733,11 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Constitution not found | Prompt user to run constitution first | "No constitution found. Run `/specforge constitution` first." |
-| `.specify/specs/` directory missing | Create the directory | None (silent mkdir -p) |
-| Spec template not found | Use known template structure from SKILL.md | "Spec template not found. Using default structure." |
+| Error Condition                     | Expected Behavior                          | User-Facing Message                                           |
+| ----------------------------------- | ------------------------------------------ | ------------------------------------------------------------- |
+| Constitution not found              | Prompt user to run constitution first      | "No constitution found. Run `/specforge constitution` first." |
+| `.specify/specs/` directory missing | Create the directory                       | None (silent mkdir -p)                                        |
+| Spec template not found             | Use known template structure from SKILL.md | "Spec template not found. Using default structure."           |
 
 **Edge Cases:**
 
@@ -782,10 +782,10 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Constitution not found | Prompt | "No constitution found. Run `/specforge constitution` first." |
-| Spec not found | Prompt | "No spec found. Run `/specforge spec` first." |
+| Error Condition        | Expected Behavior | User-Facing Message                                           |
+| ---------------------- | ----------------- | ------------------------------------------------------------- |
+| Constitution not found | Prompt            | "No constitution found. Run `/specforge constitution` first." |
+| Spec not found         | Prompt            | "No spec found. Run `/specforge spec` first."                 |
 
 **Edge Cases:**
 
@@ -838,10 +838,10 @@ PreToolUse convention).
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Constitution not found | Prompt | "Run `/specforge constitution` first." |
-| Spec not found | Prompt | "Run `/specforge spec` first." |
+| Error Condition         | Expected Behavior   | User-Facing Message                                 |
+| ----------------------- | ------------------- | --------------------------------------------------- |
+| Constitution not found  | Prompt              | "Run `/specforge constitution` first."              |
+| Spec not found          | Prompt              | "Run `/specforge spec` first."                      |
 | Plan template not found | Use known structure | "Plan template not found. Using default structure." |
 
 **Edge Cases:**
@@ -910,12 +910,12 @@ features have 10+ testing steps.
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Spec or plan missing | Prompt user | "Missing prerequisites. Run `/specforge spec` and `/specforge plan` first." |
-| Schema file not found | Use built-in validation | "Schema file not found at expected path. Using built-in validation rules." |
-| Circular dependency detected | Remove the offending edge and explain | "Circular dependency detected between [A] and [B]. Removing [B] from [A]'s dependencies." |
-| Testing step count below threshold | Add more steps interactively | "Feature [X] has only N testing steps (minimum 3). Please provide additional steps." |
+| Error Condition                    | Expected Behavior                     | User-Facing Message                                                                       |
+| ---------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Spec or plan missing               | Prompt user                           | "Missing prerequisites. Run `/specforge spec` and `/specforge plan` first."               |
+| Schema file not found              | Use built-in validation               | "Schema file not found at expected path. Using built-in validation rules."                |
+| Circular dependency detected       | Remove the offending edge and explain | "Circular dependency detected between [A] and [B]. Removing [B] from [A]'s dependencies." |
+| Testing step count below threshold | Add more steps interactively          | "Feature [X] has only N testing steps (minimum 3). Please provide additional steps."      |
 
 **Edge Cases:**
 
@@ -977,11 +977,11 @@ features have 10+ testing steps.
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| No artifacts exist | All dimensions score 0, overall 0 | "No spec artifacts found. Start with `/specforge constitution`." |
-| Only constitution exists | Score available, cap others at 50 | "Missing spec, plan, and feature_list. Completeness capped." |
-| feature_list.json fails schema validation | Feature-list sub-score is 0 | "feature_list.json does not validate against schema. Completeness sub-score: 0." |
+| Error Condition                           | Expected Behavior                 | User-Facing Message                                                              |
+| ----------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------- |
+| No artifacts exist                        | All dimensions score 0, overall 0 | "No spec artifacts found. Start with `/specforge constitution`."                 |
+| Only constitution exists                  | Score available, cap others at 50 | "Missing spec, plan, and feature_list. Completeness capped."                     |
+| feature_list.json fails schema validation | Feature-list sub-score is 0       | "feature_list.json does not validate against schema. Completeness sub-score: 0." |
 
 **Edge Cases:**
 
@@ -1034,10 +1034,10 @@ features have 10+ testing steps.
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Plan not found | Default to GitHub, warn | "No plan found. Defaulting to GitHub. Run `/specforge plan` for customized setup." |
-| Unknown CI platform | Default to GitHub | "Unrecognized CI platform. Defaulting to GitHub." |
+| Error Condition     | Expected Behavior       | User-Facing Message                                                                |
+| ------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| Plan not found      | Default to GitHub, warn | "No plan found. Defaulting to GitHub. Run `/specforge plan` for customized setup." |
+| Unknown CI platform | Default to GitHub       | "Unrecognized CI platform. Defaulting to GitHub."                                  |
 
 **Edge Cases:**
 
@@ -1100,12 +1100,12 @@ opinionated projection: everything gets copied, no interactive selection.
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Target directory does not exist | Exit with error | "Target directory does not exist: <path>" |
-| No write permissions | Exit with error | "Cannot write to target directory: <path>" |
-| plugin.json not found | Exit with error | "Plugin manifest not found. Plugin installation may be corrupted." |
-| `git` not on PATH | Warn and continue (skip git init and hook install) | "git not found. Skipping repository initialization and hook installation." |
+| Error Condition                 | Expected Behavior                                  | User-Facing Message                                                        |
+| ------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------- |
+| Target directory does not exist | Exit with error                                    | "Target directory does not exist: <path>"                                  |
+| No write permissions            | Exit with error                                    | "Cannot write to target directory: <path>"                                 |
+| plugin.json not found           | Exit with error                                    | "Plugin manifest not found. Plugin installation may be corrupted."         |
+| `git` not on PATH               | Warn and continue (skip git init and hook install) | "git not found. Skipping repository initialization and hook installation." |
 
 **Edge Cases:**
 
@@ -1165,12 +1165,12 @@ files never touched. Reads `.specforge-version` to determine what changed betwee
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| `.specforge-version` missing | Fall back to init | "No version file found. Running as fresh install." |
-| Current version == new version | Skip | "Already at version X.Y.Z. Nothing to upgrade." |
-| Review-tier file has local modifications | Show diff, ask user | "Local modifications detected in <file>. Review changes? [y/n]" |
-| Diff tool not available | Show raw file content comparison | "diff not available. Showing file contents for manual comparison." |
+| Error Condition                          | Expected Behavior                | User-Facing Message                                                |
+| ---------------------------------------- | -------------------------------- | ------------------------------------------------------------------ |
+| `.specforge-version` missing             | Fall back to init                | "No version file found. Running as fresh install."                 |
+| Current version == new version           | Skip                             | "Already at version X.Y.Z. Nothing to upgrade."                    |
+| Review-tier file has local modifications | Show diff, ask user              | "Local modifications detected in <file>. Review changes? [y/n]"    |
+| Diff tool not available                  | Show raw file content comparison | "diff not available. Showing file contents for manual comparison." |
 
 **Edge Cases:**
 
@@ -1227,12 +1227,12 @@ files never touched. Reads `.specforge-version` to determine what changed betwee
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| constitution.md missing | Abort | "Cannot proceed: constitution.md not found. Run `/specforge constitution` first." |
-| spec.md missing | Abort | "Cannot proceed: spec.md not found. Run `/specforge spec` first." |
-| plan.md missing | Abort | "Cannot proceed: plan.md not found. Run `/specforge plan` first." |
-| feature_list.json fails validation | Report errors, attempt auto-repair | "Validation errors found in feature_list.json: [list]. Attempting repair." |
+| Error Condition                    | Expected Behavior                  | User-Facing Message                                                               |
+| ---------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------- |
+| constitution.md missing            | Abort                              | "Cannot proceed: constitution.md not found. Run `/specforge constitution` first." |
+| spec.md missing                    | Abort                              | "Cannot proceed: spec.md not found. Run `/specforge spec` first."                 |
+| plan.md missing                    | Abort                              | "Cannot proceed: plan.md not found. Run `/specforge plan` first."                 |
+| feature_list.json fails validation | Report errors, attempt auto-repair | "Validation errors found in feature_list.json: [list]. Attempting repair."        |
 
 **Edge Cases:**
 
@@ -1297,12 +1297,12 @@ files never touched. Reads `.specforge-version` to determine what changed betwee
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| feature_list.json missing | Abort | "feature_list.json not found. Run the initializer agent first." |
-| No eligible features | Report and stop | "No eligible features: all pass or all have unmet dependencies." |
-| init.sh fails | Diagnose and attempt fix | "init.sh failed with exit code N. Diagnosing..." |
-| External blocker (API key, service) | Document and skip | "Blocked on [feature]: [reason]. Moving to next eligible feature." |
+| Error Condition                     | Expected Behavior        | User-Facing Message                                                |
+| ----------------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| feature_list.json missing           | Abort                    | "feature_list.json not found. Run the initializer agent first."    |
+| No eligible features                | Report and stop          | "No eligible features: all pass or all have unmet dependencies."   |
+| init.sh fails                       | Diagnose and attempt fix | "init.sh failed with exit code N. Diagnosing..."                   |
+| External blocker (API key, service) | Document and skip        | "Blocked on [feature]: [reason]. Moving to next eligible feature." |
 
 **Edge Cases:**
 
@@ -1351,12 +1351,12 @@ files never touched. Reads `.specforge-version` to determine what changed betwee
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| No staged files | Exit 0 immediately | None |
-| shellcheck/ruff/eslint not installed | Skip that linter for the file | None |
-| `git show :<file>` fails | Skip secret scan for that file | None |
-| Protobuf-generated file detected | Skip lint | None |
+| Error Condition                      | Expected Behavior              | User-Facing Message |
+| ------------------------------------ | ------------------------------ | ------------------- |
+| No staged files                      | Exit 0 immediately             | None                |
+| shellcheck/ruff/eslint not installed | Skip that linter for the file  | None                |
+| `git show :<file>` fails             | Skip secret scan for that file | None                |
+| Protobuf-generated file detected     | Skip lint                      | None                |
 
 **Edge Cases:**
 
@@ -1430,11 +1430,11 @@ files never touched. Reads `.specforge-version` to determine what changed betwee
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Empty commit message | Exit 1 | "ERROR: Empty commit message." |
-| Emoji detection regex unsupported by grep version | Skip emoji detection | None |
-| Message file not readable | Exit with shell error | Standard shell error |
+| Error Condition                                   | Expected Behavior     | User-Facing Message            |
+| ------------------------------------------------- | --------------------- | ------------------------------ |
+| Empty commit message                              | Exit 1                | "ERROR: Empty commit message." |
+| Emoji detection regex unsupported by grep version | Skip emoji detection  | None                           |
+| Message file not readable                         | Exit with shell error | Standard shell error           |
 
 **Edge Cases:**
 
@@ -1477,12 +1477,12 @@ files never touched. Reads `.specforge-version` to determine what changed betwee
 
 **Error Handling:**
 
-| Error Condition | Expected Behavior | User-Facing Message |
-| --- | --- | --- |
-| Not in a git repo | Exit 1 | "Not in a git repository." |
-| Source hook file missing | Skip and continue | "Skipped (not found): <path>" |
-| `.claude/hooks/` directory missing | Skip chmod step | None |
-| `.git/hooks/` directory missing | Create it with `mkdir -p` | None |
+| Error Condition                    | Expected Behavior         | User-Facing Message           |
+| ---------------------------------- | ------------------------- | ----------------------------- |
+| Not in a git repo                  | Exit 1                    | "Not in a git repository."    |
+| Source hook file missing           | Skip and continue         | "Skipped (not found): <path>" |
+| `.claude/hooks/` directory missing | Skip chmod step           | None                          |
+| `.git/hooks/` directory missing    | Create it with `mkdir -p` | None                          |
 
 **Edge Cases:**
 
@@ -1552,7 +1552,7 @@ Test infrastructure and validation targets.
 - [ ] Creates a temporary directory with `mktemp -d`
 - [ ] Runs the init/scaffold logic targeting the temporary directory
 - [ ] Validates at least these files exist in the temp dir: `.specify/WORKFLOW.md`, `.specify/templates/constitution-template.md`, `scripts/hooks/pre-commit`, `scripts/hooks/commit-msg`, `ci/principles/commit-gate.md`, `ci/principles/pr-gate.md`, `ci/principles/release-gate.md`, `prompts/initializer-prompt.md`, `prompts/coding-prompt.md`,
-  `.prettierrc.json`
+      `.prettierrc.json`
 - [ ] Validates `CLAUDE.md` exists (created from template)
 - [ ] Validates `.specforge-version` exists and its content matches regex `^\d+\.\d+\.\d+$`
 - [ ] Validates `scripts/hooks/pre-commit` is executable: `test -x <path>` exits 0
@@ -1775,7 +1775,7 @@ Notes:
 ---
 name: specforge
 description: Spec-driven development workflow with 9 sub-commands for autonomous coding projects
-argument-hint: "<sub-command> (constitution|spec|clarify|plan|features|analyze|setup|init|upgrade)"
+argument-hint: '<sub-command> (constitution|spec|clarify|plan|features|analyze|setup|init|upgrade)'
 ---
 ```
 

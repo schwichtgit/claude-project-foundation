@@ -222,15 +222,15 @@ claude-project-foundation/
 
 ### Languages and Tools
 
-| Component | Choice | Version | Rationale |
-| --- | --- | --- | --- |
-| Shell | Bash | >= 4.0 | Zero-dependency runtime; portable across macOS and Linux |
-| JSON Parser | jq | Latest | Replaces python3 for JSON parsing; fail-open if unavailable |
-| Formatting | Prettier | Latest | Dev-only dependency for markdown/YAML/JSON; not required by plugin consumers |
-| Linting | ShellCheck | Latest | Static analysis for all bash scripts |
-| Markdown Lint | markdownlint-cli2 | Latest | Validates markdown files in CI |
-| CI Platform | GitHub Actions | N/A | First-class support with path filtering and conditional jobs |
-| Release | GitHub Releases + Artifact Attestation | N/A | Tag-triggered with provenance via `actions/attest-build-provenance` |
+| Component     | Choice                                 | Version | Rationale                                                                    |
+| ------------- | -------------------------------------- | ------- | ---------------------------------------------------------------------------- |
+| Shell         | Bash                                   | >= 4.0  | Zero-dependency runtime; portable across macOS and Linux                     |
+| JSON Parser   | jq                                     | Latest  | Replaces python3 for JSON parsing; fail-open if unavailable                  |
+| Formatting    | Prettier                               | Latest  | Dev-only dependency for markdown/YAML/JSON; not required by plugin consumers |
+| Linting       | ShellCheck                             | Latest  | Static analysis for all bash scripts                                         |
+| Markdown Lint | markdownlint-cli2                      | Latest  | Validates markdown files in CI                                               |
+| CI Platform   | GitHub Actions                         | N/A     | First-class support with path filtering and conditional jobs                 |
+| Release       | GitHub Releases + Artifact Attestation | N/A     | Tag-triggered with provenance via `actions/attest-build-provenance`          |
 
 ### API Design
 
@@ -295,46 +295,46 @@ this repo.
 
 Files that move or are created:
 
-| Current Location | Plugin Location | Change |
-| --- | --- | --- |
-| `.claude/hooks/protect-files.sh` | `.claude-plugin/hooks/protect-files.sh` | Copy + fix shebang + python3->jq + `input`->`tool_input` + exit 1->exit 2 + add trap |
-| `.claude/hooks/validate-bash.sh` | `.claude-plugin/hooks/validate-bash.sh` | Copy + python3->jq + `input`->`tool_input` + exit 1->exit 2 + add trap |
-| `.claude/hooks/validate-pr.sh` | `.claude-plugin/hooks/validate-pr.sh` | Copy + python3->jq + `input`->`tool_input` + add trap + strip `.claude/` path prefixes |
-| `.claude/hooks/post-edit.sh` | `.claude-plugin/hooks/post-edit.sh` | Copy + python3->jq + `input`->`tool_input` + add trap + extract formatter dispatch |
-| `.claude/hooks/verify-quality.sh` | `.claude-plugin/hooks/verify-quality.sh` | Copy + python3->jq + `stop_hook_active` via jq + add trap |
-| (new) | `.claude-plugin/hooks/format-changed.sh` | New: batch formatter Stop hook |
-| (new) | `.claude-plugin/hooks/_formatter-dispatch.sh` | New: shared formatter dispatch library |
-| (new) | `.claude-plugin/hooks/hooks.json` | New: plugin hooks manifest |
-| `.claude/skills/specforge/SKILL.md` | `.claude-plugin/skills/specforge/SKILL.md` | Rewrite with 9 sub-commands + YAML frontmatter |
-| `prompts/initializer-prompt.md` | `.claude-plugin/agents/initializer.md` | Adapt to agent markdown format |
-| `prompts/coding-prompt.md` | `.claude-plugin/agents/coder.md` | Adapt to agent markdown format |
-| (new) | `.claude-plugin/plugin.json` | New: plugin manifest |
-| (new) | `.claude-plugin/marketplace.json` | New: marketplace distribution manifest |
-| (new) | `.claude-plugin/upgrade-tiers.json` | New: three-tier file classification for upgrade |
+| Current Location                    | Plugin Location                               | Change                                                                                 |
+| ----------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `.claude/hooks/protect-files.sh`    | `.claude-plugin/hooks/protect-files.sh`       | Copy + fix shebang + python3->jq + `input`->`tool_input` + exit 1->exit 2 + add trap   |
+| `.claude/hooks/validate-bash.sh`    | `.claude-plugin/hooks/validate-bash.sh`       | Copy + python3->jq + `input`->`tool_input` + exit 1->exit 2 + add trap                 |
+| `.claude/hooks/validate-pr.sh`      | `.claude-plugin/hooks/validate-pr.sh`         | Copy + python3->jq + `input`->`tool_input` + add trap + strip `.claude/` path prefixes |
+| `.claude/hooks/post-edit.sh`        | `.claude-plugin/hooks/post-edit.sh`           | Copy + python3->jq + `input`->`tool_input` + add trap + extract formatter dispatch     |
+| `.claude/hooks/verify-quality.sh`   | `.claude-plugin/hooks/verify-quality.sh`      | Copy + python3->jq + `stop_hook_active` via jq + add trap                              |
+| (new)                               | `.claude-plugin/hooks/format-changed.sh`      | New: batch formatter Stop hook                                                         |
+| (new)                               | `.claude-plugin/hooks/_formatter-dispatch.sh` | New: shared formatter dispatch library                                                 |
+| (new)                               | `.claude-plugin/hooks/hooks.json`             | New: plugin hooks manifest                                                             |
+| `.claude/skills/specforge/SKILL.md` | `.claude-plugin/skills/specforge/SKILL.md`    | Rewrite with 9 sub-commands + YAML frontmatter                                         |
+| `prompts/initializer-prompt.md`     | `.claude-plugin/agents/initializer.md`        | Adapt to agent markdown format                                                         |
+| `prompts/coding-prompt.md`          | `.claude-plugin/agents/coder.md`              | Adapt to agent markdown format                                                         |
+| (new)                               | `.claude-plugin/plugin.json`                  | New: plugin manifest                                                                   |
+| (new)                               | `.claude-plugin/marketplace.json`             | New: marketplace distribution manifest                                                 |
+| (new)                               | `.claude-plugin/upgrade-tiers.json`           | New: three-tier file classification for upgrade                                        |
 
 Scaffold copies (mirroring top-level directories):
 
-| Source (top-level) | Scaffold Location |
-| --- | --- |
-| `.specify/templates/*` | `.claude-plugin/scaffold/.specify/templates/*` |
-| `.specify/WORKFLOW.md` | `.claude-plugin/scaffold/.specify/WORKFLOW.md` |
-| `ci/principles/*` | `.claude-plugin/scaffold/ci/principles/*` |
-| `ci/github/*` | `.claude-plugin/scaffold/ci/github/*` |
-| `ci/gitlab/*` | `.claude-plugin/scaffold/ci/gitlab/*` |
-| `ci/jenkins/*` | `.claude-plugin/scaffold/ci/jenkins/*` |
-| `scripts/hooks/*` | `.claude-plugin/scaffold/scripts/hooks/*` |
-| `scripts/install-hooks.sh` | `.claude-plugin/scaffold/scripts/install-hooks.sh` |
-| `prompts/*` | `.claude-plugin/scaffold/prompts/*` |
-| `.prettierrc.json` | `.claude-plugin/scaffold/.prettierrc.json` |
-| `.prettierignore` | `.claude-plugin/scaffold/.prettierignore` |
-| `.markdownlint.json` | `.claude-plugin/scaffold/.markdownlint.json` |
-| `.markdownlintignore` | `.claude-plugin/scaffold/.markdownlintignore` |
-| `CLAUDE.md.template` | `.claude-plugin/scaffold/CLAUDE.md.template` |
-| `.github/workflows/ci.yml` | `.claude-plugin/scaffold/.github/workflows/ci.yml` |
-| `.github/CODEOWNERS` | `.claude-plugin/scaffold/.github/CODEOWNERS` |
-| `.github/dependabot.yml` | `.claude-plugin/scaffold/.github/dependabot.yml` |
+| Source (top-level)                 | Scaffold Location                                          |
+| ---------------------------------- | ---------------------------------------------------------- |
+| `.specify/templates/*`             | `.claude-plugin/scaffold/.specify/templates/*`             |
+| `.specify/WORKFLOW.md`             | `.claude-plugin/scaffold/.specify/WORKFLOW.md`             |
+| `ci/principles/*`                  | `.claude-plugin/scaffold/ci/principles/*`                  |
+| `ci/github/*`                      | `.claude-plugin/scaffold/ci/github/*`                      |
+| `ci/gitlab/*`                      | `.claude-plugin/scaffold/ci/gitlab/*`                      |
+| `ci/jenkins/*`                     | `.claude-plugin/scaffold/ci/jenkins/*`                     |
+| `scripts/hooks/*`                  | `.claude-plugin/scaffold/scripts/hooks/*`                  |
+| `scripts/install-hooks.sh`         | `.claude-plugin/scaffold/scripts/install-hooks.sh`         |
+| `prompts/*`                        | `.claude-plugin/scaffold/prompts/*`                        |
+| `.prettierrc.json`                 | `.claude-plugin/scaffold/.prettierrc.json`                 |
+| `.prettierignore`                  | `.claude-plugin/scaffold/.prettierignore`                  |
+| `.markdownlint.json`               | `.claude-plugin/scaffold/.markdownlint.json`               |
+| `.markdownlintignore`              | `.claude-plugin/scaffold/.markdownlintignore`              |
+| `CLAUDE.md.template`               | `.claude-plugin/scaffold/CLAUDE.md.template`               |
+| `.github/workflows/ci.yml`         | `.claude-plugin/scaffold/.github/workflows/ci.yml`         |
+| `.github/CODEOWNERS`               | `.claude-plugin/scaffold/.github/CODEOWNERS`               |
+| `.github/dependabot.yml`           | `.claude-plugin/scaffold/.github/dependabot.yml`           |
 | `.github/PULL_REQUEST_TEMPLATE.md` | `.claude-plugin/scaffold/.github/PULL_REQUEST_TEMPLATE.md` |
-| `.github/ISSUE_TEMPLATE/*` | `.claude-plugin/scaffold/.github/ISSUE_TEMPLATE/*` |
+| `.github/ISSUE_TEMPLATE/*`         | `.claude-plugin/scaffold/.github/ISSUE_TEMPLATE/*`         |
 
 ---
 
@@ -573,7 +573,7 @@ YAML frontmatter:
 ---
 name: specforge
 description: Spec-driven development workflow for autonomous coding projects
-argument-hint: "<sub-command> (constitution|spec|clarify|plan|features|analyze|setup|init|upgrade)"
+argument-hint: '<sub-command> (constitution|spec|clarify|plan|features|analyze|setup|init|upgrade)'
 ---
 ```
 
@@ -586,7 +586,7 @@ Sub-command sections follow this pattern:
 
 1. <step 1>
 2. <step 2>
-...
+   ...
 ```
 
 The `init` sub-command should:
@@ -669,6 +669,7 @@ with these changes:
 <adapted content from prompts/initializer-prompt.md>
 
 Key additions:
+
 - Prerequisite check section
 - Reference to /specforge commands for missing artifacts
 - Explicit "no feature implementation" guardrail
@@ -682,6 +683,7 @@ Key additions:
 <adapted content from prompts/coding-prompt.md>
 
 Key additions:
+
 - Regression priority section (Step 3)
 - Feature selection algorithm (Step 4)
 - Commit format enforcement (Step 8)
@@ -869,7 +871,8 @@ Summary job update in `ci.yml`:
 ```yaml
 summary:
   if: always()
-  needs: [markdownlint, prettier, shellcheck, commit-standards, plugin-validation]
+  needs:
+    [markdownlint, prettier, shellcheck, commit-standards, plugin-validation]
   runs-on: ubuntu-latest
   steps:
     - name: Check results
@@ -918,14 +921,14 @@ Test scripts live under `scripts/` with the naming convention `test-*.sh` and `v
 CI discovers them via glob patterns. Each test script is self-contained: no shared test framework,
 no test runner dependency.
 
-| Script | Spec ID | What It Tests | Dependencies |
-| --- | --- | --- | --- |
-| `scripts/validate-plugin.sh` | TEST-001 | Plugin structure, manifest integrity, file paths, version format | jq |
-| `scripts/test-hooks.sh` | TEST-002 | All 6 hooks: pipe JSON to stdin, assert exit codes and stderr | jq, bash |
-| `scripts/test-scaffold.sh` | TEST-003 | Init/scaffold projection: temp dir, file existence, permissions, git init | git, bash |
-| `scripts/test-upgrade.sh` | TEST-004 | Upgrade three-tier behavior: overwrite/review/skip with canary strings | git, bash |
-| `scripts/test-commit-msg.sh` | TEST-005 | Commit-msg hook: valid/invalid messages, exit codes | bash, python3 (for emoji) |
-| `scripts/test-json-keys.sh` | TEST-006 | Regression: no legacy `.input` jq accessors in hook scripts | grep, bash |
+| Script                       | Spec ID  | What It Tests                                                             | Dependencies              |
+| ---------------------------- | -------- | ------------------------------------------------------------------------- | ------------------------- |
+| `scripts/validate-plugin.sh` | TEST-001 | Plugin structure, manifest integrity, file paths, version format          | jq                        |
+| `scripts/test-hooks.sh`      | TEST-002 | All 6 hooks: pipe JSON to stdin, assert exit codes and stderr             | jq, bash                  |
+| `scripts/test-scaffold.sh`   | TEST-003 | Init/scaffold projection: temp dir, file existence, permissions, git init | git, bash                 |
+| `scripts/test-upgrade.sh`    | TEST-004 | Upgrade three-tier behavior: overwrite/review/skip with canary strings    | git, bash                 |
+| `scripts/test-commit-msg.sh` | TEST-005 | Commit-msg hook: valid/invalid messages, exit codes                       | bash, python3 (for emoji) |
+| `scripts/test-json-keys.sh`  | TEST-006 | Regression: no legacy `.input` jq accessors in hook scripts               | grep, bash                |
 
 **CI integration:**
 
@@ -1183,14 +1186,14 @@ feature_list.json) while upgrading foundation files.
 
 ## Testing Strategy
 
-| Type | Framework | Coverage Target | Command |
-| --- | --- | --- | --- |
-| Plugin Validation | Custom bash script | 100% of plugin.json fields | `bash scripts/validate-plugin.sh` |
-| Hook Smoke Tests | Custom bash script | All 6 hooks, 4+ cases each | `bash scripts/test-hooks.sh` |
-| Scaffold Projection | Custom bash script | All scaffold files present | `bash scripts/test-scaffold.sh` |
-| Upgrade Tiers | Custom bash script | All 3 tiers tested | `bash scripts/test-upgrade.sh` |
-| Commit Message | Custom bash script | 15+ message variants | `bash scripts/test-commit-msg.sh` |
-| JSON Key Regression | Custom bash script | All hook files scanned | `bash scripts/test-json-keys.sh` |
+| Type                | Framework          | Coverage Target            | Command                           |
+| ------------------- | ------------------ | -------------------------- | --------------------------------- |
+| Plugin Validation   | Custom bash script | 100% of plugin.json fields | `bash scripts/validate-plugin.sh` |
+| Hook Smoke Tests    | Custom bash script | All 6 hooks, 4+ cases each | `bash scripts/test-hooks.sh`      |
+| Scaffold Projection | Custom bash script | All scaffold files present | `bash scripts/test-scaffold.sh`   |
+| Upgrade Tiers       | Custom bash script | All 3 tiers tested         | `bash scripts/test-upgrade.sh`    |
+| Commit Message      | Custom bash script | 15+ message variants       | `bash scripts/test-commit-msg.sh` |
+| JSON Key Regression | Custom bash script | All hook files scanned     | `bash scripts/test-json-keys.sh`  |
 
 ### Coverage
 
@@ -1203,11 +1206,11 @@ feature_list.json) while upgrading foundation files.
 
 ## Deployment Architecture
 
-| Component | Platform | Rationale |
-| --- | --- | --- |
-| Plugin Distribution | GitHub Releases | Tag-triggered releases with artifact attestation |
-| Plugin Installation | Claude Code CLI | `claude plugin add specforge` or manual git clone |
-| CI for Plugin Repo | GitHub Actions | Already configured; adding plugin-validation and release jobs |
+| Component           | Platform        | Rationale                                                     |
+| ------------------- | --------------- | ------------------------------------------------------------- |
+| Plugin Distribution | GitHub Releases | Tag-triggered releases with artifact attestation              |
+| Plugin Installation | Claude Code CLI | `claude plugin add specforge` or manual git clone             |
+| CI for Plugin Repo  | GitHub Actions  | Already configured; adding plugin-validation and release jobs |
 
 ---
 
