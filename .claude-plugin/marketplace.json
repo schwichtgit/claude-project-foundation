@@ -1,0 +1,13 @@
+{
+  "name": "specforge",
+  "plugins": [
+    {
+      "name": "specforge",
+      "description": "Spec-driven development hooks, skills, and scaffold projection for autonomous Claude Code projects",
+      "source": {
+        "type": "github",
+        "url": "https://github.com/schwichtgit/claude-project-foundation"
+      }
+    }
+  ]
+}

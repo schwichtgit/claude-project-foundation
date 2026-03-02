@@ -5,9 +5,8 @@ set -euo pipefail
 # Reads JSON from stdin, parses the command field, blocks destructive patterns.
 # Exit 0 = allow, Exit 1 = block.
 
-trap 'exit 0' ERR
 INPUT=$(cat /dev/stdin)
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null || echo "")
+COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('input',{}).get('command',''))" 2>/dev/null || echo "")
 
 if [[ -z "$COMMAND" ]]; then
     exit 0
@@ -74,7 +73,7 @@ fi
 if [[ -n "$BLOCKED" ]]; then
     echo "BLOCKED: $BLOCKED" >&2
     echo "Command: $COMMAND" >&2
-    exit 2
+    exit 1
 fi
 
 exit 0
