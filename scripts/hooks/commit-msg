@@ -99,7 +99,8 @@ fi
 
 # --- Co-Authored-By ---
 if echo "$MSG" | grep -qi 'Co-Authored-By:'; then
-    echo "NOTE: Co-Authored-By trailer detected." >&2
+    echo "ERROR: Co-Authored-By trailer detected." >&2
+    ERRORS=$((ERRORS + 1))
 fi
 
 # --- Body line length ---

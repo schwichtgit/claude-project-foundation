@@ -283,7 +283,7 @@
         "Verify the template file exists at `.claude-plugin/templates/constitution-template.md` or `.specify/templates/constitution-template.md`",
         "Verify the template contains sections for: Project Identity, Non-Negotiable Principles, Quality Standards, Architectural Constraints, Security Requirements, Out of Scope"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure"]
     },
     {
@@ -392,7 +392,7 @@
         "Verify the init section mentions creating CLAUDE.md from CLAUDE.md.template when CLAUDE.md does not exist",
         "Verify the init section mentions git init -b main for non-git directories"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure", "plugin-hooks-manifest"]
     },
     {
@@ -462,7 +462,7 @@
         "Verify the script handles Go files with gofmt auto-format and re-stage",
         "Verify the script skips generated files like protobuf outputs"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure"]
     },
     {
@@ -482,7 +482,7 @@
         "Create temp file with 'fix: update Claude integration', run the hook, verify exit 1 with stderr containing 'Standalone'",
         "Create temp file with message containing 'Co-Authored-By: Bot <bot@example.com>', run the hook, verify exit 1"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure"]
     },
     {
@@ -499,7 +499,7 @@
         "Verify stdout contains 'Installed: pre-commit' and 'Installed: commit-msg'",
         "Verify all .sh files in .claude/hooks/ have execute permission after running the script"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -520,7 +520,7 @@
         "Verify a final summary line reads 'X of Y validations passed'",
         "Run the script and verify exit code is 0 when all validations pass"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure", "plugin-hooks-manifest"]
     },
     {
@@ -541,7 +541,7 @@
         "Verify the final line matches 'X of Y tests passed'",
         "Verify the script exits 0 if all tests pass"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "standardize-hook-json-key",
         "protect-files-hook",
@@ -625,7 +625,7 @@
         "Verify the script prints filename and matching line for each violation found",
         "Run the script after standardization is complete and verify exit code is 0 with message about no legacy keys found"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["standardize-hook-json-key"]
     }
   ]
