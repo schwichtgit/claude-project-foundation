@@ -17,6 +17,11 @@ BASENAME=$(basename "$FILE_PATH")
 
 BLOCKED=""
 
+# Allowlist: .example and .sample suffixed files are safe to edit
+if [[ "$BASENAME" == *.example ]] || [[ "$BASENAME" == *.sample ]]; then
+    exit 0
+fi
+
 # Environment files
 if [[ "$BASENAME" == ".env" ]] || [[ "$BASENAME" == .env.* ]]; then
     BLOCKED="Environment file"
