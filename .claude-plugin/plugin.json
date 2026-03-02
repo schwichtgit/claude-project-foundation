@@ -1,0 +1,23 @@
+{
+  "name": "specforge",
+  "version": "0.1.0",
+  "description": "Spec-driven development hooks, skills, and scaffold projection for autonomous Claude Code projects",
+  "author": "schwichtgit",
+  "hooks": "hooks/hooks.json",
+  "skills": [
+    {
+      "name": "specforge",
+      "path": "skills/specforge/SKILL.md"
+    }
+  ],
+  "agents": [
+    {
+      "name": "initializer",
+      "path": "agents/initializer.md"
+    },
+    {
+      "name": "coder",
+      "path": "agents/coder.md"
+    }
+  ]
+}
