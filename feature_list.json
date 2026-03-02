@@ -100,7 +100,7 @@
         "Verify the summary job needs array includes 'plugin-validation'",
         "Verify the workflow has a top-level permissions block"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
