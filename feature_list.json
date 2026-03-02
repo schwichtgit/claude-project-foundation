@@ -20,7 +20,7 @@
         "Run `jq -e '.plugins | length > 0' .claude-plugin/marketplace.json` and verify exit 0",
         "For each path in plugin.json skills[*].path and agents[*].path, verify `test -f .claude-plugin/<path>` exits 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -34,7 +34,7 @@
         "Run `shellcheck .claude/hooks/protect-files.sh` and verify no errors are reported",
         "Run `head -n 1 .claude-plugin/hooks/protect-files.sh` and verify output is exactly '#!/bin/bash'"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -47,7 +47,7 @@
         "Run `grep -c '^claude#' .specify/WORKFLOW.md` and verify output is '0'",
         "Run markdownlint on .specify/WORKFLOW.md and verify no heading-related errors"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -63,7 +63,7 @@
         "Run `echo '{\"tool_input\":{\"command\":\"ls\"}}' | bash .claude/hooks/validate-bash.sh` and verify exit code is 0",
         "Run `echo '{\"tool_input\":{\"command\":\"rm -rf /\"}}' | bash .claude/hooks/validate-bash.sh` and verify exit code is non-zero"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -133,7 +133,7 @@
         "Verify protectedFiles array contains at minimum: '.env', '.env.*', '*.pem', '*.key', '*.crt', 'id_rsa', 'id_ed25519', 'credentials.json'",
         "Run `jq empty <config-file>` and verify exit code is 0 (valid JSON)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -152,7 +152,7 @@
         "Verify both post-edit.sh and format-changed.sh source this file using `grep -E '(source|\\.).*_formatter-dispatch\\.sh' .claude-plugin/hooks/format-changed.sh`",
         "Verify no formatter dispatch logic is duplicated between post-edit.sh and format-changed.sh"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
