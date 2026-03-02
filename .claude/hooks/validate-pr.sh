@@ -5,8 +5,9 @@ set -euo pipefail
 # Checks PR title/body for AI-isms, emoji, Co-Authored-By.
 # Exit 0 = allow or not a PR command, Exit 2 = block (Claude Code convention).
 
+trap 'exit 0' ERR
 INPUT=$(cat /dev/stdin)
-COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('input',{}).get('command',''))" 2>/dev/null || echo "")
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null || echo "")
 
 # Only check gh pr create commands
 if ! echo "$COMMAND" | grep -qE 'gh\s+pr\s+create'; then

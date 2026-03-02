@@ -5,8 +5,9 @@ set -euo pipefail
 # Auto-formats the edited file based on extension.
 # All formatters are best-effort (|| true). Exit 0 always.
 
+trap 'exit 0' ERR
 INPUT=$(cat /dev/stdin)
-FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('input',{}).get('file_path',''))" 2>/dev/null || echo "")
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
 
 if [[ -z "$FILE_PATH" ]] || [[ ! -f "$FILE_PATH" ]]; then
     exit 0
