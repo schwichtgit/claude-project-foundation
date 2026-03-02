@@ -5,8 +5,9 @@ set -euo pipefail
 # Checks PR title/body for AI-isms, emoji, Co-Authored-By.
 # Exit 0 = allow or not a PR command, Exit 2 = block (Claude Code convention).
 
+trap 'exit 0' ERR
 INPUT=$(cat /dev/stdin)
-COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('input',{}).get('command',''))" 2>/dev/null || echo "")
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null || echo "")
 
 # Only check gh pr create commands
 if ! echo "$COMMAND" | grep -qE 'gh\s+pr\s+create'; then
@@ -14,7 +15,8 @@ if ! echo "$COMMAND" | grep -qE 'gh\s+pr\s+create'; then
 fi
 
 # Extract title and body from command
-VIOLATIONS=$(python3 << 'PYTHON_SCRIPT'
+VALIDATOR_SCRIPT=$(mktemp)
+cat > "$VALIDATOR_SCRIPT" << 'PYTHON_SCRIPT'
 import re
 import sys
 
@@ -90,10 +92,12 @@ if violations:
 else:
     sys.exit(0)
 PYTHON_SCRIPT
-"$COMMAND") || {
+VIOLATIONS=$(python3 "$VALIDATOR_SCRIPT" "$COMMAND" 2>&1) || {
     echo "PR validation failed:" >&2
     echo "$VIOLATIONS" >&2
+    rm -f "$VALIDATOR_SCRIPT"
     exit 2
 }
+rm -f "$VALIDATOR_SCRIPT"
 
 exit 0

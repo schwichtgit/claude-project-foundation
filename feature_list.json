@@ -173,7 +173,7 @@
         "Run `echo '{\"tool_input\":{\"file_path\":\"\"}}' | bash .claude/hooks/protect-files.sh` and verify exit code is 0 (fail open on empty path)",
         "Run `echo 'not-json' | bash .claude/hooks/protect-files.sh` and verify exit code is 0 (fail open on malformed JSON)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["fix-shebang-corruption", "standardize-hook-json-key"]
     },
     {
@@ -194,7 +194,7 @@
         "Run `echo '{\"tool_input\":{\"command\":\"git push origin main\"}}' | bash .claude/hooks/validate-bash.sh` and verify exit code is 0 (push without --force is allowed)",
         "Run `echo 'not-json' | bash .claude/hooks/validate-bash.sh` and verify exit code is 0 (fail open)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["standardize-hook-json-key"]
     },
     {
@@ -211,7 +211,7 @@
         "Run `echo '{\"tool_input\":{\"command\":\"npm install\"}}' | bash .claude/hooks/validate-pr.sh` and verify exit code is 0 (non-PR command is skipped)",
         "Run `echo 'not-json' | bash .claude/hooks/validate-pr.sh` and verify exit code is 0 (fail open)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["standardize-hook-json-key"]
     },
     {
@@ -228,7 +228,7 @@
         "Verify post-edit.sh sources the shared formatter dispatch library using `grep -E '(source|\\.).*_formatter-dispatch' .claude/hooks/post-edit.sh`",
         "Run `echo '{\"tool_input\":{\"file_path\":\"test.xyz\"}}' | bash .claude/hooks/post-edit.sh` and verify exit code is 0 (unrecognized extension, silent skip)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["standardize-hook-json-key", "shared-formatter-dispatch"]
     },
     {
@@ -245,7 +245,7 @@
         "Verify the script excludes deleted files by checking for diff-filter or file existence check",
         "Run `echo '{}' | bash .claude/hooks/format-changed.sh` in a git repo with no modified files and verify exit code is 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "standardize-hook-json-key",
         "plugin-hooks-manifest",
@@ -267,7 +267,7 @@
         "Verify the script defines both `run_check` and `run_optional_check` functions",
         "Run `echo '{}' | bash .claude/hooks/verify-quality.sh` in a directory with no recognized project type and verify exit code is 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["standardize-hook-json-key"]
     },
     {

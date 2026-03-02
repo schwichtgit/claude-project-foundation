@@ -5,8 +5,9 @@ set -euo pipefail
 # Reads JSON from stdin, parses the command field, blocks destructive patterns.
 # Exit 0 = allow, Exit 1 = block.
 
+trap 'exit 0' ERR
 INPUT=$(cat /dev/stdin)
-COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('input',{}).get('command',''))" 2>/dev/null || echo "")
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null || echo "")
 
 if [[ -z "$COMMAND" ]]; then
     exit 0
@@ -21,7 +22,7 @@ if echo "$COMMAND" | grep -qE 'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?(-[a-zA-Z]*r[a-zA-
 fi
 
 # Force push
-if echo "$COMMAND" | grep -qE 'git\s+push\s+.*(-f|--force)'; then
+if echo "$COMMAND" | grep -qE 'git\s+push\s+(.*\s)?(-f|--force)(\s|$)'; then
     BLOCKED="git push --force"
 fi
 
@@ -73,7 +74,7 @@ fi
 if [[ -n "$BLOCKED" ]]; then
     echo "BLOCKED: $BLOCKED" >&2
     echo "Command: $COMMAND" >&2
-    exit 1
+    exit 2
 fi
 
 exit 0

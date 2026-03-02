@@ -5,8 +5,9 @@ set -euo pipefail
 # Reads JSON from stdin, parses file_path, blocks modification of sensitive files.
 # Exit 0 = allow, Exit 1 = block.
 
+trap 'exit 0' ERR
 INPUT=$(cat /dev/stdin)
-FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('input',{}).get('file_path',''))" 2>/dev/null || echo "")
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
 
 if [[ -z "$FILE_PATH" ]]; then
     exit 0
@@ -15,6 +16,11 @@ fi
 BASENAME=$(basename "$FILE_PATH")
 
 BLOCKED=""
+
+# Allowlist: .example and .sample suffixed files are safe to edit
+if [[ "$BASENAME" == *.example ]] || [[ "$BASENAME" == *.sample ]]; then
+    exit 0
+fi
 
 # Environment files
 if [[ "$BASENAME" == ".env" ]] || [[ "$BASENAME" == .env.* ]]; then
@@ -60,7 +66,7 @@ fi
 if [[ -n "$BLOCKED" ]]; then
     echo "BLOCKED: $BLOCKED" >&2
     echo "File: $FILE_PATH" >&2
-    exit 1
+    exit 2
 fi
 
 exit 0
