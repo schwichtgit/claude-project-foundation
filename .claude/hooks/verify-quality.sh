@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+trap 'exit 0' ERR
 
 # Stop hook. Runs quality checks before allowing Claude Code to stop.
 # Exit 0 = allow stop, Exit 2 = block stop, Exit 1 = hook error.
@@ -7,8 +8,8 @@ set -euo pipefail
 INPUT=$(cat /dev/stdin 2>/dev/null || echo "{}")
 
 # Prevent infinite loop: if stop_hook_active is set, exit immediately
-STOP_ACTIVE=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('stop_hook_active', False))" 2>/dev/null || echo "False")
-if [[ "$STOP_ACTIVE" == "True" ]]; then
+STOP_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // "false"' 2>/dev/null || echo "false")
+if [[ "$STOP_ACTIVE" == "true" ]]; then
     exit 0
 fi
 
