@@ -62,8 +62,11 @@ Claude Project Foundation closes the spec quality gap. It provides an interactiv
 ### As a Claude Code plugin
 
 ```bash
-# Install the specforge plugin (provides /specforge skill, hooks, and agents)
-claude plugin add schwichtgit/claude-project-foundation
+# Add the specforge marketplace (one-time)
+/plugin marketplace add schwichtgit/claude-project-foundation
+
+# Install the plugin
+/plugin install specforge@specforge
 ```
 
 After installation, the `/specforge` skill and all hooks are available in any Claude Code session.
