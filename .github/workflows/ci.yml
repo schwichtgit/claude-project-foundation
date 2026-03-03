@@ -136,12 +136,11 @@ jobs:
             echo "  OK: $SKILLS_PATH"
           fi
 
-          echo "--- Checking agents directory ---"
-          AGENTS_PATH=$(jq -r '.agents // empty' .claude-plugin/plugin.json)
-          if [ -n "$AGENTS_PATH" ]; then
-            test -d "$AGENTS_PATH" || { echo "FAIL: $AGENTS_PATH not found"; exit 1; }
-            echo "  OK: $AGENTS_PATH"
-          fi
+          echo "--- Checking agent files ---"
+          for path in $(jq -r '.agents[]? // empty' .claude-plugin/plugin.json); do
+            test -f "$path" || { echo "FAIL: $path not found"; exit 1; }
+            echo "  OK: $path"
+          done
           echo "PASS: all referenced paths exist"
       - name: Validate hooks.json
         run: |
