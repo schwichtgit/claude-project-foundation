@@ -26,7 +26,6 @@ body:
         - Claude Code hooks (.claude/hooks/)
         - Git hooks (scripts/hooks/)
         - Spec workflow (/specforge)
-        - Bootstrap script (scripts/bootstrap.sh)
         - CI workflows (.github/workflows/)
         - Prompts (prompts/)
         - Templates (.specify/templates/)
@@ -41,8 +40,8 @@ body:
       label: Steps to Reproduce
       description: Minimal steps to reproduce the behavior.
       placeholder: |
-        1. Run scripts/bootstrap.sh on a new directory
-        2. Run scripts/install-hooks.sh
+        1. Install plugin: claude plugin add schwichtgit/claude-project-foundation
+        2. Run /specforge init in a new project
         3. Attempt a commit with ...
         4. Observe ...
     validations:
