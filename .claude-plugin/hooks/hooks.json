@@ -5,7 +5,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/hooks/protect-files.sh"
+          "command": "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/hooks/protect-files.sh"
         }
       ]
     },
@@ -14,7 +14,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-bash.sh"
+          "command": "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/hooks/validate-bash.sh"
         }
       ]
     },
@@ -23,7 +23,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-pr.sh"
+          "command": "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/hooks/validate-pr.sh"
         }
       ]
     }
@@ -34,7 +34,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/hooks/post-edit.sh"
+          "command": "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/hooks/post-edit.sh"
         }
       ]
     }
@@ -44,7 +44,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/hooks/format-changed.sh"
+          "command": "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/hooks/format-changed.sh"
         }
       ]
     },
@@ -52,7 +52,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/hooks/verify-quality.sh"
+          "command": "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/hooks/verify-quality.sh"
         }
       ]
     }

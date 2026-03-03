@@ -2,61 +2,10 @@
   "name": "specforge",
   "version": "0.1.0-alpha.2",
   "description": "Spec-driven development hooks, skills, and scaffold projection for autonomous Claude Code projects",
-  "author": "schwichtgit",
-  "hooks": "hooks/hooks.json",
-  "skills": [
-    {
-      "name": "specforge",
-      "path": "skills/specforge/SKILL.md"
-    }
-  ],
-  "agents": [
-    {
-      "name": "initializer",
-      "path": "agents/initializer.md"
-    },
-    {
-      "name": "coder",
-      "path": "agents/coder.md"
-    }
-  ],
-  "blockedCommands": [
-    "rm -rf /",
-    "rm -rf /*",
-    "rm -rf ~",
-    "rm -rf $HOME",
-    "git push --force",
-    "git push -f",
-    "git reset --hard",
-    "git clean -fd",
-    "git clean -fdx",
-    "git checkout .",
-    "chmod 777",
-    "chmod -R 777",
-    "mkfs",
-    "dd if=/dev/zero",
-    ":(){ :|:& };:"
-  ],
-  "protectedFiles": [
-    ".env",
-    ".env.*",
-    "*.pem",
-    "*.key",
-    "*.crt",
-    "*.p12",
-    "*.pfx",
-    "id_rsa",
-    "id_rsa.*",
-    "id_ed25519",
-    "id_ed25519.*",
-    "id_ecdsa",
-    "id_ecdsa.*",
-    "authorized_keys",
-    "known_hosts",
-    "credentials.json",
-    "service-account*.json",
-    "*.keystore",
-    ".aws/credentials",
-    ".ssh/*"
-  ]
+  "author": {
+    "name": "schwichtgit"
+  },
+  "hooks": "./.claude-plugin/hooks/hooks.json",
+  "skills": "./.claude-plugin/skills/",
+  "agents": "./.claude-plugin/agents/"
 }

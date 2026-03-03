@@ -38,33 +38,36 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# --- Skill paths ---
-for path in $(jq -r '.skills[]?.path // empty' "$PLUGIN_DIR/plugin.json"); do
-    check "skill path exists: $path" test -f "$PLUGIN_DIR/$path"
-done
+# --- Skills directory ---
+SKILLS_PATH=$(jq -r '.skills // empty' "$PLUGIN_DIR/plugin.json")
+if [[ -n "$SKILLS_PATH" ]]; then
+    check "skills directory exists: $SKILLS_PATH" test -d "$SKILLS_PATH"
+fi
 
-# --- Agent paths ---
-for path in $(jq -r '.agents[]?.path // empty' "$PLUGIN_DIR/plugin.json"); do
-    check "agent path exists: $path" test -f "$PLUGIN_DIR/$path"
-done
+# --- Agents directory ---
+AGENTS_PATH=$(jq -r '.agents // empty' "$PLUGIN_DIR/plugin.json")
+if [[ -n "$AGENTS_PATH" ]]; then
+    check "agents directory exists: $AGENTS_PATH" test -d "$AGENTS_PATH"
+fi
 
 # --- hooks.json ---
+# Paths in plugin.json are relative to repo root (plugin root)
 HOOKS_REL=$(jq -r '.hooks // empty' "$PLUGIN_DIR/plugin.json")
 if [[ -n "$HOOKS_REL" ]]; then
-    HOOKS_PATH="$PLUGIN_DIR/$HOOKS_REL"
-    check "hooks.json is valid JSON" jq empty "$HOOKS_PATH"
+    check "hooks.json is valid JSON" jq empty "$HOOKS_REL"
 
-    # Check each command path
+    # Check each command path (replace ${CLAUDE_PLUGIN_ROOT} with repo root)
     while IFS= read -r cmd; do
         [[ -z "$cmd" ]] && continue
-        SCRIPT="${cmd/\$\{CLAUDE_PLUGIN_ROOT\}/$PLUGIN_DIR}"
+        SCRIPT="${cmd/\$\{CLAUDE_PLUGIN_ROOT\}/.}"
         check "hook script exists: $cmd" test -f "$SCRIPT"
-    done < <(jq -r '.. | .command? // empty' "$HOOKS_PATH" 2>/dev/null)
+    done < <(jq -r '.. | .command? // empty' "$HOOKS_REL" 2>/dev/null)
 fi
 
 # --- marketplace.json ---
 if [[ -f "$PLUGIN_DIR/marketplace.json" ]]; then
     check "marketplace.json is valid JSON" jq empty "$PLUGIN_DIR/marketplace.json"
+    check "marketplace.json has owner field" jq -e '.owner.name' "$PLUGIN_DIR/marketplace.json"
 fi
 
 # --- Summary ---
