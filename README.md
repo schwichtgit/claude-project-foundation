@@ -2,7 +2,7 @@
 
 A spec-driven scaffold that produces high-quality specifications for autonomous Claude Code development. Define what you want to build through guided conversation, then hand the spec artifacts to [AutoForge](https://github.com/AutoForgeAI/autoforge) or any two-agent pattern for multi-session autonomous implementation with production-grade quality enforcement.
 
-**Status:** All 6 implementation phases complete. The foundation applies its own quality gates in CI.
+**Status:** All 7 implementation phases complete (35/35 features). The foundation applies its own quality gates in CI.
 
 [![CI](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml/badge.svg)](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml)
 
@@ -54,23 +54,22 @@ Claude Project Foundation closes the spec quality gap. It provides an interactiv
  └──────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start: Spec a New Project
+## Installation
 
 **Prerequisites:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated.
 
+### As a Claude Code plugin
+
 ```bash
-# 1. Clone the foundation
-git clone https://github.com/schwichtgit/claude-project-foundation.git
-
-# 2. Create your project and bootstrap the foundation into it
-mkdir my-project && cd my-project && git init -b main
-/path/to/claude-project-foundation/scripts/bootstrap.sh .
-
-# 3. Install git hooks (enforces commit standards locally)
-scripts/install-hooks.sh
+# Install the specforge plugin (provides /specforge skill, hooks, and agents)
+claude plugin add schwichtgit/claude-project-foundation
 ```
 
-Then open Claude Code in your project directory and run the spec workflow:
+After installation, the `/specforge` skill and all hooks are available in any Claude Code session.
+
+## Quick Start: Spec a New Project
+
+Open Claude Code in your project directory and run the spec workflow:
 
 ```bash
 /specforge constitution    # Define project principles and quality standards
@@ -92,17 +91,19 @@ Each coding session picks up where the last left off via `feature_list.json`. Fe
 
 ## The /specforge Workflow
 
-| Sub-command    | What it does                               | Artifact produced                 |
-| -------------- | ------------------------------------------ | --------------------------------- |
-| `constitution` | Define immutable project principles        | `.specify/memory/constitution.md` |
-| `spec`         | Document features and acceptance criteria  | `.specify/specs/spec.md`          |
-| `clarify`      | Surface ambiguities, get human decisions   | Updated `spec.md`                 |
-| `plan`         | Architecture, tech stack, testing strategy | `.specify/specs/plan.md`          |
-| `features`     | Generate machine-readable feature list     | `feature_list.json`               |
-| `analyze`      | Score spec for autonomous-readiness        | Score report with remediation     |
-| `setup`        | Generate platform-specific setup checklist | Actionable `gh` CLI commands      |
+| Sub-command    | What it does                               | Artifact produced                    |
+| -------------- | ------------------------------------------ | ------------------------------------ |
+| `constitution` | Define immutable project principles        | `.specify/memory/constitution.md`    |
+| `spec`         | Document features and acceptance criteria  | `.specify/specs/spec.md`             |
+| `clarify`      | Surface ambiguities, get human decisions   | Updated `spec.md`                    |
+| `plan`         | Architecture, tech stack, testing strategy | `.specify/specs/plan.md`             |
+| `features`     | Generate machine-readable feature list     | `feature_list.json`                  |
+| `analyze`      | Score spec for autonomous-readiness        | Score report with remediation        |
+| `setup`        | Generate platform-specific setup checklist | Actionable `gh` CLI commands         |
+| `init`         | Project scaffold into host project         | Directory structure + hooks          |
+| `upgrade`      | Update scaffold with three-tier merge      | Updated files + `.specforge-version` |
 
-Each sub-command reads all prior artifacts and produces the next. Run them in order.
+Run `constitution` through `analyze` in order. Use `init` to bootstrap a new project and `upgrade` to pull in scaffold updates.
 
 ## Autonomous Execution
 
@@ -124,12 +125,13 @@ Quality is enforced automatically:
 
 This repository applies its own quality gates. The CI pipeline (`.github/workflows/ci.yml`) runs on every push and PR:
 
-| Check            | Tool                        | What it enforces                           |
-| ---------------- | --------------------------- | ------------------------------------------ |
-| Markdown lint    | markdownlint-cli2           | Consistent markdown style                  |
-| Format check     | Prettier                    | Consistent formatting (md, yaml, json)     |
-| Shell lint       | ShellCheck                  | Shell script correctness                   |
-| Commit standards | Custom validation (PR only) | Conventional commits, no emoji, no AI-isms |
+| Check             | Tool                        | What it enforces                           |
+| ----------------- | --------------------------- | ------------------------------------------ |
+| Markdown lint     | markdownlint-cli2           | Consistent markdown style                  |
+| Format check      | Prettier                    | Consistent formatting (md, yaml, json)     |
+| Shell lint        | ShellCheck                  | Shell script correctness                   |
+| Commit standards  | Custom validation (PR only) | Conventional commits, no emoji, no AI-isms |
+| Plugin validation | jq + path checks            | plugin.json, hooks.json, file references   |
 
 ```bash
 # Install dev dependencies (contributors only)
@@ -142,32 +144,28 @@ npm run format
 npm run format:check
 ```
 
-## Existing Projects
-
-The foundation's primary value is the `/specforge` spec workflow, which can be used independently of the bootstrap script. For existing projects, the typical path is:
-
-1. Run `/specforge` in your project directory to produce spec artifacts
-2. Hand the artifacts to AutoForge for autonomous feature implementation
-
-The bootstrap script can also copy the full scaffold into an existing repo:
-
-```bash
-/path/to/claude-project-foundation/scripts/bootstrap.sh /path/to/existing-project
-```
-
-This copies scaffold files without overwriting anything that already exists (use `--force` to overwrite). Full integration guidance for established codebases is a planned future extension.
-
 ## Documentation
 
-| Document                                     | Purpose                                                          |
-| -------------------------------------------- | ---------------------------------------------------------------- |
-| [FOUNDATION.md](FOUNDATION.md)               | Full reference: architecture, directory structure, customization |
-| [CONTRIBUTING.md](CONTRIBUTING.md)           | How to contribute: setup, commit standards, PR process           |
-| [SECURITY.md](SECURITY.md)                   | Security policy and vulnerability reporting                      |
-| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)     | Contributor Covenant 2.1                                         |
-| [ci/principles/](ci/principles/)             | Abstract quality gate definitions (commit, PR, release)          |
-| [prompts/](prompts/)                         | Session prompts for initializer and coding agents                |
-| [.specify/WORKFLOW.md](.specify/WORKFLOW.md) | Tool-agnostic process documentation                              |
+| Document                                     | Purpose                                                 |
+| -------------------------------------------- | ------------------------------------------------------- |
+| [CONTRIBUTING.md](CONTRIBUTING.md)           | How to contribute: setup, commit standards, PR process  |
+| [SECURITY.md](SECURITY.md)                   | Security policy and vulnerability reporting             |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)     | Contributor Covenant 2.1                                |
+| [ci/principles/](ci/principles/)             | Abstract quality gate definitions (commit, PR, release) |
+| [prompts/](prompts/)                         | Session prompts for initializer and coding agents       |
+| [.specify/WORKFLOW.md](.specify/WORKFLOW.md) | Tool-agnostic process documentation                     |
+
+## Customization
+
+**Coverage threshold:** Edit the coverage percentage in your project's constitution (default: 85%). The verify-quality.sh hook and CI workflows reference this value.
+
+**Hook checks:** Enable or disable individual checks in `.claude/hooks/`. Each hook is a standalone shell script. Remove or comment out entries in `.claude/settings.json` to disable specific hooks.
+
+**Language support:** All hooks auto-detect project type from configuration files (package.json, Cargo.toml, pyproject.toml, go.mod). To add a language: extend the detection logic in verify-quality.sh, post-edit.sh, and the pre-commit hook.
+
+**Spec workflow:** Modify `.claude/skills/specforge/SKILL.md` to adjust the interactive planning flow. Add or remove sub-commands, change prompting strategy, or adjust scoring weights.
+
+**CI platform:** GitHub Actions is fully implemented. For GitLab or Jenkins, use the mapping guides in `ci/gitlab/` and `ci/jenkins/` to translate the abstract principles into your platform's configuration.
 
 ## License
 

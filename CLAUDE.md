@@ -20,12 +20,12 @@ All 6 implementation phases are complete. The repository applies its own quality
 
 Phases 1-4 are sequential. Phase 5 can run in parallel with Phases 3-4. Phase 6 requires all prior phases.
 
-1. **Repository structure + Abstract SDLC principles** (`ci/principles/`, `.specify/templates/constitution-template.md`, `FOUNDATION.md`)
+1. **Repository structure + Abstract SDLC principles** (`ci/principles/`, `.specify/templates/constitution-template.md`)
 2. **Quality gate scripts** (5 Claude Code hooks in `.claude/hooks/`, 2 git hooks in `scripts/hooks/`, `install-hooks.sh`)
 3. **Spec workflow + templates** (`/specforge` skill, spec/plan/tasks templates, `feature-list-schema.json`, `WORKFLOW.md`)
 4. **Execution harness** (`prompts/initializer-prompt.md`, `prompts/coding-prompt.md`, `CLAUDE.md.template`)
 5. **GitHub implementation** (CI workflows, CODEOWNERS, dependabot, PR template, repo settings, GitLab/Jenkins guides)
-6. **Bootstrap + testing** (`scripts/bootstrap.sh`, manual verification)
+6. **Testing** (manual verification)
 
 ## Architecture
 
@@ -57,9 +57,6 @@ All scripts auto-detect project type from config files (package.json, Cargo.toml
 ```bash
 # Install git hooks
 scripts/install-hooks.sh
-
-# Bootstrap foundation into a new repo
-scripts/bootstrap.sh [target-directory]
 
 # Make Claude Code hooks executable (done by install-hooks.sh)
 chmod +x .claude/hooks/*.sh
