@@ -2,7 +2,7 @@
 
 A spec-driven scaffold that produces high-quality specifications for autonomous Claude Code development. Define what you want to build through guided conversation, then hand the spec artifacts to [AutoForge](https://github.com/AutoForgeAI/autoforge) or any two-agent pattern for multi-session autonomous implementation with production-grade quality enforcement.
 
-**Status:** All 6 implementation phases complete. The foundation applies its own quality gates in CI.
+**Status:** All 7 implementation phases complete (35/35 features). The foundation applies its own quality gates in CI.
 
 [![CI](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml/badge.svg)](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml)
 
@@ -54,15 +54,26 @@ Claude Project Foundation closes the spec quality gap. It provides an interactiv
  └──────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start: Spec a New Project
+## Installation
 
 **Prerequisites:** [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated.
+
+### As a Claude Code plugin
+
+```bash
+# Install the specforge plugin (provides /specforge skill, hooks, and agents)
+claude plugin add schwichtgit/claude-project-foundation
+```
+
+After installation, the `/specforge` skill and all hooks are available in any Claude Code session.
+
+### Manual setup (without plugin)
 
 ```bash
 # 1. Clone the foundation
 git clone https://github.com/schwichtgit/claude-project-foundation.git
 
-# 2. Create your project and bootstrap the foundation into it
+# 2. Create your project and bootstrap the scaffold into it
 mkdir my-project && cd my-project && git init -b main
 /path/to/claude-project-foundation/scripts/bootstrap.sh .
 
@@ -70,7 +81,9 @@ mkdir my-project && cd my-project && git init -b main
 scripts/install-hooks.sh
 ```
 
-Then open Claude Code in your project directory and run the spec workflow:
+## Quick Start: Spec a New Project
+
+Open Claude Code in your project directory and run the spec workflow:
 
 ```bash
 /specforge constitution    # Define project principles and quality standards
@@ -92,17 +105,19 @@ Each coding session picks up where the last left off via `feature_list.json`. Fe
 
 ## The /specforge Workflow
 
-| Sub-command    | What it does                               | Artifact produced                 |
-| -------------- | ------------------------------------------ | --------------------------------- |
-| `constitution` | Define immutable project principles        | `.specify/memory/constitution.md` |
-| `spec`         | Document features and acceptance criteria  | `.specify/specs/spec.md`          |
-| `clarify`      | Surface ambiguities, get human decisions   | Updated `spec.md`                 |
-| `plan`         | Architecture, tech stack, testing strategy | `.specify/specs/plan.md`          |
-| `features`     | Generate machine-readable feature list     | `feature_list.json`               |
-| `analyze`      | Score spec for autonomous-readiness        | Score report with remediation     |
-| `setup`        | Generate platform-specific setup checklist | Actionable `gh` CLI commands      |
+| Sub-command    | What it does                               | Artifact produced                    |
+| -------------- | ------------------------------------------ | ------------------------------------ |
+| `constitution` | Define immutable project principles        | `.specify/memory/constitution.md`    |
+| `spec`         | Document features and acceptance criteria  | `.specify/specs/spec.md`             |
+| `clarify`      | Surface ambiguities, get human decisions   | Updated `spec.md`                    |
+| `plan`         | Architecture, tech stack, testing strategy | `.specify/specs/plan.md`             |
+| `features`     | Generate machine-readable feature list     | `feature_list.json`                  |
+| `analyze`      | Score spec for autonomous-readiness        | Score report with remediation        |
+| `setup`        | Generate platform-specific setup checklist | Actionable `gh` CLI commands         |
+| `init`         | Project scaffold into host project         | Directory structure + hooks          |
+| `upgrade`      | Update scaffold with three-tier merge      | Updated files + `.specforge-version` |
 
-Each sub-command reads all prior artifacts and produces the next. Run them in order.
+Run `constitution` through `analyze` in order. Use `init` to bootstrap a new project and `upgrade` to pull in scaffold updates.
 
 ## Autonomous Execution
 
@@ -124,12 +139,13 @@ Quality is enforced automatically:
 
 This repository applies its own quality gates. The CI pipeline (`.github/workflows/ci.yml`) runs on every push and PR:
 
-| Check            | Tool                        | What it enforces                           |
-| ---------------- | --------------------------- | ------------------------------------------ |
-| Markdown lint    | markdownlint-cli2           | Consistent markdown style                  |
-| Format check     | Prettier                    | Consistent formatting (md, yaml, json)     |
-| Shell lint       | ShellCheck                  | Shell script correctness                   |
-| Commit standards | Custom validation (PR only) | Conventional commits, no emoji, no AI-isms |
+| Check             | Tool                        | What it enforces                           |
+| ----------------- | --------------------------- | ------------------------------------------ |
+| Markdown lint     | markdownlint-cli2           | Consistent markdown style                  |
+| Format check      | Prettier                    | Consistent formatting (md, yaml, json)     |
+| Shell lint        | ShellCheck                  | Shell script correctness                   |
+| Commit standards  | Custom validation (PR only) | Conventional commits, no emoji, no AI-isms |
+| Plugin validation | jq + path checks            | plugin.json, hooks.json, file references   |
 
 ```bash
 # Install dev dependencies (contributors only)
