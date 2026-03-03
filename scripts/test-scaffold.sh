@@ -9,7 +9,7 @@ FAIL=0
 TOTAL=0
 TMPDIR=""
 
-# shellcheck disable=SC2329
+# shellcheck disable=SC2329,SC2317
 cleanup() {
     if [[ -n "$TMPDIR" ]] && [[ -d "$TMPDIR" ]]; then
         rm -rf "$TMPDIR"
