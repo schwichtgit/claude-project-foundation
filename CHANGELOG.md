@@ -5,6 +5,52 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-alpha.2] - 2026-03-02
+
+All 42 tracked features pass. This release adds scaffold bundling,
+multi-platform CI parity, and init/upgrade sub-commands.
+
+### Added
+
+- **Scaffold bundle directory** -- `.claude-plugin/scaffold/` with `common/`,
+  `github/`, `gitlab/`, `jenkins/` subdirectories. All projectable files
+  consolidated under scaffold as the single source of truth. Top-level
+  duplicates (`ci/`, `prompts/`, `.specify/templates/`, `scripts/hooks/`,
+  `CLAUDE.md.template`, `scripts/bootstrap.sh`) removed.
+- **GitLab CI full parity** -- `.gitlab-ci.yml` with shellcheck, markdownlint,
+  prettier lint jobs, path-based filtering via `rules: changes:`, merge
+  request pipelines, summary gate job, and tag-triggered release stage with
+  version validation.
+- **Jenkins CI full parity** -- `Jenkinsfile` with parallel lint stages
+  (shellcheck, markdownlint, prettier), commit standards validation,
+  plugin validation, and tagged release stage with version validation.
+- **SKILL.md init sub-command** -- CI platform auto-detection, interactive
+  platform selection, scaffold projection from common + platform dirs,
+  diff-based conflict resolution, CLAUDE.md parameterization, git init,
+  auto-run install-hooks.sh, self-detection blocking, version tracking.
+- **SKILL.md upgrade sub-command** -- three-tier file system
+  (overwrite/review/skip) from upgrade-tiers.json, version gating (error
+  if .specforge-version missing), CI platform re-selection, deprecated
+  file logging, self-detection blocking.
+- **Scaffold projection test** (`scripts/test-scaffold.sh`) -- 48 assertions
+  validating scaffold structure for all 3 platforms, file existence, install
+  script properties, self-detection, and top-level duplicate removal.
+- **Upgrade tier test** (`scripts/test-upgrade.sh`) -- 13 assertions
+  validating tiers.json structure, scaffold-to-tier coverage, uniqueness,
+  and upgrade error behavior.
+- **Scaffold quality gate test** (`scripts/test-scaffold-quality.sh`) -- bash
+  syntax, shellcheck, YAML validation, markdown content, JSON validity.
+- **CI platform parity test** (`scripts/test-ci-parity.sh`) -- 15 assertions
+  verifying all 3 platforms implement shellcheck, markdownlint, prettier,
+  and release/tag validation.
+
+### Changed
+
+- **upgrade-tiers.json** -- restructured with `tiers` wrapper object, added
+  GitLab and Jenkins entries, expanded to cover all 37 scaffold files.
+- **install-hooks.sh** (scaffold copy) -- updated to use BASH_SOURCE-relative
+  paths for portability when projected into host projects.
+
 ## [0.1.0-alpha.1] - 2026-03-02
 
 All 35 tracked features pass across 7 implementation phases: plugin

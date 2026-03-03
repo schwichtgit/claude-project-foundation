@@ -1,0 +1,70 @@
+name: Bug Report
+description: Report a defect in the foundation scaffold
+title: '[bug] '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report defects in the Claude Project Foundation scaffold.
+        Search existing issues before submitting.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the foundation is affected?
+      options:
+        - Claude Code hooks (.claude/hooks/)
+        - Git hooks (scripts/hooks/)
+        - Spec workflow (/specforge)
+        - CI workflows (.github/workflows/)
+        - Prompts (prompts/)
+        - Templates (.specify/templates/)
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Install plugin: claude plugin add schwichtgit/claude-project-foundation
+        2. Run /specforge init in a new project
+        3. Attempt a commit with ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, shell, relevant tool versions.
+      placeholder: |
+        - OS: macOS 15.3 / Ubuntu 24.04
+        - Shell: bash 5.x / zsh 5.x
+        - Claude Code version: x.y.z
+        - Node.js version (if relevant): 22.x
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Paste any error messages or log output.
+      render: shell
+    validations:
+      required: false

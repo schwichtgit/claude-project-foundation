@@ -2,6 +2,11 @@
 set -euo pipefail
 
 # Install git hooks and make Claude Code hooks executable.
+# This script resolves hook sources relative to its own location,
+# so it works correctly when projected into any host project.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOOKS_DIR="$SCRIPT_DIR/hooks"
 
 PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || { echo "Not in a git repository." >&2; exit 1; })
 
@@ -12,7 +17,7 @@ GIT_HOOKS_DIR="$PROJECT_ROOT/.git/hooks"
 mkdir -p "$GIT_HOOKS_DIR"
 
 for hook in pre-commit commit-msg; do
-    src="$PROJECT_ROOT/scripts/hooks/$hook"
+    src="$HOOKS_DIR/$hook"
     dst="$GIT_HOOKS_DIR/$hook"
     if [[ -f "$src" ]]; then
         cp "$src" "$dst"
