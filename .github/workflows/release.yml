@@ -107,11 +107,11 @@ jobs:
       - name: Create release tarball
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
-          tar -czf "specforge-${VERSION}.tar.gz" \
+          tar -czf "cpf-${VERSION}.tar.gz" \
             --exclude='.git' \
             --exclude='node_modules' \
             .claude-plugin/
-          echo "ARTIFACT=specforge-${VERSION}.tar.gz" >> "$GITHUB_ENV"
+          echo "ARTIFACT=cpf-${VERSION}.tar.gz" >> "$GITHUB_ENV"
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
@@ -123,5 +123,5 @@ jobs:
           VERSION="${{ needs.validate-version.outputs.version }}"
           gh release create "$GITHUB_REF_NAME" \
             "${{ env.ARTIFACT }}" \
-            --title "specforge v${VERSION}" \
+            --title "cpf v${VERSION}" \
             --generate-notes

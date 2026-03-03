@@ -5,7 +5,7 @@
   },
   "plugins": [
     {
-      "name": "specforge",
+      "name": "cpf",
       "description": "Spec-driven development hooks, skills, and scaffold projection for autonomous Claude Code projects",
       "source": {
         "source": "github",

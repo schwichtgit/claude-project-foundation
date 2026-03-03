@@ -65,7 +65,7 @@ principles needed for spec-driven development.
 **Workflow:**
 
 1. **Self-detection blocking:** Check if `.claude-plugin/plugin.json` exists
-   in the target directory AND its `name` field equals `"specforge"`. If so,
+   in the target directory AND its `name` field equals `"cpf"`. If so,
    exit with error: "Cannot scaffold into the plugin source repo."
 2. **Git init:** If the target directory is not a git repository, run
    `git init -b main`.
@@ -344,7 +344,7 @@ categorization to preserve project-specific customizations.
 **Workflow:**
 
 1. **Self-detection blocking:** Check if `.claude-plugin/plugin.json` exists
-   in the target directory AND its `name` field equals `"specforge"`. If so,
+   in the target directory AND its `name` field equals `"cpf"`. If so,
    exit with error: "Cannot upgrade the plugin source repo."
 2. **Version check:** Read `.specforge-version` from the host project root.
    If the file does not exist, exit with error: "No specforge installation

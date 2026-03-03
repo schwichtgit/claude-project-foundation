@@ -163,7 +163,7 @@ else
   FAILED=$((FAILED + 1))
 fi
 
-# --- 10: Self-detection: plugin.json exists with name "specforge" ---
+# --- 10: Self-detection: plugin.json exists with name "cpf" ---
 echo ""
 echo "=== Self-detection ==="
 
@@ -171,11 +171,11 @@ assert_file_exists "plugin.json exists" "$REPO_ROOT/.claude-plugin/plugin.json"
 
 TOTAL=$((TOTAL + 1))
 PLUGIN_NAME=$(jq -r '.name' "$REPO_ROOT/.claude-plugin/plugin.json" 2>/dev/null || echo "")
-if [[ "$PLUGIN_NAME" == "specforge" ]]; then
-  echo "PASS: plugin.json name is 'specforge'"
+if [[ "$PLUGIN_NAME" == "cpf" ]]; then
+  echo "PASS: plugin.json name is 'cpf'"
   PASSED=$((PASSED + 1))
 else
-  echo "FAIL: plugin.json name is '$PLUGIN_NAME', expected 'specforge'"
+  echo "FAIL: plugin.json name is '$PLUGIN_NAME', expected 'cpf'"
   FAILED=$((FAILED + 1))
 fi
 
