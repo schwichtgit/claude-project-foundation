@@ -1,6 +1,6 @@
 {
   "name": "specforge",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Spec-driven development hooks, skills, and scaffold projection for autonomous Claude Code projects",
   "author": "schwichtgit",
   "hooks": "hooks/hooks.json",

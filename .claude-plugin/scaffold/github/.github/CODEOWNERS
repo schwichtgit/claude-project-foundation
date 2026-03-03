@@ -1,0 +1,13 @@
+# Quality gate infrastructure
+.claude-plugin/             @schwichtgit
+.claude/                    @schwichtgit
+.github/                    @schwichtgit
+scripts/hooks/              @schwichtgit
+ci/                         @schwichtgit
+.specify/memory/            @schwichtgit
+
+# Security-critical files
+*.pem                       @schwichtgit
+*.key                       @schwichtgit
+.env*                       @schwichtgit
+**/security*                @schwichtgit

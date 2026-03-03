@@ -156,6 +156,135 @@
       "dependencies": []
     },
     {
+      "id": "scaffold-bundle-directory",
+      "category": "infrastructure",
+      "title": "Scaffold Bundle Directory with Platform Split",
+      "description": "Consolidate all projectable scaffold files into .claude-plugin/scaffold/ with common/ (platform-agnostic), github/, gitlab/, and jenkins/ subdirectories. Remove top-level duplicate directories. Single source of truth for projected files.",
+      "testing_steps": [
+        "Verify `test -d .claude-plugin/scaffold/common` exits 0",
+        "Verify `test -d .claude-plugin/scaffold/github` exits 0",
+        "Verify `test -d .claude-plugin/scaffold/gitlab` exits 0",
+        "Verify `test -d .claude-plugin/scaffold/jenkins` exits 0",
+        "Verify common scaffold files exist: test -f .claude-plugin/scaffold/common/.specify/templates/constitution-template.md",
+        "Verify test -f .claude-plugin/scaffold/common/.specify/templates/spec-template.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/.specify/templates/plan-template.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/.specify/templates/tasks-template.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/.specify/templates/feature-list-schema.json exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/.specify/WORKFLOW.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/scripts/hooks/pre-commit exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/scripts/hooks/commit-msg exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/scripts/install-hooks.sh exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/ci/principles/commit-gate.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/ci/principles/pr-gate.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/ci/principles/release-gate.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/prompts/initializer-prompt.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/prompts/coding-prompt.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/.prettierrc.json exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/.prettierignore exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/.markdownlint.json exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/.markdownlintignore exits 0",
+        "Verify test -f .claude-plugin/scaffold/common/CLAUDE.md.template exits 0",
+        "Verify GitHub scaffold files: test -f .claude-plugin/scaffold/github/.github/workflows/ci.yml exits 0",
+        "Verify test -f .claude-plugin/scaffold/github/.github/workflows/release.yml exits 0",
+        "Verify test -f .claude-plugin/scaffold/github/.github/workflows/codeql.yml exits 0",
+        "Verify test -f .claude-plugin/scaffold/github/.github/CODEOWNERS exits 0",
+        "Verify test -f .claude-plugin/scaffold/github/.github/dependabot.yml exits 0",
+        "Verify test -f .claude-plugin/scaffold/github/.github/PULL_REQUEST_TEMPLATE.md exits 0",
+        "Verify test -f .claude-plugin/scaffold/github/.github/ISSUE_TEMPLATE/bug_report.yml exits 0",
+        "Verify test -f .claude-plugin/scaffold/github/ci/github/repo-settings.md exits 0",
+        "Verify GitLab scaffold files: test -f .claude-plugin/scaffold/gitlab/.gitlab-ci.yml exits 0",
+        "Verify test -f .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md exits 0",
+        "Verify Jenkins scaffold files: test -f .claude-plugin/scaffold/jenkins/Jenkinsfile exits 0",
+        "Verify test -f .claude-plugin/scaffold/jenkins/ci/jenkins/jenkinsfile-guide.md exits 0",
+        "Verify top-level duplicates removed: test ! -d ci/principles exits 0 (moved to scaffold)",
+        "Verify test ! -f scripts/hooks/pre-commit exits 0 (moved to scaffold)",
+        "Verify test ! -f scripts/install-hooks.sh exits 0 (moved to scaffold)",
+        "Verify test ! -d prompts exits 0 (moved to scaffold)",
+        "Verify test ! -f CLAUDE.md.template exits 0 (moved to scaffold)"
+      ],
+      "passes": true,
+      "dependencies": []
+    },
+    {
+      "id": "gitlab-ci-parity",
+      "category": "infrastructure",
+      "title": "GitLab CI Full Parity",
+      "description": "Create a fully templated .gitlab-ci.yml with equivalent quality gates to GitHub CI: ShellCheck, markdownlint, Prettier, path-based filtering via rules:changes:, release pipeline for tagged commits. Bundled in .claude-plugin/scaffold/gitlab/.",
+      "testing_steps": [
+        "Verify test -f .claude-plugin/scaffold/gitlab/.gitlab-ci.yml exits 0",
+        "Run `yq eval \".\" .claude-plugin/scaffold/gitlab/.gitlab-ci.yml > /dev/null 2>&1` and verify exit 0 (valid YAML)",
+        "Run `yq eval \".stages\" .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify output contains lint",
+        "Run `grep -c shellcheck .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify output >= 1",
+        "Run `grep -c markdownlint .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify output >= 1",
+        "Run `grep -c prettier .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify output >= 1",
+        "Run `grep -c \"rules:\" .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify output >= 1 (path-based filtering)",
+        "Run `grep -c \"CI_COMMIT_TAG\" .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify output >= 1 (release pipeline)",
+        "Verify ci/gitlab/gitlab-ci-guide.md references the actual .gitlab-ci.yml file (not just a skeleton)"
+      ],
+      "passes": true,
+      "dependencies": []
+    },
+    {
+      "id": "jenkins-ci-parity",
+      "category": "infrastructure",
+      "title": "Jenkins CI Full Parity",
+      "description": "Create a fully templated Jenkinsfile with equivalent quality gates to GitHub CI: ShellCheck, markdownlint, Prettier, release pipeline for tagged builds. Bundled in .claude-plugin/scaffold/jenkins/.",
+      "testing_steps": [
+        "Verify test -f .claude-plugin/scaffold/jenkins/Jenkinsfile exits 0",
+        "Run `grep -c pipeline .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify output >= 1 (valid Jenkinsfile structure)",
+        "Run `grep -c shellcheck .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify output >= 1",
+        "Run `grep -c markdownlint .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify output >= 1",
+        "Run `grep -c prettier .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify output >= 1",
+        "Run `grep -c buildingTag .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify output >= 1 (release stage)",
+        "Run `grep -c parallel .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify output >= 1 (parallel lint stages)",
+        "Verify ci/jenkins/jenkinsfile-guide.md references the actual Jenkinsfile (not just a skeleton)"
+      ],
+      "passes": true,
+      "dependencies": []
+    },
+    {
+      "id": "upgrade-tiers-update",
+      "category": "infrastructure",
+      "title": "Update upgrade-tiers.json for Scaffold Bundle",
+      "description": "Update .claude-plugin/upgrade-tiers.json to include tier assignments for every file in the scaffold bundle including GitLab and Jenkins files. Validate every scaffold file has a tier.",
+      "testing_steps": [
+        "Run `jq empty .claude-plugin/upgrade-tiers.json` and verify exit 0 (valid JSON)",
+        "Run `jq -r \".tiers.overwrite[]\" .claude-plugin/upgrade-tiers.json` and verify it includes ci/principles/commit-gate.md",
+        "Run `jq -r \".tiers.overwrite[]\" .claude-plugin/upgrade-tiers.json` and verify it includes scripts/hooks/pre-commit",
+        "Run `jq -r \".tiers.overwrite[]\" .claude-plugin/upgrade-tiers.json` and verify it includes .specify/templates/constitution-template.md",
+        "Run `jq -r \".tiers.review[]\" .claude-plugin/upgrade-tiers.json` and verify it includes .gitlab-ci.yml",
+        "Run `jq -r \".tiers.review[]\" .claude-plugin/upgrade-tiers.json` and verify it includes Jenkinsfile",
+        "Run `jq -r \".tiers.review[]\" .claude-plugin/upgrade-tiers.json` and verify it includes .prettierrc.json",
+        "Run `jq -r \".tiers.skip[]\" .claude-plugin/upgrade-tiers.json` and verify it includes CLAUDE.md",
+        "Run `jq -r \".tiers.skip[]\" .claude-plugin/upgrade-tiers.json` and verify it includes feature_list.json",
+        "Verify no file appears in more than one tier: jq query checks intersection of overwrite/review/skip is empty",
+        "Verify every file in scaffold/ has a corresponding tier entry (compare file list to tier entries)"
+      ],
+      "passes": true,
+      "dependencies": ["scaffold-bundle-directory"]
+    },
+    {
+      "id": "skill-md-init-upgrade",
+      "category": "infrastructure",
+      "title": "SKILL.md Update for init and upgrade Sub-Commands",
+      "description": "Update SKILL.md in both .claude/skills/ and .claude-plugin/skills/ with /specforge init and /specforge upgrade sub-command documentation including CI platform selection, conflict resolution, three-tier upgrade, and self-detection.",
+      "testing_steps": [
+        "Verify `grep -c \"### /specforge init\" .claude-plugin/skills/specforge/SKILL.md` returns >= 1",
+        "Verify `grep -c \"### /specforge upgrade\" .claude-plugin/skills/specforge/SKILL.md` returns >= 1",
+        "Verify `grep -c \"CLAUDE_PLUGIN_ROOT\" .claude-plugin/skills/specforge/SKILL.md` returns >= 1 (scaffold path reference)",
+        "Verify `grep -c \"argument-hint\" .claude-plugin/skills/specforge/SKILL.md` returns >= 1 and output includes init and upgrade",
+        "Run `diff .claude/skills/specforge/SKILL.md .claude-plugin/skills/specforge/SKILL.md` and verify exit 0 (both copies identical)",
+        "Verify SKILL.md init section mentions CI platform auto-detection (github, gitlab, jenkins)",
+        "Verify SKILL.md init section mentions diff-based conflict resolution for existing files",
+        "Verify SKILL.md init section mentions CLAUDE.md parameterization with {{PROJECT_NAME}}, {{LANGUAGE}}, {{CI_PLATFORM}}",
+        "Verify SKILL.md upgrade section mentions three tiers: overwrite, review, skip",
+        "Verify SKILL.md upgrade section mentions reading .specforge-version and erroring when missing",
+        "Verify SKILL.md upgrade section mentions CI platform re-selection via .specforge-ci-platform"
+      ],
+      "passes": true,
+      "dependencies": []
+    },
+    {
       "id": "protect-files-hook",
       "category": "functional",
       "title": "protect-files.sh PreToolUse Hook",
@@ -381,36 +510,56 @@
     {
       "id": "specforge-init",
       "category": "functional",
-      "title": "/specforge init Sub-Command (Scaffold Projection)",
-      "description": "Sub-command that projects the scaffold layer from the plugin into a host project, copying CI workflows, git hooks, templates, CLAUDE.md template, and quality principles. Creates .specforge-version to track installed version.",
+      "title": "/specforge init Sub-Command v2 (Scaffold Projection)",
+      "description": "Sub-command that projects scaffold from .claude-plugin/scaffold/ into host project. Auto-detects CI platform, prompts user to confirm/select (GitHub/GitLab/Jenkins), projects platform-specific + common files, shows diffs for conflicts, parameterizes CLAUDE.md, auto-runs install-hooks.sh. Blocks self-targeting.",
       "testing_steps": [
-        "Verify `grep -c '### /specforge init' .claude-plugin/skills/specforge/SKILL.md` returns >= 1",
-        "Verify the init section lists all scaffold files to be projected: .specify/templates/, scripts/hooks/, ci/principles/, ci/github/, prompts/, .prettierrc.json, .prettierignore",
-        "Verify the init section references .specforge-version as the version tracking file",
-        "Verify the init section mentions skipping existing files with a 'skipping' message",
-        "Verify the init section mentions running install-hooks.sh after copying",
-        "Verify the init section mentions creating CLAUDE.md from CLAUDE.md.template when CLAUDE.md does not exist",
-        "Verify the init section mentions git init -b main for non-git directories"
+        "Verify `grep -c \"### /specforge init\" .claude-plugin/skills/specforge/SKILL.md` returns >= 1",
+        "Verify the init section references $CLAUDE_PLUGIN_ROOT/scaffold/ as the source directory",
+        "Verify the init section describes CI platform auto-detection: check for .github/ (GitHub), .gitlab-ci.yml (GitLab), Jenkinsfile (Jenkins)",
+        "Verify the init section describes interactive CI platform prompt with auto-detected default",
+        "Verify the init section lists platform-agnostic files from scaffold/common/: .specify/templates/, scripts/hooks/, ci/principles/, prompts/, .prettierrc.json, .prettierignore, .markdownlint.json, .markdownlintignore, CLAUDE.md.template",
+        "Verify the init section lists GitHub-specific files from scaffold/github/: .github/workflows/ci.yml, .github/workflows/release.yml, .github/workflows/codeql.yml, .github/CODEOWNERS, .github/dependabot.yml",
+        "Verify the init section lists GitLab-specific files from scaffold/gitlab/: .gitlab-ci.yml, ci/gitlab/gitlab-ci-guide.md",
+        "Verify the init section lists Jenkins-specific files from scaffold/jenkins/: Jenkinsfile, ci/jenkins/jenkinsfile-guide.md",
+        "Verify the init section describes diff-based conflict resolution: show diff -u for existing files that differ, ask user to overwrite",
+        "Verify the init section describes CLAUDE.md parameterization: {{PROJECT_NAME}}, {{LANGUAGE}}, {{CI_PLATFORM}} placeholders replaced",
+        "Verify the init section mentions writing .specforge-version and .specforge-ci-platform",
+        "Verify the init section mentions auto-running install-hooks.sh after copying",
+        "Verify the init section describes self-detection: block if .claude-plugin/plugin.json exists with name specforge",
+        "Verify the init section mentions git init -b main for non-git directories",
+        "Verify the init section describes printing a summary with file counts and next steps including /specforge constitution"
       ],
       "passes": true,
-      "dependencies": ["plugin-directory-structure", "plugin-hooks-manifest"]
+      "dependencies": [
+        "plugin-directory-structure",
+        "scaffold-bundle-directory",
+        "gitlab-ci-parity"
+      ]
     },
     {
       "id": "specforge-upgrade",
       "category": "functional",
-      "title": "/specforge upgrade Sub-Command",
-      "description": "Sub-command that updates scaffold files using three-tier file categorization: overwrite (foundation-owned), review (commonly customized, shown as diffs), and skip (project-specific). Reads .specforge-version to determine changes between versions.",
+      "title": "/specforge upgrade Sub-Command v2",
+      "description": "Sub-command that updates scaffold files using three-tier categorization from upgrade-tiers.json: overwrite (always replace), review (show diff, ask user), skip (never touch). Errors when .specforge-version is missing. Supports CI platform re-selection.",
       "testing_steps": [
-        "Verify `grep -c '### /specforge upgrade' .claude-plugin/skills/specforge/SKILL.md` returns >= 1",
-        "Verify the upgrade section describes three tiers: overwrite, review, skip",
-        "Verify the upgrade section references .specforge-version for version comparison",
-        "Verify `test -f .claude-plugin/upgrade-tiers.json` exits 0",
-        "Run `jq empty .claude-plugin/upgrade-tiers.json` and verify exit code is 0 (valid JSON)",
-        "Verify upgrade-tiers.json lists files in overwrite tier including ci/principles/*.md, scripts/hooks/pre-commit, scripts/hooks/commit-msg",
-        "Verify upgrade-tiers.json lists files in skip tier including CLAUDE.md, .specify/memory/constitution.md, feature_list.json"
+        "Verify `grep -c \"### /specforge upgrade\" .claude-plugin/skills/specforge/SKILL.md` returns >= 1",
+        "Verify the upgrade section describes reading .specforge-version and comparing to plugin version",
+        "Verify the upgrade section describes erroring when .specforge-version is missing: \"No specforge installation found. Run /specforge init first.\"",
+        "Verify the upgrade section describes \"Already at version X.Y.Z. Nothing to upgrade.\" when versions match",
+        "Verify the upgrade section describes three tiers: overwrite (replace without prompting), review (show diff, ask user), skip (never modify)",
+        "Verify the upgrade section references .claude-plugin/upgrade-tiers.json for tier assignments",
+        "Verify the upgrade section describes CI platform re-selection: reads .specforge-ci-platform, asks if user wants to change",
+        "Verify the upgrade section describes handling new files (not in previous version) as overwrite tier",
+        "Verify the upgrade section describes deprecated file logging: files removed from scaffold are logged, not deleted from host",
+        "Verify the upgrade section mentions re-running install-hooks.sh after upgrade",
+        "Verify the upgrade section describes self-detection blocking (same as init)"
       ],
       "passes": true,
-      "dependencies": ["plugin-directory-structure", "specforge-init"]
+      "dependencies": [
+        "plugin-directory-structure",
+        "scaffold-bundle-directory",
+        "specforge-init"
+      ]
     },
     {
       "id": "initializer-agent",
@@ -555,42 +704,53 @@
     {
       "id": "scaffold-projection-test",
       "category": "testing",
-      "title": "Scaffold Projection End-to-End Test",
-      "description": "Test script (scripts/test-scaffold.sh) that runs the init/scaffold logic against a fresh temporary directory and validates all expected files exist, hooks are executable, and .specforge-version is correct.",
+      "title": "Scaffold Projection End-to-End Test v2",
+      "description": "Test script (scripts/test-scaffold.sh) that validates init/scaffold logic for all three CI platforms (GitHub, GitLab, Jenkins), CLAUDE.md parameterization, self-detection blocking, and .specforge-ci-platform tracking.",
       "testing_steps": [
         "Verify `test -f scripts/test-scaffold.sh` exits 0",
         "Verify `test -x scripts/test-scaffold.sh` exits 0",
         "Verify the script creates a temporary directory with mktemp -d",
         "Verify the script uses trap to clean up the temp directory on exit",
-        "Run the script and verify it checks for: .specify/WORKFLOW.md, .specify/templates/constitution-template.md, scripts/hooks/pre-commit, scripts/hooks/commit-msg, ci/principles/commit-gate.md, prompts/initializer-prompt.md, .prettierrc.json",
-        "Verify the script checks CLAUDE.md exists in the temp directory",
-        "Verify the script checks .specforge-version content matches semver regex",
+        "Verify the script tests GitHub platform: validates .github/workflows/ci.yml, .github/workflows/release.yml, .github/CODEOWNERS exist",
+        "Verify the script tests GitLab platform: validates .gitlab-ci.yml and ci/gitlab/gitlab-ci-guide.md exist",
+        "Verify the script tests Jenkins platform: validates Jenkinsfile and ci/jenkins/jenkinsfile-guide.md exist",
+        "Verify the script validates platform-agnostic files for all platforms: .specify/WORKFLOW.md, .specify/templates/constitution-template.md, scripts/hooks/pre-commit, ci/principles/commit-gate.md, prompts/initializer-prompt.md, .prettierrc.json, .markdownlint.json",
+        "Verify the script checks CLAUDE.md exists and does NOT contain {{PROJECT_NAME}} (placeholder was replaced)",
+        "Verify the script checks .specforge-version exists and matches plugin version",
+        "Verify the script checks .specforge-ci-platform exists and contains the selected platform name",
         "Verify the script checks scripts/hooks/pre-commit is executable",
-        "Verify the script checks the temp directory is a git repo via `git rev-parse --is-inside-work-tree`",
-        "Verify each check prints 'PASS:' or 'FAIL:' and a final summary line"
+        "Verify the script checks the temp directory is a git repo via git rev-parse --is-inside-work-tree",
+        "Verify the script tests self-detection: running init in a dir with .claude-plugin/plugin.json (name=specforge) exits with error",
+        "Verify each check prints PASS: or FAIL: and a final summary line with X of Y format"
       ],
       "passes": true,
-      "dependencies": ["plugin-directory-structure", "specforge-init"]
+      "dependencies": ["scaffold-bundle-directory", "specforge-init"]
     },
     {
       "id": "upgrade-tier-test",
       "category": "testing",
-      "title": "Upgrade Three-Tier Test",
-      "description": "Test script (scripts/test-upgrade.sh) that validates the upgrade command respects three-tier file classification by setting up a scaffolded project, modifying files in each tier, running upgrade, and asserting correct behavior.",
+      "title": "Upgrade Three-Tier Test v2",
+      "description": "Test script (scripts/test-upgrade.sh) that validates upgrade respects three-tier classification, version gating (error when no version file, skip when same version), and overwrite/skip canary behavior.",
       "testing_steps": [
         "Verify `test -f scripts/test-upgrade.sh` exits 0",
         "Verify `test -x scripts/test-upgrade.sh` exits 0",
-        "Verify the script creates a scaffolded temp directory (runs init first)",
-        "Verify the script appends 'CANARY_OVERWRITE' to a file in the overwrite tier",
-        "Verify the script appends 'CANARY_SKIP' to a file in the skip tier",
-        "Verify the script writes '0.0.1' to .specforge-version to simulate old version",
+        "Verify the script creates a scaffolded temp directory (runs init with GitHub first)",
+        "Verify the script appends CANARY_OVERWRITE to a file in the overwrite tier (e.g., ci/principles/commit-gate.md)",
+        "Verify the script appends CANARY_SKIP to a file in the skip tier (e.g., .specify/memory/constitution.md)",
+        "Verify the script writes 0.0.1 to .specforge-version to simulate old version",
         "Verify the script runs upgrade logic and checks CANARY_OVERWRITE is removed (overwrite tier works)",
         "Verify the script checks CANARY_SKIP is preserved (skip tier works)",
         "Verify the script checks .specforge-version contains the current plugin version after upgrade",
-        "Verify the script uses trap to clean up on exit"
+        "Verify the script tests already-at-version case: runs upgrade again, validates Nothing to upgrade message",
+        "Verify the script tests no-version-file case: removes .specforge-version, runs upgrade, validates error Run /specforge init first",
+        "Verify the script uses trap to clean up on exit and exits 0 if all pass, 1 if any fail"
       ],
       "passes": true,
-      "dependencies": ["specforge-init", "specforge-upgrade"]
+      "dependencies": [
+        "scaffold-bundle-directory",
+        "specforge-init",
+        "specforge-upgrade"
+      ]
     },
     {
       "id": "commit-msg-validation-tests",
@@ -627,6 +787,52 @@
       ],
       "passes": true,
       "dependencies": ["standardize-hook-json-key"]
+    },
+    {
+      "id": "scaffold-quality-gate-test",
+      "category": "testing",
+      "title": "Scaffold Quality Gate Test",
+      "description": "Test script (scripts/test-scaffold-quality.sh) that validates all scaffold files pass quality gates: ShellCheck for bash, yq for YAML, markdownlint for markdown.",
+      "testing_steps": [
+        "Verify `test -f scripts/test-scaffold-quality.sh` exits 0",
+        "Verify `test -x scripts/test-scaffold-quality.sh` exits 0",
+        "Verify the script runs shellcheck on all .sh files under .claude-plugin/scaffold/",
+        "Verify the script runs shellcheck on files without extension that start with #!/bin/bash (pre-commit, commit-msg)",
+        "Verify the script runs yq validation on all .yml files under .claude-plugin/scaffold/",
+        "Verify the script runs markdownlint on all .md files under .claude-plugin/scaffold/",
+        "Verify each check prints PASS: or FAIL: with the tool name and file",
+        "Verify the script prints a final summary: X of Y quality checks passed",
+        "Run the script and verify it exits 0 (all scaffold files pass quality gates)"
+      ],
+      "passes": true,
+      "dependencies": [
+        "scaffold-bundle-directory",
+        "gitlab-ci-parity",
+        "jenkins-ci-parity"
+      ]
+    },
+    {
+      "id": "ci-platform-parity-test",
+      "category": "testing",
+      "title": "CI Platform Parity Test",
+      "description": "Test script (scripts/test-ci-parity.sh) that validates GitHub, GitLab, and Jenkins CI configs implement equivalent quality gates: shellcheck, markdownlint, prettier, and release pipeline.",
+      "testing_steps": [
+        "Verify `test -f scripts/test-ci-parity.sh` exits 0",
+        "Verify `test -x scripts/test-ci-parity.sh` exits 0",
+        "Verify the script parses GitHub ci.yml and checks for shellcheck, markdownlint, prettier job/step names",
+        "Verify the script parses GitLab .gitlab-ci.yml and checks for shellcheck, markdownlint, prettier job names",
+        "Verify the script parses Jenkins Jenkinsfile and checks for shellcheck, markdownlint, prettier stage names",
+        "Verify the script checks all three platforms have a release/deploy stage triggered by tags",
+        "Verify the script prints a parity matrix showing which gates are present on which platform",
+        "Verify the script exits 0 if all three platforms have all required gates, 1 if any is missing",
+        "Run the script and verify it exits 0 (all platforms have parity)"
+      ],
+      "passes": true,
+      "dependencies": [
+        "scaffold-bundle-directory",
+        "gitlab-ci-parity",
+        "jenkins-ci-parity"
+      ]
     }
   ]
 }

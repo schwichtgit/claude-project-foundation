@@ -1,36 +1,55 @@
 {
-  "overwrite": [
-    "ci/principles/commit-gate.md",
-    "ci/principles/pr-gate.md",
-    "ci/principles/release-gate.md",
-    "scripts/hooks/pre-commit",
-    "scripts/hooks/commit-msg",
-    "scripts/install-hooks.sh",
-    ".specify/templates/constitution-template.md",
-    ".specify/templates/spec-template.md",
-    ".specify/templates/plan-template.md",
-    ".specify/templates/tasks-template.md",
-    ".specify/templates/feature-list-schema.json"
-  ],
-  "review": [
-    "ci/github/workflows/ci.yml",
-    "ci/github/CODEOWNERS.template",
-    "ci/github/dependabot.yml",
-    "ci/github/PULL_REQUEST_TEMPLATE.md",
-    ".specify/WORKFLOW.md",
-    ".prettierrc.json",
-    ".prettierignore",
-    "prompts/initializer-prompt.md",
-    "prompts/coding-prompt.md"
-  ],
-  "skip": [
-    "CLAUDE.md",
-    ".specify/memory/constitution.md",
-    ".specify/specs/spec.md",
-    ".specify/specs/plan.md",
-    "feature_list.json",
-    ".github/workflows/ci.yml",
-    ".github/CODEOWNERS",
-    "CHANGELOG.md"
-  ]
+  "tiers": {
+    "overwrite": [
+      "ci/principles/commit-gate.md",
+      "ci/principles/pr-gate.md",
+      "ci/principles/release-gate.md",
+      "scripts/hooks/pre-commit",
+      "scripts/hooks/commit-msg",
+      "scripts/install-hooks.sh",
+      ".specify/templates/constitution-template.md",
+      ".specify/templates/spec-template.md",
+      ".specify/templates/plan-template.md",
+      ".specify/templates/tasks-template.md",
+      ".specify/templates/feature-list-schema.json",
+      ".specify/WORKFLOW.md",
+      "prompts/initializer-prompt.md",
+      "prompts/coding-prompt.md",
+      ".markdownlint.json",
+      ".markdownlintignore"
+    ],
+    "review": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/release.yml",
+      ".github/workflows/codeql.yml",
+      ".github/CODEOWNERS",
+      ".github/dependabot.yml",
+      ".github/PULL_REQUEST_TEMPLATE.md",
+      ".github/ISSUE_TEMPLATE/bug_report.yml",
+      ".github/ISSUE_TEMPLATE/config.yml",
+      ".github/ISSUE_TEMPLATE/feature_request.yml",
+      ".gitlab-ci.yml",
+      "Jenkinsfile",
+      ".prettierrc.json",
+      ".prettierignore",
+      "CLAUDE.md.template",
+      "ci/github/repo-settings.md",
+      "ci/github/CODEOWNERS.template",
+      "ci/github/dependabot.yml",
+      "ci/github/PULL_REQUEST_TEMPLATE.md",
+      "ci/github/workflows/commit-standards.yml",
+      "ci/gitlab/gitlab-ci-guide.md",
+      "ci/jenkins/jenkinsfile-guide.md"
+    ],
+    "skip": [
+      "CLAUDE.md",
+      ".specify/memory/*",
+      ".specify/specs/*",
+      "feature_list.json",
+      "claude-progress.txt",
+      "README.md",
+      ".gitignore",
+      "init.sh"
+    ]
+  }
 }

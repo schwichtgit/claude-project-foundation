@@ -1,0 +1,246 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'NodeJS-22'
+    }
+
+    options {
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    environment {
+        CI = 'true'
+    }
+
+    stages {
+        // -------------------------------------------------------------------
+        // Install
+        // -------------------------------------------------------------------
+        stage('Install') {
+            steps {
+                sh 'npm ci'
+                sh '''
+                    if ! command -v shellcheck > /dev/null 2>&1; then
+                        echo "Installing shellcheck..."
+                        apt-get update -qq && apt-get install -y -qq shellcheck
+                    fi
+                '''
+                sh '''
+                    if ! command -v jq > /dev/null 2>&1; then
+                        echo "Installing jq..."
+                        apt-get update -qq && apt-get install -y -qq jq
+                    fi
+                '''
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Lint (parallel quality gates)
+        // -------------------------------------------------------------------
+        stage('Lint') {
+            parallel {
+                stage('ShellCheck') {
+                    steps {
+                        sh '''
+                            echo "--- ShellCheck ---"
+                            find . -name "*.sh" -not -path "./.git/*" -print0 \
+                                | xargs -0 shellcheck -x
+                            echo "PASS: ShellCheck"
+                        '''
+                    }
+                }
+                stage('Markdownlint') {
+                    steps {
+                        sh '''
+                            echo "--- Markdownlint ---"
+                            npx markdownlint-cli2 "**/*.md" "#node_modules"
+                            echo "PASS: Markdownlint"
+                        '''
+                    }
+                }
+                stage('Prettier') {
+                    steps {
+                        sh '''
+                            echo "--- Prettier ---"
+                            npx prettier --check .
+                            echo "PASS: Prettier"
+                        '''
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Commit Standards (PR / change-request builds only)
+        // -------------------------------------------------------------------
+        stage('Commit Standards') {
+            when { changeRequest() }
+            steps {
+                script {
+                    def commits = sh(
+                        script: "git log --format='%s' origin/${env.CHANGE_TARGET}..HEAD",
+                        returnStdout: true
+                    ).trim()
+
+                    if (!commits) {
+                        echo 'No commits to check.'
+                        return
+                    }
+
+                    def pattern = ~/^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+/
+                    def errors = 0
+
+                    commits.split('\n').each { msg ->
+                        // Skip merge commits
+                        if (msg.startsWith('Merge ')) {
+                            return
+                        }
+
+                        if (!(msg ==~ pattern)) {
+                            echo "FAIL: Not conventional commit format: ${msg}"
+                            errors++
+                        }
+
+                        if (msg.length() > 72) {
+                            echo "WARN: Subject exceeds 72 chars: ${msg}"
+                        }
+                    }
+
+                    if (errors > 0) {
+                        error "Commit standards check failed: ${errors} error(s)."
+                    }
+
+                    echo 'PASS: Commit standards'
+                }
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Test (placeholder -- replace with project-specific test command)
+        // -------------------------------------------------------------------
+        stage('Test') {
+            steps {
+                echo 'No test command configured. Add your test runner here.'
+                // Example:
+                // sh 'npm test'
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Build (placeholder -- replace with project-specific build command)
+        // -------------------------------------------------------------------
+        stage('Build') {
+            steps {
+                echo 'No build command configured. Add your build step here.'
+                // Example:
+                // sh 'npm run build'
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Plugin Validation
+        // -------------------------------------------------------------------
+        stage('Plugin Validation') {
+            steps {
+                sh '''
+                    echo "--- plugin.json structure ---"
+                    jq empty .claude-plugin/plugin.json
+                    jq -e '.name' .claude-plugin/plugin.json > /dev/null
+                    jq -e '.version' .claude-plugin/plugin.json > /dev/null
+                    jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
+                    echo "PASS: plugin.json is valid"
+                '''
+                sh '''
+                    echo "--- Referenced file paths ---"
+                    for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
+                        if [ ! -f ".claude-plugin/$path" ]; then
+                            echo "FAIL: .claude-plugin/$path not found"
+                            exit 1
+                        fi
+                        echo "  OK: $path"
+                    done
+                    for path in $(jq -r '.agents[]?.path // empty' .claude-plugin/plugin.json); do
+                        if [ ! -f ".claude-plugin/$path" ]; then
+                            echo "FAIL: .claude-plugin/$path not found"
+                            exit 1
+                        fi
+                        echo "  OK: $path"
+                    done
+                    echo "PASS: all referenced paths exist"
+                '''
+                sh '''
+                    echo "--- hooks.json structure ---"
+                    HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
+                    HOOKS_PATH=".claude-plugin/$HOOKS_REL"
+                    jq empty "$HOOKS_PATH"
+                    jq -r '.. | .command? // empty' "$HOOKS_PATH" | while IFS= read -r cmd; do
+                        SCRIPT=$(echo "$cmd" | sed 's|${CLAUDE_PLUGIN_ROOT}|.claude-plugin|g')
+                        if [ ! -f "$SCRIPT" ]; then
+                            echo "FAIL: $SCRIPT not found (from $cmd)"
+                            exit 1
+                        fi
+                        echo "  OK: $cmd"
+                    done
+                    echo "PASS: hooks.json is valid"
+                '''
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Release (tagged builds only)
+        // -------------------------------------------------------------------
+        stage('Release') {
+            when { buildingTag() }
+            steps {
+                script {
+                    def tagVersion = env.TAG_NAME.replaceFirst('^v', '')
+                    def pluginVersion = sh(
+                        script: "jq -r '.version' .claude-plugin/plugin.json",
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Tag version:    ${tagVersion}"
+                    echo "Plugin version: ${pluginVersion}"
+
+                    if (tagVersion != pluginVersion) {
+                        error "Tag version (${tagVersion}) does not match plugin.json version (${pluginVersion})"
+                    }
+
+                    echo "PASS: versions match"
+                }
+                sh '''
+                    VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
+                    echo "Creating release tarball for v${VERSION}..."
+                    tar -czf "specforge-${VERSION}.tar.gz" \
+                        --exclude='.git' \
+                        --exclude='node_modules' \
+                        .claude-plugin/
+                    echo "PASS: release artifact created"
+                '''
+                archiveArtifacts artifacts: 'specforge-*.tar.gz', fingerprint: true
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Post-build status reporting
+    // -----------------------------------------------------------------------
+    post {
+        success {
+            echo 'Pipeline completed successfully. All quality gates passed.'
+        }
+        failure {
+            echo 'Pipeline failed. Review the stage output above for details.'
+        }
+        unstable {
+            echo 'Pipeline completed with warnings. Review test results.'
+        }
+        always {
+            echo "Build result: ${currentBuild.currentResult}"
+            cleanWs()
+        }
+    }
+}

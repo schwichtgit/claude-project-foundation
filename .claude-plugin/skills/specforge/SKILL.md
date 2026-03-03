@@ -1,3 +1,11 @@
+---
+description: >-
+  Spec-driven development skill for autonomous Claude Code projects. Guides
+  collaborative specification authoring and scaffold projection through a
+  structured workflow that produces machine-readable artifacts.
+argument-hint: init | upgrade | constitution | spec | clarify | plan | features | analyze | setup
+---
+
 # specforge
 
 Spec-driven development skill for autonomous Claude Code projects. Guides
@@ -50,40 +58,75 @@ activity, including autonomous Claude Code sessions.
 the directory structure, CI workflows, git hooks, templates, and quality
 principles needed for spec-driven development.
 
-**Scaffold files to project:**
+**Scaffold source:** `$CLAUDE_PLUGIN_ROOT/scaffold/`
 
-- `.specify/templates/` -- constitution, spec, plan, tasks, feature-list templates
-- `scripts/hooks/pre-commit` -- git pre-commit hook
-- `scripts/hooks/commit-msg` -- git commit-msg hook
-- `scripts/install-hooks.sh` -- hook installation script
-- `ci/principles/` -- commit-gate, pr-gate, release-gate definitions
-- `ci/github/` -- CI workflow templates, CODEOWNERS, dependabot, PR template
-- `prompts/` -- initializer-prompt.md, coding-prompt.md
-- `.prettierrc.json` -- Prettier configuration
-- `.prettierignore` -- Prettier ignore patterns
-
-**Version tracking:** `.specforge-version`
-
-After projection, the installed scaffold version is recorded in
-`.specforge-version` at the host project root.
+**Version tracking:** `.specforge-version`, `.specforge-ci-platform`
 
 **Workflow:**
 
-1. If the target directory is not a git repository, run `git init -b main`.
-2. For each scaffold file listed above:
-   - If the file already exists in the host project, print
-     `skipping: <path> (already exists)` and do not overwrite.
-   - If the file does not exist, copy it from the plugin and print
-     `created: <path>`.
-3. If `CLAUDE.md` does not exist, create it from `CLAUDE.md.template`
-   (substituting project-specific values where possible).
-4. Run `scripts/install-hooks.sh` to install git hooks.
-5. Print a summary of created and skipped files.
+1. **Self-detection blocking:** Check if `.claude-plugin/plugin.json` exists
+   in the target directory AND its `name` field equals `"specforge"`. If so,
+   exit with error: "Cannot scaffold into the plugin source repo."
+2. **Git init:** If the target directory is not a git repository, run
+   `git init -b main`.
+3. **CI platform auto-detection:** Check for CI platform indicators in the
+   target repo:
+   - `.github/` directory -> GitHub
+   - `.gitlab-ci.yml` file -> GitLab
+   - `Jenkinsfile` -> Jenkins
+
+   If exactly one indicator is found, default to that platform. If none or
+   multiple are found, prompt without a default.
+
+4. **CI platform selection prompt:** Ask the user to confirm or choose a CI
+   platform: github, gitlab, or jenkins. When a default is detected, prompt
+   as: "Detected GitHub. Use GitHub? [Y/n/gitlab/jenkins]". When no default,
+   prompt as: "Which CI platform? [github/gitlab/jenkins]". Re-prompt on
+   invalid input.
+5. **Scaffold projection (common files):** Copy all files from
+   `$CLAUDE_PLUGIN_ROOT/scaffold/common/` to the target project root,
+   preserving directory structure.
+6. **Scaffold projection (platform files):** Copy all files from
+   `$CLAUDE_PLUGIN_ROOT/scaffold/<platform>/` to the target project root,
+   where `<platform>` is the selected CI platform.
+7. **Conflict resolution via diffs:** For each file that already exists in
+   the target project:
+   - If the existing file is identical to the scaffold version, skip it
+     silently.
+   - If the existing file differs, show `diff -u <existing> <scaffold>` and
+     ask "Overwrite <file>? [y/n/d(iff)]". On `y`, overwrite. On `n`, skip.
+     On `d`, show the diff again.
+8. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
+   from `CLAUDE.md.template` with these placeholders replaced:
+   - `{{PROJECT_NAME}}` -- from `basename $PWD` or git remote name
+   - `{{LANGUAGE}}` -- auto-detected from config files (package.json,
+     Cargo.toml, pyproject.toml, go.mod, etc.); comma-separated if multiple
+     (e.g., "JavaScript, Go"); "Unknown" if none detected
+   - `{{CI_PLATFORM}}` -- the selected CI platform
+9. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+10. **Auto-run install-hooks.sh:** Execute `scripts/install-hooks.sh` to
+    install git hooks into `.git/hooks/`.
+11. **Version tracking:** Write the plugin version (from `plugin.json`) to
+    `.specforge-version` at the project root. Write the selected CI platform
+    to `.specforge-ci-platform`.
+12. **Summary:** Print file counts (copied, skipped), the selected CI
+    platform, and next steps including:
+    "Run `/specforge constitution` to define your project principles."
 
 **Notes:**
 
-- Idempotent: safe to run multiple times. Existing files are never overwritten.
-- The `/specforge upgrade` sub-command handles version migration.
+- Init is a skill sub-command executed by the LLM, not a standalone bash
+  script. Claude Code reads these instructions and uses Write/Edit/Bash tools
+  to project files. User interaction (CI selection, conflict prompts) happens
+  via the conversation.
+- Idempotent: running init a second time and answering "no" to all conflict
+  prompts copies 0 files.
+- `.specforge-version` is always written (overwritten, not skipped) even if
+  it already exists.
+- `CLAUDE.md.template` is always copied as a scaffold file; `CLAUDE.md` is
+  only created from it when `CLAUDE.md` does not already exist.
+- The `/specforge upgrade` sub-command handles version migration after initial
+  installation.
 
 ### /specforge spec
 
@@ -286,27 +329,66 @@ preference. Defaults to GitHub if no plan exists.
 **Purpose:** Update scaffold files in a host project using three-tier file
 categorization to preserve project-specific customizations.
 
+**Tier definitions:** `$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json`
+
 **Tiers:**
 
 - **overwrite** -- Foundation-owned files that are always replaced with the
-  latest version. These files should not be customized.
-- **review** -- Commonly customized files. Changes are shown as diffs for
-  the user to review and selectively apply.
+  latest version without prompting. These files should not be customized.
+- **review** -- Commonly customized files. Changes are shown as `diff -u`
+  output for the user to review and selectively accept or reject.
 - **skip** -- Project-specific files that are never modified by upgrade.
 
-**Version tracking:** `.specforge-version`
-
-**Tier definitions:** `.claude-plugin/upgrade-tiers.json`
+**Version tracking:** `.specforge-version`, `.specforge-ci-platform`
 
 **Workflow:**
 
-1. Read `.specforge-version` from the host project to determine the
-   currently installed version.
-2. Read `.claude-plugin/upgrade-tiers.json` for file tier assignments.
-3. For each file in the **overwrite** tier: replace with the latest version
-   from the plugin.
-4. For each file in the **review** tier: show a diff between the current
-   and new version. Ask the user to accept, reject, or manually merge.
-5. For each file in the **skip** tier: do nothing.
-6. Update `.specforge-version` to the current plugin version.
-7. Print a summary of overwritten, reviewed, and skipped files.
+1. **Self-detection blocking:** Check if `.claude-plugin/plugin.json` exists
+   in the target directory AND its `name` field equals `"specforge"`. If so,
+   exit with error: "Cannot upgrade the plugin source repo."
+2. **Version check:** Read `.specforge-version` from the host project root.
+   If the file does not exist, exit with error: "No specforge installation
+   found. Run `/specforge init` first." (Do NOT fall back to init.)
+3. **Same-version skip:** Compare `.specforge-version` to the plugin version
+   from `plugin.json`. If they match, print "Already at version X.Y.Z.
+   Nothing to upgrade." and exit.
+4. **Print version transition:** Print "Upgrading from <old> to <new>."
+5. **CI platform re-selection:** Read `.specforge-ci-platform`. Ask the user
+   if they want to change platforms: "Current CI: <platform>. Change?
+   [Y to keep/gitlab/jenkins]". If the user selects a different platform,
+   project the new platform's scaffold files. Do NOT delete old platform
+   files; instead, list them with: "Previous <platform> CI files remain.
+   Remove manually if no longer needed: <file list>".
+6. **Read tier definitions:** Read `$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json`
+   for file tier assignments.
+7. **Overwrite tier:** For each file in the "overwrite" list, replace it
+   with the latest version from the plugin without prompting.
+8. **Review tier:** For each file in the "review" list that differs from
+   the plugin version, show `diff -u <existing> <plugin>` output and ask
+   "Accept this change? [y/n]". Skip files that are identical.
+9. **Skip tier:** Do nothing for files in the "skip" list.
+10. **New files:** Files present in the scaffold but not listed in any tier
+    in `upgrade-tiers.json` are treated as overwrite (copied without
+    prompting).
+11. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
+    longer present in the scaffold are logged as: "Deprecated: <file>
+    (no longer in plugin, can be manually removed)". They are NOT deleted
+    from the host project.
+12. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+13. **Re-run install-hooks.sh:** Execute `scripts/install-hooks.sh` to
+    update git hooks.
+14. **Update version tracking:** Write the new plugin version to
+    `.specforge-version`. Update `.specforge-ci-platform` if the user
+    switched platforms.
+15. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
+    skipped, new, and deprecated files.
+
+**Notes:**
+
+- Upgrade is a skill sub-command executed by the LLM, not a standalone bash
+  script. Claude Code reads these instructions and uses Read/Write/Edit/Bash
+  tools. User interaction happens via the conversation.
+- The tier classification is defined in `upgrade-tiers.json`, not hardcoded.
+- Running upgrade is safe to abort mid-way; already-overwritten files are at
+  the new version, unapplied files remain at the old version.
+- The diff display uses `diff -u` (unified format) for readability.
