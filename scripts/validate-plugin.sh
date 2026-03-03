@@ -44,11 +44,10 @@ if [[ -n "$SKILLS_PATH" ]]; then
     check "skills directory exists: $SKILLS_PATH" test -d "$SKILLS_PATH"
 fi
 
-# --- Agents directory ---
-AGENTS_PATH=$(jq -r '.agents // empty' "$PLUGIN_DIR/plugin.json")
-if [[ -n "$AGENTS_PATH" ]]; then
-    check "agents directory exists: $AGENTS_PATH" test -d "$AGENTS_PATH"
-fi
+# --- Agent files ---
+for agent_path in $(jq -r '.agents[]? // empty' "$PLUGIN_DIR/plugin.json"); do
+    check "agent file exists: $agent_path" test -f "$agent_path"
+done
 
 # --- hooks.json ---
 # Paths in plugin.json are relative to repo root (plugin root)
