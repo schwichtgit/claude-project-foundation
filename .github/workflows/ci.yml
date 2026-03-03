@@ -127,30 +127,25 @@ jobs:
           jq -e '.version' .claude-plugin/plugin.json > /dev/null
           jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
           echo "PASS: required fields present"
-      - name: Validate referenced file paths
+      - name: Validate referenced paths
         run: |
-          echo "--- Checking skill paths ---"
-          for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
-            if [ ! -f ".claude-plugin/$path" ]; then
-              echo "FAIL: .claude-plugin/$path not found"
-              exit 1
-            fi
-            echo "  OK: $path"
-          done
+          echo "--- Checking skills directory ---"
+          SKILLS_PATH=$(jq -r '.skills // empty' .claude-plugin/plugin.json)
+          if [ -n "$SKILLS_PATH" ]; then
+            test -d "$SKILLS_PATH" || { echo "FAIL: $SKILLS_PATH not found"; exit 1; }
+            echo "  OK: $SKILLS_PATH"
+          fi
 
-          echo "--- Checking agent paths ---"
-          for path in $(jq -r '.agents[]?.path // empty' .claude-plugin/plugin.json); do
-            if [ ! -f ".claude-plugin/$path" ]; then
-              echo "FAIL: .claude-plugin/$path not found"
-              exit 1
-            fi
-            echo "  OK: $path"
-          done
+          echo "--- Checking agents directory ---"
+          AGENTS_PATH=$(jq -r '.agents // empty' .claude-plugin/plugin.json)
+          if [ -n "$AGENTS_PATH" ]; then
+            test -d "$AGENTS_PATH" || { echo "FAIL: $AGENTS_PATH not found"; exit 1; }
+            echo "  OK: $AGENTS_PATH"
+          fi
           echo "PASS: all referenced paths exist"
       - name: Validate hooks.json
         run: |
-          HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
-          HOOKS_PATH=".claude-plugin/$HOOKS_REL"
+          HOOKS_PATH=$(jq -r '.hooks' .claude-plugin/plugin.json)
 
           echo "--- hooks.json structure ---"
           jq empty "$HOOKS_PATH"
@@ -158,7 +153,7 @@ jobs:
 
           echo "--- Checking hook script paths ---"
           jq -r '.. | .command? // empty' "$HOOKS_PATH" | while IFS= read -r cmd; do
-            SCRIPT=$(echo "$cmd" | sed 's|\${CLAUDE_PLUGIN_ROOT}|.claude-plugin|g')
+            SCRIPT=$(echo "$cmd" | sed 's|\${CLAUDE_PLUGIN_ROOT}|.|g')
             if [ ! -f "$SCRIPT" ]; then
               echo "FAIL: $SCRIPT not found (from $cmd)"
               exit 1
@@ -168,9 +163,9 @@ jobs:
           echo "PASS: all hook scripts exist"
       - name: Validate SKILL.md exists
         run: |
-          SKILL_PATH=$(jq -r '.skills[0].path' .claude-plugin/plugin.json)
-          test -f ".claude-plugin/$SKILL_PATH"
-          echo "PASS: SKILL.md exists at $SKILL_PATH"
+          SKILLS_PATH=$(jq -r '.skills // empty' .claude-plugin/plugin.json)
+          find "$SKILLS_PATH" -name 'SKILL.md' | head -1 | grep -q .
+          echo "PASS: SKILL.md exists in $SKILLS_PATH"
 
   # ---------------------------------------------------------------------------
   # Summary (ONLY job to require in branch protection)
