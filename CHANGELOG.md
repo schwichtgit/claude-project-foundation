@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0-alpha.1] - 2026-03-02
 
-Alpha release covering plugin infrastructure (Phases 1-2) and the
-functional hook system (Phase 3). 15 of 35 tracked features pass.
+All 35 tracked features pass across 7 implementation phases: plugin
+infrastructure, CI/release workflows, functional hooks, skill
+sub-commands, agent definitions, git hooks/scripts, and test suites.
 
 ### Added
 
@@ -47,8 +48,9 @@ functional hook system (Phase 3). 15 of 35 tracked features pass.
 - **Agent definitions** -- `agents/initializer.md` (first-session scaffold
   setup) and `agents/coder.md` (subsequent-session feature implementation)
   under `.claude-plugin/agents/`.
-- **Skill definition** -- `skills/specforge/SKILL.md` declaring the
-  `/specforge` skill with sub-commands for the spec-driven workflow.
+- **Skill definition** -- `skills/specforge/SKILL.md` with 9 sub-commands:
+  `/specforge constitution`, `spec`, `clarify`, `plan`, `features`,
+  `analyze`, `setup`, `init`, `upgrade`.
 - **protect-files.sh PreToolUse hook** -- Blocks modification of sensitive
   files (environment files, SSH keys, certificates, credentials, cloud
   configs, lock files). Allowlist for `.example` and `.sample` suffixed
@@ -66,6 +68,23 @@ functional hook system (Phase 3). 15 of 35 tracked features pass.
 - **verify-quality.sh Stop hook** -- Runs quality checks (lint, type check,
   tests) before allowing Claude Code to stop. Auto-detects Node.js, Python,
   Rust, and Go project types with monorepo support.
+- **Upgrade tiers** -- `.claude-plugin/upgrade-tiers.json` defining three-tier
+  file classification (overwrite, review, skip) for `/specforge upgrade`.
+- **Initializer agent** -- `agents/initializer.md` for first-session scaffold
+  setup: validates spec artifacts, creates init.sh, initializes project
+  structure, writes claude-progress.txt.
+- **Coder agent** -- `agents/coder.md` for subsequent-session 10-step coding
+  loop: orient, start servers, verify existing, select feature, implement,
+  test, update tracking, commit, document, clean shutdown.
+- **Git hooks** -- `scripts/hooks/pre-commit` (forbidden files, secret
+  scanning, linting) and `scripts/hooks/commit-msg` (conventional commits,
+  AI-ism blocking, Co-Authored-By rejection).
+- **Test suites** -- `scripts/validate-plugin.sh` (16 plugin structure
+  checks), `scripts/test-hooks.sh` (18 hook smoke tests),
+  `scripts/test-json-keys.sh` (tool_input verification),
+  `scripts/test-commit-msg.sh` (12 commit message cases),
+  `scripts/test-scaffold.sh` (11 scaffold projection checks),
+  `scripts/test-upgrade.sh` (5 three-tier upgrade checks).
 
 ### Changed
 

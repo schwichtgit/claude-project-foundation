@@ -298,7 +298,7 @@
         "Verify the spec section mentions feature ID format with category prefix + sequential number (e.g., INFRA-001, FUNC-001)",
         "Verify the spec section references the spec-template.md as a template source"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure", "specforge-constitution"]
     },
     {
@@ -312,7 +312,7 @@
         "Verify the clarify section mentions issue types: ambiguous requirements, missing error handling, undefined edge cases, contradictions",
         "Verify the clarify section instructs updating spec.md with resolved decisions"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["specforge-spec"]
     },
     {
@@ -327,7 +327,7 @@
         "Verify the plan section mentions decision areas such as project structure, tech stack, testing strategy",
         "Verify the plan template exists at `.claude-plugin/templates/plan-template.md` or `.specify/templates/plan-template.md`"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["specforge-spec"]
     },
     {
@@ -344,7 +344,7 @@
         "Verify the features section mentions that all passes fields must be false initially",
         "Verify the features section requires minimum 3 testing steps per feature and 20% with 10+ steps"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["specforge-plan"]
     },
     {
@@ -360,7 +360,7 @@
         "Verify the analyze section defines READY threshold at >= 80 and NEEDS WORK at < 80",
         "Verify the analyze section mentions remediation steps for dimensions below 70"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["specforge-features"]
     },
     {
@@ -375,7 +375,7 @@
         "Verify the setup section mentions branch protection, CODEOWNERS, Dependabot, secret scanning, and PR templates",
         "Verify the setup section mentions using gh api commands for branch protection configuration"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["specforge-plan"]
     },
     {
@@ -409,7 +409,7 @@
         "Verify upgrade-tiers.json lists files in overwrite tier including ci/principles/*.md, scripts/hooks/pre-commit, scripts/hooks/commit-msg",
         "Verify upgrade-tiers.json lists files in skip tier including CLAUDE.md, .specify/memory/constitution.md, feature_list.json"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure", "specforge-init"]
     },
     {
@@ -426,7 +426,7 @@
         "Verify the file mentions the commit message 'chore: initialize project structure'",
         "Verify the file explicitly states not to implement features (only scaffolding)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure", "specforge-features"]
     },
     {
@@ -443,7 +443,7 @@
         "Verify the file mentions using 'git add <specific-files>' (not 'git add .')",
         "Verify the file mentions conventional commit format with no emoji, no AI-isms, no Co-Authored-By"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure", "initializer-agent"]
     },
     {
@@ -569,7 +569,7 @@
         "Verify the script checks the temp directory is a git repo via `git rev-parse --is-inside-work-tree`",
         "Verify each check prints 'PASS:' or 'FAIL:' and a final summary line"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["plugin-directory-structure", "specforge-init"]
     },
     {
@@ -589,7 +589,7 @@
         "Verify the script checks .specforge-version contains the current plugin version after upgrade",
         "Verify the script uses trap to clean up on exit"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["specforge-init", "specforge-upgrade"]
     },
     {
@@ -608,7 +608,7 @@
         "Verify each test prints 'PASS:' or 'FAIL:' and a final summary line",
         "Verify the script exits 0 if all tests pass"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["commit-msg-git-hook"]
     },
     {
