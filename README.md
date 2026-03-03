@@ -2,7 +2,7 @@
 
 A spec-driven scaffold that produces high-quality specifications for autonomous Claude Code development. Define what you want to build through guided conversation, then hand the spec artifacts to [AutoForge](https://github.com/AutoForgeAI/autoforge) or any two-agent pattern for multi-session autonomous implementation with production-grade quality enforcement.
 
-**Status:** All 42 features passing (v0.1.0-alpha.2). Full CI parity across GitHub, GitLab, and Jenkins. The foundation applies its own quality gates in CI.
+**Status:** All 42 features passing (v0.1.0-alpha.3). Full CI parity across GitHub, GitLab, and Jenkins. The foundation applies its own quality gates in CI.
 
 [![CI](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml/badge.svg)](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml)
 
@@ -17,7 +17,7 @@ Claude Project Foundation closes the spec quality gap. It provides an interactiv
 
 ## What You Get
 
-- **Interactive spec authoring** -- the `/specforge` skill walks you through defining principles, features, architecture, and acceptance criteria, producing artifacts that AutoForge consumes directly
+- **Interactive spec authoring** -- the `/cpf:specforge` skill walks you through defining principles, features, architecture, and acceptance criteria, producing artifacts that AutoForge consumes directly
 - **AutoForge-compatible output** -- constitution.md, spec.md, plan.md, and feature_list.json match the artifact structure expected by AutoForge's initializer and coding agents
 - **Quality gates at every layer** -- Claude Code hooks, git hooks, and CI workflows enforce conventional commits, test coverage, linting, secret scanning, and communication standards
 - **Full CI parity** -- GitHub Actions, GitLab CI, and Jenkins all ship with equivalent quality gates (shellcheck, markdownlint, prettier, release pipelines)
@@ -30,12 +30,12 @@ Claude Project Foundation closes the spec quality gap. It provides an interactiv
 ```text
  Phase 1: Interactive Planning (you + Claude Code)
  ┌───────────────────────────────────────────────────────────┐
- │  /specforge constitution  -->  Define project principles  │
- │  /specforge spec          -->  Document features          │
- │  /specforge clarify       -->  Resolve ambiguities        │
- │  /specforge plan          -->  Architecture decisions     │
- │  /specforge features      -->  Generate feature list      │
- │  /specforge analyze       -->  Score autonomous-readiness │
+ │  /cpf:specforge constitution  -->  Define project principles  │
+ │  /cpf:specforge spec          -->  Document features          │
+ │  /cpf:specforge clarify       -->  Resolve ambiguities        │
+ │  /cpf:specforge plan          -->  Architecture decisions     │
+ │  /cpf:specforge features      -->  Generate feature list      │
+ │  /cpf:specforge analyze       -->  Score autonomous-readiness │
  └──────────────────────────────┬────────────────────────────┘
                                 │
                                 v  Spec artifacts
@@ -65,30 +65,30 @@ Claude Project Foundation closes the spec quality gap. It provides an interactiv
 # Add the specforge marketplace (one-time)
 /plugin marketplace add schwichtgit/claude-project-foundation
 
-# Install the plugin
-/plugin install specforge@specforge
+# Install the cpf plugin
+/plugin install cpf@specforge
 ```
 
-After installation, the `/specforge` skill and all hooks are available in any Claude Code session.
+After installation, the `/cpf:specforge` skill and all hooks are available in any Claude Code session.
 
 ## Quick Start: Spec a New Project
 
 Open Claude Code in your project directory and run the spec workflow:
 
 ```bash
-/specforge constitution    # Define project principles and quality standards
-/specforge spec            # Document features with acceptance criteria
-/specforge clarify         # Surface and resolve ambiguities
-/specforge plan            # Make architecture and tech stack decisions
-/specforge features        # Generate feature_list.json for autonomous tracking
-/specforge analyze         # Score spec readiness (target: 80+)
+/cpf:specforge constitution    # Define project principles and quality standards
+/cpf:specforge spec            # Document features with acceptance criteria
+/cpf:specforge clarify         # Surface and resolve ambiguities
+/cpf:specforge plan            # Make architecture and tech stack decisions
+/cpf:specforge features        # Generate feature_list.json for autonomous tracking
+/cpf:specforge analyze         # Score spec readiness (target: 80+)
 ```
 
 When the spec scores 80 or above, hand off to [AutoForge](https://github.com/AutoForgeAI/autoforge) for autonomous execution. Alternatively, use the included agent definitions directly (`.claude-plugin/agents/initializer.md` for first session, `.claude-plugin/agents/coder.md` for subsequent sessions).
 
 Each coding session picks up where the last left off via `feature_list.json`. Features are implemented one at a time, tested against their acceptance criteria, and committed with conventional commit messages.
 
-## The /specforge Workflow
+## The /cpf:specforge Workflow
 
 | Sub-command    | What it does                               | Artifact produced                    |
 | -------------- | ------------------------------------------ | ------------------------------------ |
@@ -106,7 +106,7 @@ Run `constitution` through `analyze` in order. Use `init` to bootstrap a new pro
 
 ## Autonomous Execution
 
-The spec artifacts produced by `/specforge` are designed for consumption by [AutoForge](https://github.com/AutoForgeAI/autoforge), which implements a two-agent pattern adapted from [Anthropic's autonomous coding harness](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding).
+The spec artifacts produced by `/cpf:specforge` are designed for consumption by [AutoForge](https://github.com/AutoForgeAI/autoforge), which implements a two-agent pattern adapted from [Anthropic's autonomous coding harness](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding).
 
 For users who prefer a standalone approach without AutoForge, the foundation includes equivalent agent definitions:
 
@@ -165,7 +165,7 @@ npm run format:check
 
 **Spec workflow:** Modify `.claude-plugin/skills/specforge/SKILL.md` to adjust the interactive planning flow. Add or remove sub-commands, change prompting strategy, or adjust scoring weights.
 
-**CI platform:** `/specforge init` lets you choose GitHub, GitLab, or Jenkins. All three ship with fully templated CI configs (shellcheck, markdownlint, prettier, release pipelines). See the scaffold directories under `.claude-plugin/scaffold/github/`, `gitlab/`, and `jenkins/`.
+**CI platform:** `/cpf:specforge init` lets you choose GitHub, GitLab, or Jenkins. All three ship with fully templated CI configs (shellcheck, markdownlint, prettier, release pipelines). See the scaffold directories under `.claude-plugin/scaffold/github/`, `gitlab/`, and `jenkins/`.
 
 ## License
 

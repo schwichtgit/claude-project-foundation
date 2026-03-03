@@ -5,6 +5,36 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-alpha.3] - 2026-03-03
+
+Rename plugin from "specforge" to "cpf" (claude-project-foundation) so
+the skill invocation becomes `/cpf:specforge` instead of the redundant
+`/specforge:specforge`. Fixes plugin manifest and hooks schema for
+marketplace installation.
+
+### Changed
+
+- **Plugin name** -- renamed from `specforge` to `cpf` in plugin.json
+  and marketplace.json. The marketplace name remains `specforge`.
+  Install command is now `/plugin install cpf@specforge`.
+- **Release tarball** -- renamed from `specforge-{version}.tar.gz` to
+  `cpf-{version}.tar.gz`.
+- **Self-detection** -- SKILL.md init/upgrade self-detection checks
+  for plugin name `"cpf"` instead of `"specforge"`.
+
+### Fixed
+
+- **plugin.json schema** -- `author` changed to object, `hooks`/`skills`/
+  `agents` paths prefixed with `./`, removed unsupported `blockedCommands`
+  and `protectedFiles` fields.
+- **hooks.json schema** -- wrapped event types in required top-level
+  `hooks` object.
+- **hooks.json paths** -- script paths updated from
+  `${CLAUDE_PLUGIN_ROOT}/hooks/` to `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/hooks/`.
+- **marketplace.json schema** -- added required `owner` field, fixed
+  `source` format to `{source, repo}`.
+- **agents field** -- changed from directory path to array of file paths.
+
 ## [0.1.0-alpha.2] - 2026-03-02
 
 All 42 tracked features pass. This release adds scaffold bundling,
@@ -157,5 +187,6 @@ sub-commands, agent definitions, git hooks/scripts, and test suites.
 - **WORKFLOW.md corruption** -- Corrected first line of `.specify/WORKFLOW.md`
   from `claude# Workflow Documentation` to `# Workflow Documentation`.
 
+[0.1.0-alpha.3]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.1
