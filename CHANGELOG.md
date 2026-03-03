@@ -55,6 +55,8 @@ multi-platform CI parity, and init/upgrade sub-commands.
 
 - **CI shellcheck path** -- updated `.github/workflows/ci.yml` to reference
   the scaffold location after `scripts/hooks/` was moved.
+- **Release shellcheck path** -- same fix applied to
+  `.github/workflows/release.yml` which runs its own shellcheck inline.
 - **test-commit-msg.sh path** -- updated hook path reference after the
   commit-msg hook moved into the scaffold.
 
