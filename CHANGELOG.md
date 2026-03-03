@@ -51,6 +51,13 @@ multi-platform CI parity, and init/upgrade sub-commands.
 - **install-hooks.sh** (scaffold copy) -- updated to use BASH_SOURCE-relative
   paths for portability when projected into host projects.
 
+### Fixed
+
+- **CI shellcheck path** -- updated `.github/workflows/ci.yml` to reference
+  the scaffold location after `scripts/hooks/` was moved.
+- **test-commit-msg.sh path** -- updated hook path reference after the
+  commit-msg hook moved into the scaffold.
+
 ## [0.1.0-alpha.1] - 2026-03-02
 
 All 35 tracked features pass across 7 implementation phases: plugin
@@ -124,13 +131,14 @@ sub-commands, agent definitions, git hooks/scripts, and test suites.
   test, update tracking, commit, document, clean shutdown.
 - **Git hooks** -- `scripts/hooks/pre-commit` (forbidden files, secret
   scanning, linting) and `scripts/hooks/commit-msg` (conventional commits,
-  AI-ism blocking, Co-Authored-By rejection).
+  AI-ism blocking, Co-Authored-By rejection). Source files now live in
+  `.claude-plugin/scaffold/common/scripts/hooks/`.
 - **Test suites** -- `scripts/validate-plugin.sh` (16 plugin structure
   checks), `scripts/test-hooks.sh` (18 hook smoke tests),
   `scripts/test-json-keys.sh` (tool_input verification),
   `scripts/test-commit-msg.sh` (12 commit message cases),
-  `scripts/test-scaffold.sh` (11 scaffold projection checks),
-  `scripts/test-upgrade.sh` (5 three-tier upgrade checks).
+  `scripts/test-scaffold.sh` (scaffold projection checks),
+  `scripts/test-upgrade.sh` (upgrade tier checks).
 
 ### Changed
 
@@ -147,4 +155,5 @@ sub-commands, agent definitions, git hooks/scripts, and test suites.
 - **WORKFLOW.md corruption** -- Corrected first line of `.specify/WORKFLOW.md`
   from `claude# Workflow Documentation` to `# Workflow Documentation`.
 
+[0.1.0-alpha.2]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.1

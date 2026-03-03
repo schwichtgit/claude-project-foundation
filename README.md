@@ -2,7 +2,7 @@
 
 A spec-driven scaffold that produces high-quality specifications for autonomous Claude Code development. Define what you want to build through guided conversation, then hand the spec artifacts to [AutoForge](https://github.com/AutoForgeAI/autoforge) or any two-agent pattern for multi-session autonomous implementation with production-grade quality enforcement.
 
-**Status:** All 7 implementation phases complete (35/35 features). The foundation applies its own quality gates in CI.
+**Status:** All 42 features passing (v0.1.0-alpha.2). Full CI parity across GitHub, GitLab, and Jenkins. The foundation applies its own quality gates in CI.
 
 [![CI](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml/badge.svg)](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml)
 
@@ -20,6 +20,7 @@ Claude Project Foundation closes the spec quality gap. It provides an interactiv
 - **Interactive spec authoring** -- the `/specforge` skill walks you through defining principles, features, architecture, and acceptance criteria, producing artifacts that AutoForge consumes directly
 - **AutoForge-compatible output** -- constitution.md, spec.md, plan.md, and feature_list.json match the artifact structure expected by AutoForge's initializer and coding agents
 - **Quality gates at every layer** -- Claude Code hooks, git hooks, and CI workflows enforce conventional commits, test coverage, linting, secret scanning, and communication standards
+- **Full CI parity** -- GitHub Actions, GitLab CI, and Jenkins all ship with equivalent quality gates (shellcheck, markdownlint, prettier, release pipelines)
 - **Stack-agnostic auto-detection** -- all scripts detect your project type from config files (package.json, Cargo.toml, pyproject.toml, go.mod). No hardcoded paths, no framework lock-in
 - **Self-hosting** -- this repository applies its own quality gates: markdownlint, Prettier, shellcheck, and commit-standards run in CI on every push and PR
 - **Zero runtime dependencies** -- pure shell scripts, markdown, and JSON/YAML. The scaffold itself uses Node.js only for development tooling (Prettier formatting)
@@ -80,12 +81,7 @@ Open Claude Code in your project directory and run the spec workflow:
 /specforge analyze         # Score spec readiness (target: 80+)
 ```
 
-When the spec scores 80 or above, hand off to [AutoForge](https://github.com/AutoForgeAI/autoforge) for autonomous execution. Alternatively, use the included prompts directly:
-
-```bash
-# First session: project scaffolding (use prompts/initializer-prompt.md)
-# Subsequent sessions: feature implementation (use prompts/coding-prompt.md)
-```
+When the spec scores 80 or above, hand off to [AutoForge](https://github.com/AutoForgeAI/autoforge) for autonomous execution. Alternatively, use the included agent definitions directly (`.claude-plugin/agents/initializer.md` for first session, `.claude-plugin/agents/coder.md` for subsequent sessions).
 
 Each coding session picks up where the last left off via `feature_list.json`. Features are implemented one at a time, tested against their acceptance criteria, and committed with conventional commit messages.
 
@@ -109,17 +105,17 @@ Run `constitution` through `analyze` in order. Use `init` to bootstrap a new pro
 
 The spec artifacts produced by `/specforge` are designed for consumption by [AutoForge](https://github.com/AutoForgeAI/autoforge), which implements a two-agent pattern adapted from [Anthropic's autonomous coding harness](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding).
 
-For users who prefer a standalone approach without AutoForge, the foundation includes equivalent session prompts:
+For users who prefer a standalone approach without AutoForge, the foundation includes equivalent agent definitions:
 
-**Initializer agent** (`prompts/initializer-prompt.md`, first session): Reads the spec artifacts, creates `init.sh` for environment setup, scaffolds the project directory structure, and validates `feature_list.json`. Does not implement features.
+**Initializer agent** (`.claude-plugin/agents/initializer.md`, first session): Reads the spec artifacts, creates `init.sh` for environment setup, scaffolds the project directory structure, and validates `feature_list.json`. Does not implement features.
 
-**Coding agent** (`prompts/coding-prompt.md`, all subsequent sessions): Runs a 10-step loop per feature -- orient, start servers, verify previously passing features, select the next eligible feature, implement, test each acceptance criterion, update tracking, commit, document progress, clean shutdown.
+**Coding agent** (`.claude-plugin/agents/coder.md`, all subsequent sessions): Runs a 10-step loop per feature -- orient, start servers, verify previously passing features, select the next eligible feature, implement, test each acceptance criterion, update tracking, commit, document progress, clean shutdown.
 
 Quality is enforced automatically:
 
 - Claude Code hooks block destructive commands, protect sensitive files, auto-format on save, and run quality checks before session ends
 - Git hooks validate conventional commit format, scan for secrets, and lint staged files
-- CI workflows (GitHub Actions provided, GitLab/Jenkins documented) enforce the same gates on every push and PR
+- CI workflows (GitHub Actions, GitLab CI, and Jenkins all provided) enforce the same gates on every push and PR
 
 ## Self-Applied Quality Gates
 
@@ -146,26 +142,27 @@ npm run format:check
 
 ## Documentation
 
-| Document                                     | Purpose                                                 |
-| -------------------------------------------- | ------------------------------------------------------- |
-| [CONTRIBUTING.md](CONTRIBUTING.md)           | How to contribute: setup, commit standards, PR process  |
-| [SECURITY.md](SECURITY.md)                   | Security policy and vulnerability reporting             |
-| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)     | Contributor Covenant 2.1                                |
-| [ci/principles/](ci/principles/)             | Abstract quality gate definitions (commit, PR, release) |
-| [prompts/](prompts/)                         | Session prompts for initializer and coding agents       |
-| [.specify/WORKFLOW.md](.specify/WORKFLOW.md) | Tool-agnostic process documentation                     |
+| Document                                                                                    | Purpose                                                 |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                                                          | How to contribute: setup, commit standards, PR process  |
+| [SECURITY.md](SECURITY.md)                                                                  | Security policy and vulnerability reporting             |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)                                                    | Contributor Covenant 2.1                                |
+| [CHANGELOG.md](CHANGELOG.md)                                                                | Release history and change details                      |
+| [scaffold/common/ci/principles/](.claude-plugin/scaffold/common/ci/principles/)             | Abstract quality gate definitions (commit, PR, release) |
+| [scaffold/common/prompts/](.claude-plugin/scaffold/common/prompts/)                         | Session prompts for initializer and coding agents       |
+| [scaffold/common/.specify/WORKFLOW.md](.claude-plugin/scaffold/common/.specify/WORKFLOW.md) | Tool-agnostic process documentation                     |
 
 ## Customization
 
 **Coverage threshold:** Edit the coverage percentage in your project's constitution (default: 85%). The verify-quality.sh hook and CI workflows reference this value.
 
-**Hook checks:** Enable or disable individual checks in `.claude/hooks/`. Each hook is a standalone shell script. Remove or comment out entries in `.claude/settings.json` to disable specific hooks.
+**Hook checks:** The plugin provides 6 hooks via `.claude-plugin/hooks/`. Each is a standalone shell script with fail-open behavior. When developing on this repo, the hooks also exist at `.claude/hooks/`.
 
 **Language support:** All hooks auto-detect project type from configuration files (package.json, Cargo.toml, pyproject.toml, go.mod). To add a language: extend the detection logic in verify-quality.sh, post-edit.sh, and the pre-commit hook.
 
-**Spec workflow:** Modify `.claude/skills/specforge/SKILL.md` to adjust the interactive planning flow. Add or remove sub-commands, change prompting strategy, or adjust scoring weights.
+**Spec workflow:** Modify `.claude-plugin/skills/specforge/SKILL.md` to adjust the interactive planning flow. Add or remove sub-commands, change prompting strategy, or adjust scoring weights.
 
-**CI platform:** GitHub Actions is fully implemented. For GitLab or Jenkins, use the mapping guides in `ci/gitlab/` and `ci/jenkins/` to translate the abstract principles into your platform's configuration.
+**CI platform:** `/specforge init` lets you choose GitHub, GitLab, or Jenkins. All three ship with fully templated CI configs (shellcheck, markdownlint, prettier, release pipelines). See the scaffold directories under `.claude-plugin/scaffold/github/`, `gitlab/`, and `jenkins/`.
 
 ## License
 
