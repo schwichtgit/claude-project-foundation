@@ -69,15 +69,15 @@ check_projects() {
             echo "Node.js project: $rel_dir"
 
             if [[ -f "$dir/node_modules/.bin/eslint" ]]; then
-                run_optional_check "ESLint ($rel_dir)" npx --prefix "$dir" eslint . --quiet
+                run_optional_check "ESLint ($rel_dir)" bash -c "cd '$dir' && npx eslint . --quiet"
             fi
 
             if [[ -f "$dir/tsconfig.json" ]]; then
-                run_check "TypeScript ($rel_dir)" npx --prefix "$dir" tsc --noEmit
+                run_check "TypeScript ($rel_dir)" bash -c "cd '$dir' && npx tsc --noEmit"
             fi
 
             if grep -q '"test"' "$dir/package.json" 2>/dev/null; then
-                run_check "Tests ($rel_dir)" npm --prefix "$dir" test
+                run_check "Tests ($rel_dir)" bash -c "cd '$dir' && npm test"
             fi
         fi
 
