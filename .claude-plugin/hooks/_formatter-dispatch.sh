@@ -7,15 +7,20 @@ find_prettier_root() {
     local file_path="$1"
     local dir
     dir=$(dirname "$file_path")
+    local git_root
+    git_root=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
     while [[ "$dir" != "/" ]]; do
         if [[ -f "$dir/package.json" ]]; then
             echo "$dir"
             return 0
         fi
+        # Stop at git root — never walk above the project
+        if [[ -n "$git_root" && "$dir" == "$git_root" ]]; then
+            break
+        fi
         dir=$(dirname "$dir")
     done
-    local project_root
-    project_root=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+    local project_root="$git_root"
     if [[ -n "$project_root" ]]; then
         for subdir in "" "frontend" "web" "client" "app"; do
             local candidate="$project_root"
