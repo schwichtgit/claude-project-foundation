@@ -1,6 +1,6 @@
 {
   "name": "cpf",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-alpha.4",
   "description": "Spec-driven development hooks, skills, and scaffold projection for autonomous Claude Code projects",
   "author": {
     "name": "schwichtgit"

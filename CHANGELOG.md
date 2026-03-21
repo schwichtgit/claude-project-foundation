@@ -5,6 +5,32 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-alpha.4] - 2026-03-21
+
+Hook reliability fixes for cross-project portability: prevents a prettier
+fork bomb when projects lack `package.json`, guards Rust checks behind
+toolchain availability, and fixes Node.js quality check pathing.
+
+### Fixed
+
+- **Prettier fork bomb** -- `find_prettier_root()` in
+  `_formatter-dispatch.sh` walked past the git root to `$HOME` when no
+  `package.json` existed in the project. If `~/package.json` was present,
+  `npx --prefix $HOME prettier` spawned thousands of processes. Now
+  bounded to the git root. Also removes a redundant `git rev-parse` call.
+- **Rust quality checks without toolchain** -- `verify-quality.sh` failed
+  on projects with `Cargo.toml` but no Rust toolchain installed. Now
+  guards behind `command -v cargo` and adds `~/.cargo/bin` to PATH.
+- **Node.js quality check pathing** -- quality checks used
+  `npx --prefix` which resolved binaries incorrectly in some
+  environments. Changed to `cd` into the project directory instead
+  (backported from #26).
+
+### Changed
+
+- **actions/attest-build-provenance** -- bumped from v2 to v4 in the
+  release workflow (#25).
+
 ## [0.1.0-alpha.3] - 2026-03-03
 
 Rename plugin from "specforge" to "cpf" (claude-project-foundation) so
@@ -187,6 +213,7 @@ sub-commands, agent definitions, git hooks/scripts, and test suites.
 - **WORKFLOW.md corruption** -- Corrected first line of `.specify/WORKFLOW.md`
   from `claude# Workflow Documentation` to `# Workflow Documentation`.
 
+[0.1.0-alpha.4]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.1
