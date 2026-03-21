@@ -16,7 +16,7 @@ body:
       description: Which area does this feature relate to?
       options:
         - Quality gates (hooks, CI)
-        - Spec workflow (/specforge)
+        - Spec workflow (/cpf:specforge)
         - Autonomous execution (prompts, feature tracking)
         - Bootstrap / project setup
         - Platform support (GitHub, GitLab, Jenkins)

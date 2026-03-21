@@ -13,7 +13,7 @@ Before starting, verify that all spec artifacts exist:
 - `feature_list.json` -- machine-readable feature list
 
 If any artifact is missing, stop and instruct the user to run the appropriate
-`/specforge` sub-command first.
+`/cpf:specforge` sub-command first.
 
 ## Workflow
 

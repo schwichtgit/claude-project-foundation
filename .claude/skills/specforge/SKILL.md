@@ -14,7 +14,7 @@ produces machine-readable artifacts.
 
 ## Sub-Commands
 
-### /specforge constitution
+### /cpf:specforge constitution
 
 **Purpose:** Define immutable project principles that govern all development
 activity, including autonomous Claude Code sessions.
@@ -50,9 +50,9 @@ activity, including autonomous Claude Code sessions.
 
 - The constitution is the foundation for all subsequent specforge sub-commands.
 - Once written, changes require explicit human approval.
-- The `/specforge spec` sub-command reads the constitution as input.
+- The `/cpf:specforge spec` sub-command reads the constitution as input.
 
-### /specforge init
+### /cpf:specforge init
 
 **Purpose:** Project the specforge scaffold into a host project, setting up
 the directory structure, CI workflows, git hooks, templates, and quality
@@ -111,7 +111,7 @@ principles needed for spec-driven development.
     to `.specforge-ci-platform`.
 12. **Summary:** Print file counts (copied, skipped), the selected CI
     platform, and next steps including:
-    "Run `/specforge constitution` to define your project principles."
+    "Run `/cpf:specforge constitution` to define your project principles."
 
 **Notes:**
 
@@ -125,10 +125,10 @@ principles needed for spec-driven development.
   it already exists.
 - `CLAUDE.md.template` is always copied as a scaffold file; `CLAUDE.md` is
   only created from it when `CLAUDE.md` does not already exist.
-- The `/specforge upgrade` sub-command handles version migration after initial
+- The `/cpf:specforge upgrade` sub-command handles version migration after initial
   installation.
 
-### /specforge spec
+### /cpf:specforge spec
 
 **Purpose:** Document features and acceptance criteria through interactive
 conversation, producing a structured specification.
@@ -142,7 +142,7 @@ conversation, producing a structured specification.
 **Workflow:**
 
 1. Read the constitution from `.specify/memory/constitution.md`. Verify it
-   exists; if not, prompt the user to run `/specforge constitution` first.
+   exists; if not, prompt the user to run `/cpf:specforge constitution` first.
 2. Read the spec template from `.specify/templates/spec-template.md`.
 3. Ask the user to describe the project features at a high level.
 4. For each feature described, collaborate with the user to define:
@@ -162,9 +162,9 @@ conversation, producing a structured specification.
 
 - Feature IDs use category prefix + sequential number (e.g., INFRA-001, FUNC-001).
 - Infrastructure features must have no dependencies.
-- The spec feeds into `/specforge plan` and `/specforge features`.
+- The spec feeds into `/cpf:specforge plan` and `/cpf:specforge features`.
 
-### /specforge clarify
+### /cpf:specforge clarify
 
 **Purpose:** Surface ambiguities, contradictions, and gaps in the spec,
 presenting each as a numbered question with suggested resolutions.
@@ -192,10 +192,10 @@ presenting each as a numbered question with suggested resolutions.
 
 **Notes:**
 
-- Run this after `/specforge spec` and before `/specforge plan`.
+- Run this after `/cpf:specforge spec` and before `/cpf:specforge plan`.
 - Multiple rounds of clarification may be needed.
 
-### /specforge plan
+### /cpf:specforge plan
 
 **Purpose:** Make and record technical architecture decisions, producing a
 structured implementation plan.
@@ -226,9 +226,9 @@ structured implementation plan.
 
 - The plan template is at `.specify/templates/plan-template.md`.
 - Each decision should reference specific spec features it enables.
-- The plan feeds into `/specforge features` for feature_list.json generation.
+- The plan feeds into `/cpf:specforge features` for feature_list.json generation.
 
-### /specforge features
+### /cpf:specforge features
 
 **Purpose:** Generate `feature_list.json` from the spec and plan with
 machine-readable feature definitions for autonomous execution.
@@ -265,7 +265,7 @@ machine-readable feature definitions for autonomous execution.
 - Dependencies reference other feature IDs by their `id` field.
 - The coding agent uses this file to select and track features.
 
-### /specforge analyze
+### /cpf:specforge analyze
 
 **Purpose:** Score spec artifacts for autonomous-readiness on a 0-100 scale
 across five weighted dimensions.
@@ -294,7 +294,7 @@ across five weighted dimensions.
 5. For each dimension below 70, provide concrete remediation steps
    (e.g., "Add testing steps to features X, Y, Z").
 
-### /specforge setup
+### /cpf:specforge setup
 
 **Purpose:** Generate a platform-specific project setup checklist with
 executable commands.
@@ -324,7 +324,7 @@ preference. Defaults to GitHub if no plan exists.
 - GitLab and Jenkins are documented as mapping guides in `ci/gitlab/` and
   `ci/jenkins/`.
 
-### /specforge upgrade
+### /cpf:specforge upgrade
 
 **Purpose:** Update scaffold files in a host project using three-tier file
 categorization to preserve project-specific customizations.
@@ -348,7 +348,7 @@ categorization to preserve project-specific customizations.
    exit with error: "Cannot upgrade the plugin source repo."
 2. **Version check:** Read `.specforge-version` from the host project root.
    If the file does not exist, exit with error: "No specforge installation
-   found. Run `/specforge init` first." (Do NOT fall back to init.)
+   found. Run `/cpf:specforge init` first." (Do NOT fall back to init.)
 3. **Same-version skip:** Compare `.specforge-version` to the plugin version
    from `plugin.json`. If they match, print "Already at version X.Y.Z.
    Nothing to upgrade." and exit.

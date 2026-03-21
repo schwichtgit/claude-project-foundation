@@ -267,8 +267,8 @@ echo ""
 echo "=== Upgrade error behavior ==="
 
 TOTAL=$((TOTAL + 1))
-SKILL_FILE="$REPO_ROOT/.claude-plugin/skills/specforge/SKILL.md"
-if [[ -f "$SKILL_FILE" ]] && grep -q "Run \`/specforge init\` first" "$SKILL_FILE"; then
+SKILL_FILE="$REPO_ROOT/.claude-plugin/skills/cpf:specforge/SKILL.md"
+if [[ -f "$SKILL_FILE" ]] && grep -q "Run \`/cpf:specforge init\` first" "$SKILL_FILE"; then
   echo "PASS: SKILL.md documents error when .specforge-version missing"
   PASSED=$((PASSED + 1))
 else

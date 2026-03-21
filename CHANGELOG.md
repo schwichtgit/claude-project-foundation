@@ -5,6 +5,19 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-alpha.5] - 2026-03-21
+
+Fix `/specforge` slash command prefix across all skill output and
+documentation to use the correct `/cpf:specforge` prefix after the
+plugin rename in alpha.3.
+
+### Fixed
+
+- **Slash command prefix** -- all 12 files referencing `/specforge`
+  sub-commands updated to `/cpf:specforge`. Affected: SKILL.md (both
+  copies), initializer agent, WORKFLOW.md, issue templates (scaffold
+  and repo), CLAUDE.md, README.md, feature_list.json, test-upgrade.sh.
+
 ## [0.1.0-alpha.4] - 2026-03-21
 
 Hook reliability fixes for cross-project portability: prevents a prettier
@@ -213,6 +226,7 @@ sub-commands, agent definitions, git hooks/scripts, and test suites.
 - **WORKFLOW.md corruption** -- Corrected first line of `.specify/WORKFLOW.md`
   from `claude# Workflow Documentation` to `# Workflow Documentation`.
 
+[0.1.0-alpha.5]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.2
