@@ -163,7 +163,7 @@ npm run format:check
 
 **Language support:** All hooks auto-detect project type from configuration files (package.json, Cargo.toml, pyproject.toml, go.mod). To add a language: extend the detection logic in verify-quality.sh, post-edit.sh, and the pre-commit hook.
 
-**Spec workflow:** Modify `.claude-plugin/skills/specforge/SKILL.md` to adjust the interactive planning flow. Add or remove sub-commands, change prompting strategy, or adjust scoring weights.
+**Spec workflow:** Modify `.claude-plugin/skills/cpf:specforge/SKILL.md` to adjust the interactive planning flow. Add or remove sub-commands, change prompting strategy, or adjust scoring weights.
 
 **CI platform:** `/cpf:specforge init` lets you choose GitHub, GitLab, or Jenkins. All three ship with fully templated CI configs (shellcheck, markdownlint, prettier, release pipelines). See the scaffold directories under `.claude-plugin/scaffold/github/`, `gitlab/`, and `jenkins/`.
 

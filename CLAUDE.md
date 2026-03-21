@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **reusable harness for spec-driven, autonomous Claude Code projects**. It provides a portable scaffold with three layers:
 
 1. **Abstract SDLC Principles** (Layer 1) -- Platform-agnostic quality gates for commits, PRs, and releases
-2. **Interactive Planning** (Layer 2) -- `/specforge` skill with 7 sub-commands for collaborative spec authoring
+2. **Interactive Planning** (Layer 2) -- `/cpf:specforge` skill with 7 sub-commands for collaborative spec authoring
 3. **Platform Implementations** (Layer 3) -- GitHub first-class (CI workflows, templates), GitLab/Jenkins documented as mapping guides
 
 The foundation synthesizes patterns from Anthropic's autonomous-coding quickstart, AutoForge, and production experience into a generalized scaffold. It requires no dependencies -- pure shell scripts, markdown, and JSON/YAML templates.
@@ -22,7 +22,7 @@ Phases 1-4 are sequential. Phase 5 can run in parallel with Phases 3-4. Phase 6 
 
 1. **Repository structure + Abstract SDLC principles** (`ci/principles/`, `.specify/templates/constitution-template.md`)
 2. **Quality gate scripts** (5 Claude Code hooks in `.claude/hooks/`, 2 git hooks in `scripts/hooks/`, `install-hooks.sh`)
-3. **Spec workflow + templates** (`/specforge` skill, spec/plan/tasks templates, `feature-list-schema.json`, `WORKFLOW.md`)
+3. **Spec workflow + templates** (`/cpf:specforge` skill, spec/plan/tasks templates, `feature-list-schema.json`, `WORKFLOW.md`)
 4. **Execution harness** (`prompts/initializer-prompt.md`, `prompts/coding-prompt.md`, `CLAUDE.md.template`)
 5. **GitHub implementation** (CI workflows, CODEOWNERS, dependabot, PR template, repo settings, GitLab/Jenkins guides)
 6. **Testing** (manual verification)
@@ -31,7 +31,7 @@ Phases 1-4 are sequential. Phase 5 can run in parallel with Phases 3-4. Phase 6 
 
 ### Two-Phase Workflow
 
-**Planning phase:** Human + Claude Code use `/specforge` to produce: constitution.md -> spec.md -> plan.md -> feature_list.json (each sub-command feeds the next).
+**Planning phase:** Human + Claude Code use `/cpf:specforge` to produce: constitution.md -> spec.md -> plan.md -> feature_list.json (each sub-command feeds the next).
 
 **Execution phase (Two-Agent Pattern):**
 

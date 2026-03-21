@@ -25,7 +25,7 @@ body:
       options:
         - Claude Code hooks (.claude/hooks/)
         - Git hooks (scripts/hooks/)
-        - Spec workflow (/specforge)
+        - Spec workflow (/cpf:specforge)
         - CI workflows (.github/workflows/)
         - Prompts (prompts/)
         - Templates (.specify/templates/)
@@ -41,7 +41,7 @@ body:
       description: Minimal steps to reproduce the behavior.
       placeholder: |
         1. Install plugin: claude plugin add schwichtgit/claude-project-foundation
-        2. Run /specforge init in a new project
+        2. Run /cpf:specforge init in a new project
         3. Attempt a commit with ...
         4. Observe ...
     validations:

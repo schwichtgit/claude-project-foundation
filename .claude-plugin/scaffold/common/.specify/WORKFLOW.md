@@ -4,21 +4,21 @@ This document describes the two-phase workflow for spec-driven autonomous develo
 
 ## Overview
 
-**Phase 1 (Interactive Planning):** Human and Claude Code collaboratively author project specifications through the `/specforge` skill. Seven steps, each producing a concrete artifact.
+**Phase 1 (Interactive Planning):** Human and Claude Code collaboratively author project specifications through the `/cpf:specforge` skill. Seven steps, each producing a concrete artifact.
 
 **Phase 2 (Autonomous Execution):** Two-agent pattern implements features across multiple Claude Code sessions using the artifacts from Phase 1.
 
 ## Phase 1: Interactive Planning
 
-| Step | Command                   | Input                    | Output                            | Participant    |
-| ---- | ------------------------- | ------------------------ | --------------------------------- | -------------- |
-| 1    | `/specforge constitution` | constitution-template.md | `.specify/memory/constitution.md` | Human + Claude |
-| 2    | `/specforge spec`         | constitution.md          | `.specify/specs/spec.md`          | Human + Claude |
-| 3    | `/specforge clarify`      | constitution.md, spec.md | spec.md (updated)                 | Human + Claude |
-| 4    | `/specforge plan`         | constitution.md, spec.md | `.specify/specs/plan.md`          | Human + Claude |
-| 5    | `/specforge features`     | All artifacts            | `feature_list.json`               | Human + Claude |
-| 6    | `/specforge analyze`      | All artifacts            | Score report (conversation)       | Claude         |
-| 7    | `/specforge setup`        | plan.md                  | Setup checklist (conversation)    | Claude         |
+| Step | Command                       | Input                    | Output                            | Participant    |
+| ---- | ----------------------------- | ------------------------ | --------------------------------- | -------------- |
+| 1    | `/cpf:specforge constitution` | constitution-template.md | `.specify/memory/constitution.md` | Human + Claude |
+| 2    | `/cpf:specforge spec`         | constitution.md          | `.specify/specs/spec.md`          | Human + Claude |
+| 3    | `/cpf:specforge clarify`      | constitution.md, spec.md | spec.md (updated)                 | Human + Claude |
+| 4    | `/cpf:specforge plan`         | constitution.md, spec.md | `.specify/specs/plan.md`          | Human + Claude |
+| 5    | `/cpf:specforge features`     | All artifacts            | `feature_list.json`               | Human + Claude |
+| 6    | `/cpf:specforge analyze`      | All artifacts            | Score report (conversation)       | Claude         |
+| 7    | `/cpf:specforge setup`        | plan.md                  | Setup checklist (conversation)    | Claude         |
 
 ## Phase 2: Autonomous Execution
 
@@ -49,13 +49,13 @@ Uses `prompts/coding-prompt.md`. Follows a 10-step loop per session:
 
 ## Artifacts
 
-| Artifact     | Location                          | Format     | Created By              |
-| ------------ | --------------------------------- | ---------- | ----------------------- |
-| Constitution | `.specify/memory/constitution.md` | Markdown   | /specforge constitution |
-| Spec         | `.specify/specs/spec.md`          | Markdown   | /specforge spec         |
-| Plan         | `.specify/specs/plan.md`          | Markdown   | /specforge plan         |
-| Feature List | `feature_list.json`               | JSON       | /specforge features     |
-| Progress     | `claude-progress.txt`             | Plain text | Coding agent            |
+| Artifact     | Location                          | Format     | Created By                  |
+| ------------ | --------------------------------- | ---------- | --------------------------- |
+| Constitution | `.specify/memory/constitution.md` | Markdown   | /cpf:specforge constitution |
+| Spec         | `.specify/specs/spec.md`          | Markdown   | /cpf:specforge spec         |
+| Plan         | `.specify/specs/plan.md`          | Markdown   | /cpf:specforge plan         |
+| Feature List | `feature_list.json`               | JSON       | /cpf:specforge features     |
+| Progress     | `claude-progress.txt`             | Plain text | Coding agent                |
 
 ## Rules
 
