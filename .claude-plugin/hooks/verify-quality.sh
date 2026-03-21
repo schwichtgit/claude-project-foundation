@@ -103,9 +103,18 @@ check_projects() {
             echo ""
             echo "Rust project: $rel_dir"
 
-            run_check "Cargo check ($rel_dir)" cargo check --manifest-path "$dir/Cargo.toml"
-            run_check "Clippy ($rel_dir)" cargo clippy --manifest-path "$dir/Cargo.toml" -- -D warnings
-            run_optional_check "Cargo test compile ($rel_dir)" cargo test --manifest-path "$dir/Cargo.toml" --no-run
+            # Ensure cargo is on PATH (rustup default location)
+            if [[ -d "$HOME/.cargo/bin" ]]; then
+                export PATH="$HOME/.cargo/bin:$PATH"
+            fi
+
+            if command -v cargo >/dev/null 2>&1; then
+                run_check "Cargo check ($rel_dir)" cargo check --manifest-path "$dir/Cargo.toml"
+                run_check "Clippy ($rel_dir)" cargo clippy --manifest-path "$dir/Cargo.toml" -- -D warnings
+                run_optional_check "Cargo test compile ($rel_dir)" cargo test --manifest-path "$dir/Cargo.toml" --no-run
+            else
+                echo "  Skipping: cargo not found"
+            fi
         fi
 
         # Go
