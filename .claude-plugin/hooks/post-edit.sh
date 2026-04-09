@@ -5,6 +5,12 @@ trap 'exit 0' ERR
 # PostToolUse hook for Write/Edit.
 # Auto-formats the edited file using shared formatter dispatch.
 
+if ! command -v jq >/dev/null 2>&1; then
+    echo "cpf: jq not found, skipping hook" \
+        "(run /cpf:specforge doctor)" >&2
+    exit 0
+fi
+
 INPUT=$(cat /dev/stdin)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
 

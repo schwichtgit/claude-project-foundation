@@ -63,6 +63,17 @@ Uses `prompts/coding-prompt.md`. Follows a 10-step loop per session:
 | Feature List | `feature_list.json`               | JSON       | /cpf:specforge features     |
 | Progress     | `claude-progress.txt`             | Plain text | Coding agent                |
 
+## Branch Workflow
+
+All work must happen on feature branches, not directly on
+`main`. The pre-commit hook blocks commits to `main` by
+default.
+
+- Create branches from up-to-date main:
+  `git fetch origin main && git checkout -b feat/my-feature origin/main`
+- The opt-out `CPF_ALLOW_MAIN_COMMIT=1` is for release
+  automation and initial project setup only.
+
 ## Rules
 
 - **feature_list.json is immutable** except for the `passes`

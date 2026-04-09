@@ -44,7 +44,10 @@ format_file() {
     case "$ext" in
         ts|tsx|js|jsx|json|css|html|md|yaml|yml)
             if PRETTIER_ROOT=$(find_prettier_root "$file_path"); then
-                npx --prefix "$PRETTIER_ROOT" prettier --write "$file_path" 2>/dev/null || true
+                if command -v npx >/dev/null 2>&1; then
+                    npx --prefix "$PRETTIER_ROOT" prettier \
+                        --write "$file_path" 2>/dev/null || true
+                fi
             elif command -v prettier >/dev/null 2>&1; then
                 prettier --write "$file_path" 2>/dev/null || true
             fi

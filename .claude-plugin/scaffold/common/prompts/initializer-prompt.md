@@ -57,6 +57,10 @@ Per the plan document:
 
 ## Critical Rules
 
+- **Branch-based development.** Create a feature branch
+  before committing. The pre-commit hook blocks commits
+  to `main` unless `CPF_ALLOW_MAIN_COMMIT=1` is set.
+  Use the opt-out for the initial project structure commit.
 - `feature_list.json` fields are IMMUTABLE except `passes`.
   Do not change `id`, `title`, `description`, `testing_steps`,
   `category`, or `dependencies`.

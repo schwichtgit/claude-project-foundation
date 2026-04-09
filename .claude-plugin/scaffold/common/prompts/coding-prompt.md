@@ -81,6 +81,9 @@ Update `claude-progress.txt` with:
 
 ## Critical Rules
 
+- **Branch-based development.** Never commit directly to
+  `main`. Create a feature branch from `origin/main` before
+  starting work.
 - **One feature thoroughly > many features started.** Complete
   one before moving to the next.
 - **Fix regressions first.** A previously passing feature that
