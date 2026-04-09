@@ -57,6 +57,16 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/hooks/check-upgrade.sh"
+          }
+        ]
+      }
     ]
   }
 }

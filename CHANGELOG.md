@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Upgrade notification on session start when scaffold
+  version is behind plugin version (once per session,
+  non-blocking)
 - `/cpf:specforge doctor` sub-command for dev environment
   validation with three-tier tool checks (required,
   recommended, optional), platform-specific install hints,
