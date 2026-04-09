@@ -1,0 +1,197 @@
+{
+  "features": [
+    {
+      "id": "tool-tier-registry",
+      "category": "infrastructure",
+      "title": "Tool Tier Registry JSON",
+      "description": "Create .specify/doctor-registry.json defining required, recommended, and optional tools with binary names, version flags, aliases, project types, and platform-specific install commands. Source of truth in scaffold at .claude-plugin/scaffold/common/.specify/doctor-registry.json.",
+      "testing_steps": [
+        "Verify .claude-plugin/scaffold/common/.specify/doctor-registry.json exists and is valid JSON (jq empty < file)",
+        "Verify each entry has required fields: name, purpose, tier, project_types, version_flag, aliases, install",
+        "Verify install object has darwin, linux, and generic string fields for every entry",
+        "Verify at least 3 entries with tier=required exist: jq, git, python3",
+        "Verify recommended entries cover Node (npm, npx, prettier), Python (ruff), Rust (cargo, rustfmt), Go (gofmt, go), Shell (shellcheck, shfmt)",
+        "Verify optional entries include markdownlint-cli2, golangci-lint, black, autopep8, rubocop, google-java-format",
+        "Verify tier field is one of: required, recommended, optional for every entry",
+        "Verify project_types is an empty array for all required-tier entries",
+        "Verify python3 entry has aliases array containing python",
+        "Verify all install.darwin commands reference brew where applicable"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "project-type-auto-detection",
+      "category": "infrastructure",
+      "title": "Project Type Auto-Detection",
+      "description": "Implement detect_project_types() function in doctor.sh that scans the project root and one level of subdirectories for config files (package.json, Cargo.toml, pyproject.toml, go.mod, Gemfile, build.gradle, pom.xml) and user-authored .sh files to determine which project types are present.",
+      "testing_steps": [
+        "Run doctor.sh in the CPF repo and verify it detects node project type (package.json exists)",
+        "Create a temporary directory with a Cargo.toml and verify rust is detected",
+        "Create a temporary directory with a pyproject.toml and verify python is detected",
+        "Create a temporary directory with a go.mod and verify go is detected",
+        "Create a temporary directory with a Gemfile and verify ruby is detected",
+        "Create a temporary directory with a build.gradle and verify java is detected",
+        "Verify a directory with only scripts/install-hooks.sh does NOT detect shell type",
+        "Create a directory with a custom .sh file at the root and verify shell IS detected",
+        "Create a directory with both package.json and go.mod and verify both node and go are detected",
+        "Verify detection searches one level of subdirectories (e.g., subdir/package.json triggers node)"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "tool-presence-check",
+      "category": "functional",
+      "title": "Tool Presence and Version Check",
+      "description": "Implement check_tool() function that runs command -v for each tool in the registry, checks aliases if primary binary not found, runs the version_flag command to capture version info, and returns PASS/FAIL/WARN/INFO status based on tier and project type relevance.",
+      "testing_steps": [
+        "Run doctor.sh and verify git (universally installed) shows PASS with a version string",
+        "Verify a tool with version_flag=null shows PASS without a version string when found",
+        "Verify a missing required tool shows FAIL status",
+        "Verify a missing recommended tool (for a detected project type) shows WARN status",
+        "Verify a missing optional tool shows INFO status",
+        "Verify a tool for a non-detected project type is skipped entirely (not in output)",
+        "Verify python3 alias fallback: if python3 is not found, check python as alias",
+        "Verify version_flag failure shows found with version unknown rather than crashing",
+        "Verify the jq bootstrap check runs before registry parsing with hardcoded install hints",
+        "Verify the jq bootstrap check exits with code 1 and prints darwin and linux install commands"
+      ],
+      "passes": false,
+      "dependencies": ["tool-tier-registry", "project-type-auto-detection"]
+    },
+    {
+      "id": "compliance-report",
+      "category": "functional",
+      "title": "Compliance Report Output",
+      "description": "Implement compliance report in two output formats: text (human-readable, default) and JSON (machine-parseable). Both contain identical data: platform, project types, per-tool results with status/version/install hints, summary counts, and overall readiness. Text groups by tier with PASS/WARN/FAIL/INFO labels. JSON outputs a single object with tools array, summary object, and ready boolean.",
+      "testing_steps": [
+        "Run doctor.sh --output=text and verify output contains header, platform line, and Required heading",
+        "Verify text output groups tools under correct tier headings with 2-space indent",
+        "Verify text output uses fixed-width status labels: PASS, WARN, FAIL, INFO, SKIP",
+        "Verify missing tools show platform-specific install commands on 8-space indented continuation line",
+        "Verify text summary line shows correct pass/warn/fail counts",
+        "Verify text shows READY when all required tools pass, NOT READY when any fail",
+        "Verify empty tiers are omitted from text output",
+        "Run doctor.sh --output=json and verify output is valid JSON (pipe to jq empty)",
+        "Verify JSON output has top-level fields: platform, project_types, tools, summary, ready",
+        "Verify JSON tools array entries have fields: name, tier, status, version, install_hint",
+        "Verify JSON status values are one of: pass, warn, fail, info, skip",
+        "Verify JSON version is null for missing tools and null for tools with no version_flag",
+        "Verify JSON install_hint is null for present tools and a string for missing tools",
+        "Verify JSON summary has passed, warnings, failures integer fields that sum to total tools",
+        "Verify JSON ready is true when failures==0, false otherwise",
+        "Verify text and JSON contain the same tools with the same statuses",
+        "Verify exit code is 0 when all required tools pass (both formats)",
+        "Verify exit code is 1 when any required tool is missing (both formats)",
+        "Verify --output=text is the default when no --output flag is given"
+      ],
+      "passes": false,
+      "dependencies": ["tool-presence-check"]
+    },
+    {
+      "id": "standalone-script",
+      "category": "functional",
+      "title": "Standalone doctor.sh Script",
+      "description": "Create scripts/doctor.sh as a self-contained bash script with set -euo pipefail, argument parsing for --output=text|json, --registry, and --project-dir flags, project root detection via git rev-parse, and the complete doctor pipeline: bootstrap jq check, detect platform, detect project types, iterate registry, check tools, output report in requested format.",
+      "testing_steps": [
+        "Verify .claude-plugin/scaffold/common/scripts/doctor.sh exists and is executable",
+        "Run scripts/doctor.sh with no arguments from the CPF repo root and verify it completes with text output",
+        "Run scripts/doctor.sh --output=json and verify valid JSON output",
+        "Run scripts/doctor.sh --registry /nonexistent and verify it errors about missing registry",
+        "Run scripts/doctor.sh --project-dir /tmp and verify it uses /tmp as the project root",
+        "Verify --registry with a relative path resolves against the effective project root, not CWD",
+        "Verify the script uses git rev-parse --show-toplevel for default project root with PWD fallback",
+        "Verify the script starts with set -euo pipefail and includes a bash shebang",
+        "Run shellcheck on the script and verify zero errors",
+        "Verify the script completes in under 2 seconds on a standard workstation",
+        "Verify the jq bootstrap error is plain text to stderr even when --output=json is requested",
+        "Verify the script handles being run from a subdirectory of the project (finds project root correctly)"
+      ],
+      "passes": false,
+      "dependencies": [
+        "tool-tier-registry",
+        "tool-presence-check",
+        "compliance-report"
+      ]
+    },
+    {
+      "id": "init-integration",
+      "category": "functional",
+      "title": "Init Integration with Doctor",
+      "description": "Update the /cpf:specforge init sub-command in SKILL.md to run scripts/doctor.sh after install-hooks.sh and version tracking. Display the compliance report visually separated from the init summary. Include a recheck reminder line.",
+      "testing_steps": [
+        "Read SKILL.md init workflow and verify doctor is listed as a step after install-hooks.sh",
+        "Verify init instructions include running scripts/doctor.sh",
+        "Verify init instructions include the recheck reminder text mentioning both /cpf:specforge doctor and scripts/doctor.sh",
+        "Verify init instructions state doctor output should be visually separated from file counts",
+        "Verify init instructions state that doctor failures do not block init completion"
+      ],
+      "passes": false,
+      "dependencies": ["standalone-script"]
+    },
+    {
+      "id": "skill-sub-command",
+      "category": "functional",
+      "title": "Specforge Doctor Skill Sub-Command",
+      "description": "Add /cpf:specforge doctor sub-command to SKILL.md that runs scripts/doctor.sh --output=text via the Bash tool for human-readable display, and optionally scripts/doctor.sh --output=json for structured parsing. Displays stdout output to the user and summarizes missing required tools if the script exits with code 1. Add doctor to argument-hint frontmatter.",
+      "testing_steps": [
+        "Verify SKILL.md contains a ### /cpf:specforge doctor section",
+        "Verify the doctor section includes Purpose, Workflow, and Notes subsections",
+        "Verify the workflow instructs running scripts/doctor.sh from the project root",
+        "Verify the workflow instructs displaying the script output to the user",
+        "Verify the workflow instructs summarizing missing required tools on exit code 1",
+        "Verify the SKILL.md argument-hint frontmatter includes doctor"
+      ],
+      "passes": false,
+      "dependencies": ["standalone-script"]
+    },
+    {
+      "id": "upgrade-tiers-registration",
+      "category": "functional",
+      "title": "Register Doctor Files in Upgrade Tiers",
+      "description": "Add doctor-registry.json and scripts/doctor.sh to the overwrite tier in upgrade-tiers.json so they are always replaced on /cpf:specforge upgrade.",
+      "testing_steps": [
+        "Read upgrade-tiers.json and verify .specify/doctor-registry.json is in the overwrite array",
+        "Read upgrade-tiers.json and verify scripts/doctor.sh is in the overwrite array",
+        "Verify both entries are strings matching the exact projected paths in host projects"
+      ],
+      "passes": false,
+      "dependencies": ["tool-tier-registry", "standalone-script"]
+    },
+    {
+      "id": "doctor-self-test",
+      "category": "testing",
+      "title": "Doctor Self-Test on CPF Repo",
+      "description": "Verify doctor works correctly on the CPF source repo itself. The repo is a Node + Shell project (package.json exists, user-authored .sh files exist). All required tools should be present on the development machine.",
+      "testing_steps": [
+        "Run scripts/doctor.sh from the CPF repo root and capture output",
+        "Verify output detects node as a project type",
+        "Verify output lists jq, git, python3 under Required heading",
+        "Verify output lists npm, npx, prettier under Recommended heading (node project)",
+        "Verify output shows shellcheck and shfmt as recommended if shell type is detected",
+        "Verify the summary line shows zero failures on a fully equipped dev machine",
+        "Verify the overall assessment is READY",
+        "Verify scripts/doctor.sh exits with code 0",
+        "Verify the output includes version strings for tools that have version_flag set",
+        "Run /cpf:specforge doctor (skill invocation) and verify it displays the same report"
+      ],
+      "passes": false,
+      "dependencies": ["standalone-script"]
+    },
+    {
+      "id": "documentation-update",
+      "category": "functional",
+      "title": "Update README and CHANGELOG",
+      "description": "Add doctor to the README.md workflow table and usage sections. Add a feature entry to CHANGELOG.md for the new sub-command.",
+      "testing_steps": [
+        "Verify README.md workflow table includes a doctor row",
+        "Verify README.md mentions scripts/doctor.sh as a standalone option",
+        "Verify CHANGELOG.md has an entry for the doctor feature under the Unreleased or next version section",
+        "Run markdownlint on README.md and CHANGELOG.md and verify zero errors"
+      ],
+      "passes": false,
+      "dependencies": ["skill-sub-command"]
+    }
+  ]
+}

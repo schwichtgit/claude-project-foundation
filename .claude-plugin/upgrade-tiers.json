@@ -15,7 +15,9 @@
       ".specify/WORKFLOW.md",
       "prompts/initializer-prompt.md",
       "prompts/coding-prompt.md",
-      ".markdownlint-cli2.yaml"
+      ".markdownlint-cli2.yaml",
+      ".specify/doctor-registry.json",
+      "scripts/doctor.sh"
     ],
     "review": [
       ".github/workflows/ci.yml",

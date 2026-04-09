@@ -135,6 +135,9 @@ spec workflow:
 /cpf:specforge analyze         # Score spec readiness (target: 80+)
 ```
 
+Run `/cpf:specforge doctor` to verify your dev
+environment has the required tools.
+
 When the spec scores 80 or above, hand off to
 [AutoForge](https://github.com/AutoForgeAI/autoforge)
 for autonomous execution. Alternatively, use the
@@ -161,10 +164,12 @@ and committed with conventional commit messages.
 | `setup`        | Generate platform-specific setup checklist | Actionable `gh` CLI commands         |
 | `init`         | Project scaffold into host project         | Directory structure + hooks          |
 | `upgrade`      | Update scaffold with three-tier merge      | Updated files + `.specforge-version` |
+| `doctor`       | Check dev environment prerequisites        | Compliance report (stdout)           |
 
 Run `constitution` through `analyze` in order. Use
-`init` to bootstrap a new project and `upgrade` to
-pull in scaffold updates.
+`init` to bootstrap a new project, `upgrade` to
+pull in scaffold updates, and `doctor` to validate
+prerequisites.
 
 ## Autonomous Execution
 
