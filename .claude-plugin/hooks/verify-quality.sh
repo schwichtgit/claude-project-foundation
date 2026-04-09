@@ -5,6 +5,12 @@ trap 'exit 0' ERR
 # Stop hook. Runs quality checks before allowing Claude Code to stop.
 # Exit 0 = allow stop, Exit 2 = block stop, Exit 1 = hook error.
 
+if ! command -v jq >/dev/null 2>&1; then
+    echo "cpf: jq not found, skipping hook" \
+        "(run /cpf:specforge doctor)" >&2
+    exit 0
+fi
+
 INPUT=$(cat /dev/stdin 2>/dev/null || echo "{}")
 
 # Prevent infinite loop: if stop_hook_active is set, exit immediately

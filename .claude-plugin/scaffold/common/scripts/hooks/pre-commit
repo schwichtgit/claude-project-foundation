@@ -10,6 +10,20 @@ if [[ -z "$STAGED_FILES" ]]; then
     exit 0
 fi
 
+# --- Block commits to protected branches ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+    if [[ "${CPF_ALLOW_MAIN_COMMIT:-0}" != "1" ]]; then
+        echo "ERROR: Direct commits to '$CURRENT_BRANCH' are blocked." >&2
+        echo "  Create a feature branch instead:" >&2
+        echo "    git checkout -b feat/my-feature origin/main" >&2
+        echo "" >&2
+        echo "  To override (release/CI only):" >&2
+        echo "    CPF_ALLOW_MAIN_COMMIT=1 git commit ..." >&2
+        exit 1
+    fi
+fi
+
 ERRORS=0
 
 # --- Check for forbidden files ---

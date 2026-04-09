@@ -6,6 +6,13 @@ set -euo pipefail
 # Exit 0 = allow or not a PR command, Exit 2 = block (Claude Code convention).
 
 trap 'exit 0' ERR
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "cpf: jq not found, skipping hook" \
+        "(run /cpf:specforge doctor)" >&2
+    exit 0
+fi
+
 INPUT=$(cat /dev/stdin)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null || echo "")
 
@@ -92,6 +99,14 @@ if violations:
 else:
     sys.exit(0)
 PYTHON_SCRIPT
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "cpf: python3 not found, skipping" \
+        "PR validation" \
+        "(run /cpf:specforge doctor)" >&2
+    rm -f "$VALIDATOR_SCRIPT"
+    exit 0
+fi
+
 VIOLATIONS=$(python3 "$VALIDATOR_SCRIPT" "$COMMAND" 2>&1) || {
     echo "PR validation failed:" >&2
     echo "$VIOLATIONS" >&2

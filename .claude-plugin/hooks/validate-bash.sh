@@ -6,6 +6,13 @@ set -euo pipefail
 # Exit 0 = allow, Exit 1 = block.
 
 trap 'exit 0' ERR
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "cpf: jq not found, skipping hook" \
+        "(run /cpf:specforge doctor)" >&2
+    exit 0
+fi
+
 INPUT=$(cat /dev/stdin)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null || echo "")
 

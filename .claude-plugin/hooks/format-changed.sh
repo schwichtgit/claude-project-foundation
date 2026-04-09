@@ -5,6 +5,12 @@ trap 'exit 0' ERR
 # Stop hook: batch-format all changed files.
 # Runs before verify-quality.sh. Checks stop_hook_active for recursion guard.
 
+if ! command -v jq >/dev/null 2>&1; then
+    echo "cpf: jq not found, skipping hook" \
+        "(run /cpf:specforge doctor)" >&2
+    exit 0
+fi
+
 INPUT=$(cat /dev/stdin 2>/dev/null || echo "{}")
 
 STOP_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // "false"' 2>/dev/null || echo "false")
