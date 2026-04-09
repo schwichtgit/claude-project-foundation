@@ -279,6 +279,27 @@ prettier, release pipelines). See the scaffold
 directories under `.claude-plugin/scaffold/github/`,
 `gitlab/`, and `jenkins/`.
 
+## Troubleshooting
+
+**"UserPromptSubmit hook error" from semgrep plugin.**
+If you installed the specforge marketplace, the bundled
+semgrep plugin registers a hook that requires the
+`semgrep` binary. If semgrep is not installed, the hook
+errors on every prompt. Fix: install semgrep
+(`uv tool install semgrep` or `pip install semgrep`),
+or uninstall the semgrep plugin if you don't need it.
+This is a semgrep plugin issue, not a cpf issue.
+
+**Hooks appear to do nothing.** All cpf hooks require
+`jq` to parse input. If `jq` is missing, hooks warn
+to stderr and exit (fail-open). Run
+`/cpf:specforge doctor` to check prerequisites.
+
+**Scaffold files are outdated.** After updating the
+plugin, run `/cpf:specforge upgrade` to update
+projected files. A session-start notification appears
+when the scaffold version is behind the plugin version.
+
 ## License
 
 Copyright 2026 Frank Schwichtenberg. [MIT](LICENSE)
