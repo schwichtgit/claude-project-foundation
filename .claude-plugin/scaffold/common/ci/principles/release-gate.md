@@ -22,11 +22,13 @@ All dependencies must use approved licenses:
 
 ## 3. Changelog Entry
 
-CHANGELOG.md entry must exist for the version being released. Use [Keep a Changelog](https://keepachangelog.com/) format.
+CHANGELOG.md entry must exist for the version being released.
+Use [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## 4. Version Bump
 
-Version must be incremented from previous release. Use [SemVer](https://semver.org/) format.
+Version must be incremented from previous release.
+Use [SemVer](https://semver.org/) format.
 
 ## 5. Clean Dependency Tree
 

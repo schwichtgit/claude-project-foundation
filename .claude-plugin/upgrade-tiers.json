@@ -15,8 +15,7 @@
       ".specify/WORKFLOW.md",
       "prompts/initializer-prompt.md",
       "prompts/coding-prompt.md",
-      ".markdownlint.json",
-      ".markdownlintignore"
+      ".markdownlint-cli2.yaml"
     ],
     "review": [
       ".github/workflows/ci.yml",
