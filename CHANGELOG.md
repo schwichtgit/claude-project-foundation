@@ -5,6 +5,21 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `/cpf:specforge doctor` sub-command for dev environment
+  validation with three-tier tool checks (required,
+  recommended, optional), platform-specific install hints,
+  and text/JSON output formats
+- `scripts/doctor.sh` standalone script invoked by the
+  skill sub-command, also usable directly from terminal
+- `.specify/doctor-registry.json` tool registry defining
+  all checked tools with install commands per platform
+- Doctor integration in `/cpf:specforge init` -- runs
+  automatically after scaffold projection
+
 ## [0.1.0-alpha.5] - 2026-03-21
 
 Fix `/specforge` slash command prefix across all skill output and

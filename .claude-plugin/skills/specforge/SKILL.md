@@ -3,7 +3,7 @@ description: >-
   Spec-driven development skill for autonomous Claude Code projects. Guides
   collaborative specification authoring and scaffold projection through a
   structured workflow that produces machine-readable artifacts.
-argument-hint: init | upgrade | constitution | spec | clarify | plan | features | analyze | setup
+argument-hint: init | upgrade | constitution | spec | clarify | plan | features | analyze | setup | doctor
 ---
 
 # specforge
@@ -127,14 +127,24 @@ principles needed for spec-driven development.
      (e.g., "JavaScript, Go"); "Unknown" if none detected
    - `{{CI_PLATFORM}}` -- the selected CI platform
 9. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-10. **Auto-run install-hooks.sh:** Execute `scripts/install-hooks.sh` to
-    install git hooks into `.git/hooks/`.
-11. **Version tracking:** Write the plugin version (from `plugin.json`) to
-    `.specforge-version` at the project root. Write the selected CI platform
-    to `.specforge-ci-platform`.
-12. **Summary:** Print file counts (copied, skipped), the selected CI
-    platform, and next steps including:
-    "Run `/cpf:specforge constitution` to define your project principles."
+10. **Auto-run install-hooks.sh:** Execute
+    `scripts/install-hooks.sh` to install git hooks into
+    `.git/hooks/`.
+11. **Doctor check:** Run `scripts/doctor.sh` to validate
+    prerequisites. Display the compliance report. Doctor
+    failures do not block init -- the report is
+    informational. Visually separate doctor output from
+    file counts with a blank line and header.
+12. **Version tracking:** Write the plugin version (from
+    `plugin.json`) to `.specforge-version` at the project
+    root. Write the selected CI platform to
+    `.specforge-ci-platform`.
+13. **Summary:** Print file counts (copied, skipped), the
+    selected CI platform, and next steps including:
+    "Run `/cpf:specforge constitution` to define your
+    project principles."
+    "Run `/cpf:specforge doctor` or `scripts/doctor.sh`
+    to recheck prerequisites at any time."
 
 **Notes:**
 
@@ -243,7 +253,7 @@ structured implementation plan.
    Tell the user which artifact is missing and which `/cpf:specforge`
    sub-command to run first. Do NOT proceed without both artifacts.
 2. **Clarify gate:** Ask the user whether they have run
-   `/cpf:specforge clarify` on the current spec. If they have not,
+   `/cpf:specforge clarify` on the current spec. If not,
    STOP and tell them to run `/cpf:specforge clarify` first.
    Clarify is a mandatory step -- do NOT skip it.
 3. Read the constitution and spec.
@@ -373,6 +383,41 @@ platform preference). Defaults to GitHub if no plan exists.
 - GitHub is the default and first-class CI platform.
 - GitLab and Jenkins are documented as mapping guides in `ci/gitlab/` and
   `ci/jenkins/`.
+
+### /cpf:specforge doctor
+
+**Purpose:** Validate the local development environment
+against the scaffold's tool requirements. Reports which
+required, recommended, and optional tools are installed,
+with platform-specific install instructions for missing
+tools.
+
+**Standalone script:** `scripts/doctor.sh`
+
+**Registry:** `.specify/doctor-registry.json`
+
+**Workflow:**
+
+1. Run `scripts/doctor.sh` from the project root via the
+   Bash tool. Use `--output=text` for display.
+2. Display the script's stdout output to the user.
+3. If the script exits with code 1 (missing required
+   tools), summarize which required tools are missing
+   and provide the install commands from the output.
+4. If the script exits with code 0, confirm the
+   environment is ready.
+
+**Notes:**
+
+- Doctor can also be run directly from the terminal:
+  `./scripts/doctor.sh`
+- For machine-parseable output:
+  `./scripts/doctor.sh --output=json`
+- The registry at `.specify/doctor-registry.json` defines
+  all tool entries. Adding a tool requires editing only
+  this file.
+- Doctor does not install tools automatically. It reports
+  what is missing and how to install it.
 
 ### /cpf:specforge upgrade
 
