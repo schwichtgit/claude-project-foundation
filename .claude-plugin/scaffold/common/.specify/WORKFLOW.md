@@ -1,12 +1,18 @@
 # Workflow Documentation
 
-This document describes the two-phase workflow for spec-driven autonomous development.
+This document describes the two-phase workflow for spec-driven
+autonomous development.
 
 ## Overview
 
-**Phase 1 (Interactive Planning):** Human and Claude Code collaboratively author project specifications through the `/cpf:specforge` skill. Seven steps, each producing a concrete artifact.
+**Phase 1 (Interactive Planning):** Human and Claude Code
+collaboratively author project specifications through the
+`/cpf:specforge` skill. Seven steps, each producing a concrete
+artifact.
 
-**Phase 2 (Autonomous Execution):** Two-agent pattern implements features across multiple Claude Code sessions using the artifacts from Phase 1.
+**Phase 2 (Autonomous Execution):** Two-agent pattern
+implements features across multiple Claude Code sessions using
+the artifacts from Phase 1.
 
 ## Phase 1: Interactive Planning
 
@@ -59,12 +65,17 @@ Uses `prompts/coding-prompt.md`. Follows a 10-step loop per session:
 
 ## Rules
 
-- **feature_list.json is immutable** except for the `passes` field, which only the coding agent may change.
+- **feature_list.json is immutable** except for the `passes`
+  field, which only the coding agent may change.
 - **One feature at a time.** Complete one thoroughly before starting the next.
-- **Regression verification.** Test previously passing features before implementing new ones.
-- **Commit per feature.** Each completed feature gets its own conventional commit.
-- **Progress documentation.** Update claude-progress.txt at the end of every session.
-- **Fix regressions first.** If a previously passing feature breaks, fix it before new work.
+- **Regression verification.** Test previously passing features
+  before implementing new ones.
+- **Commit per feature.** Each completed feature gets its own
+  conventional commit.
+- **Progress documentation.** Update claude-progress.txt at
+  the end of every session.
+- **Fix regressions first.** If a previously passing feature
+  breaks, fix it before new work.
 
 ## Quality Gates
 

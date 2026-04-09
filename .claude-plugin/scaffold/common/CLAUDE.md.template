@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code)
+when working with code in this repository.
 
 ## Project Overview
 
@@ -13,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Subagent Guidance
 
 Use the Task tool with specialized agents for:
+
 - Complex multi-file changes
 - Running test suites
 - Exploring unfamiliar parts of the codebase
@@ -39,20 +41,41 @@ Use the Task tool with specialized agents for:
 [BUILD_COMMAND]
 ```
 
+## Spec-Driven Workflow
+
+This project uses `/cpf:specforge` for spec-driven development.
+The workflow steps are **mandatory and sequential** -- do not
+skip or reorder them:
+
+```text
+constitution -> spec -> clarify -> plan -> features -> analyze
+```
+
+See `.specify/WORKFLOW.md` for the full process documentation.
+Each sub-command enforces artifact gates: if a prerequisite
+artifact is missing, stop and run the required prior step first.
+
 ## Architecture
 
-[Describe the project architecture: main modules, data flow, key abstractions.]
+[Describe the project architecture: main modules, data flow,
+key abstractions.]
 
 ## Quality Standards
 
 Quality is enforced by the Claude Project Foundation hooks:
 
-- **Pre-edit:** Blocks modification of sensitive files (.env, keys, credentials, lock files)
-- **Pre-bash:** Blocks destructive commands (rm -rf /, force push, hard reset)
-- **Post-edit:** Auto-formats files by language (Prettier, Ruff, rustfmt, etc.)
-- **On stop:** Runs lint, type check, and test suite before allowing session end
-- **Pre-commit:** Checks for secrets, forbidden files, runs linters
-- **Commit-msg:** Validates conventional commits, blocks AI-isms and emoji
+- **Pre-edit:** Blocks modification of sensitive files
+  (.env, keys, credentials, lock files)
+- **Pre-bash:** Blocks destructive commands
+  (rm -rf /, force push, hard reset)
+- **Post-edit:** Auto-formats files by language
+  (Prettier, Ruff, rustfmt, etc.)
+- **On stop:** Runs lint, type check, and test suite
+  before allowing session end
+- **Pre-commit:** Checks for secrets, forbidden files,
+  runs linters
+- **Commit-msg:** Validates conventional commits, blocks
+  AI-isms and emoji
 
 Coverage threshold: [COVERAGE_THRESHOLD]% (configured in constitution)
 

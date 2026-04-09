@@ -1,6 +1,9 @@
 # GitLab CI Mapping Guide
 
-This guide maps the abstract SDLC principles to GitLab CI configuration. A fully templated `.gitlab-ci.yml` is provided at `.claude-plugin/scaffold/gitlab/.gitlab-ci.yml` with equivalent quality gates to the GitHub Actions CI workflow.
+This guide maps the abstract SDLC principles to GitLab CI
+configuration. A fully templated `.gitlab-ci.yml` is provided at
+`.claude-plugin/scaffold/gitlab/.gitlab-ci.yml` with equivalent
+quality gates to the GitHub Actions CI workflow.
 
 ## Mapping
 
@@ -32,7 +35,9 @@ lint -> test -> release
 | `commit-standards`  | Validates conventional commit format            | Merge requests only                 |
 | `plugin-validation` | Validates plugin.json, hooks, skill paths       | `.claude-plugin/**` changed         |
 
-All lint jobs use `rules: changes:` for path-based filtering. Jobs that do not match any changed paths are skipped (not created), which keeps pipelines fast.
+All lint jobs use `rules: changes:` for path-based filtering.
+Jobs that do not match any changed paths are skipped (not
+created), which keeps pipelines fast.
 
 ### Test Stage
 
@@ -40,7 +45,11 @@ All lint jobs use `rules: changes:` for path-based filtering. Jobs that do not m
 | --------- | ------------------------------------------------- |
 | `summary` | Single merge-gate check; depends on all lint jobs |
 
-The `summary` job uses `needs:` with `optional: true` on each lint job. This means skipped lint jobs do not block the summary. Require **only** the `summary` job in your protected-branch pipeline-success settings -- this avoids the problem where skipped conditional jobs block merges.
+The `summary` job uses `needs:` with `optional: true` on each
+lint job. This means skipped lint jobs do not block the summary.
+Require **only** the `summary` job in your protected-branch
+pipeline-success settings -- this avoids the problem where
+skipped conditional jobs block merges.
 
 ### Release Stage
 
@@ -48,13 +57,19 @@ The `summary` job uses `needs:` with `optional: true` on each lint job. This mea
 | --------- | -------------------------------------------------------------- |
 | `release` | Validates tag version against `plugin.json`, runs on `v*` tags |
 
-The release job extracts the version from the git tag (stripping the `v` prefix) and compares it to the `version` field in `.claude-plugin/plugin.json`. If they do not match, the pipeline fails.
+The release job extracts the version from the git tag (stripping
+the `v` prefix) and compares it to the `version` field in
+`.claude-plugin/plugin.json`. If they do not match, the pipeline
+fails.
 
 ## Merge Request Pipelines
 
-All lint and summary jobs include `if: $CI_MERGE_REQUEST_IID` rules, which enables merge request pipelines. This means the pipeline runs on every push to a merge request branch.
+All lint and summary jobs include `if: $CI_MERGE_REQUEST_IID`
+rules, which enables merge request pipelines. This means the
+pipeline runs on every push to a merge request branch.
 
-The `commit-standards` job runs **only** on merge requests (it needs the target branch ref to compare commit messages).
+The `commit-standards` job runs **only** on merge requests
+(it needs the target branch ref to compare commit messages).
 
 ## Variables
 
@@ -62,13 +77,17 @@ The `commit-standards` job runs **only** on merge requests (it needs the target 
 | -------------- | ------- | ----------------------------- |
 | `NODE_VERSION` | `22`    | Node.js version for lint jobs |
 
-The default image is `node:${NODE_VERSION}-slim`. Jobs that do not need Node (shellcheck, commit-standards, plugin-validation) override the image to `koalaman/shellcheck-alpine:stable` or `alpine:latest`.
+The default image is `node:${NODE_VERSION}-slim`. Jobs that do
+not need Node (shellcheck, commit-standards, plugin-validation)
+override the image to `koalaman/shellcheck-alpine:stable` or
+`alpine:latest`.
 
 ## Customization
 
 ### Adding test jobs
 
-Add test jobs in the `test` stage and include them in the `summary` job's `needs:` list:
+Add test jobs in the `test` stage and include them in the
+`summary` job's `needs:` list:
 
 ```yaml
 unit-tests:
@@ -102,7 +121,8 @@ summary:
 
 ### Adding build jobs
 
-Add a `build` stage between `test` and `release` in the `stages:` list, then add your build job:
+Add a `build` stage between `test` and `release` in the
+`stages:` list, then add your build job:
 
 ```yaml
 stages:
@@ -155,4 +175,5 @@ Configure these in your GitLab project under **Settings > Merge requests**:
 - Require at least 1 approval
 - Enable squash commits by default
 - Delete source branch on merge
-- Under **Settings > Repository > Protected branches**, require only the `summary` job to pass
+- Under **Settings > Repository > Protected branches**, require
+  only the `summary` job to pass

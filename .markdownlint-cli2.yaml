@@ -1,0 +1,16 @@
+config:
+  MD013:
+    line_length: 80
+    tables: false
+    code_blocks: false
+  MD033: false
+  MD041: false
+  MD024:
+    siblings_only: true
+
+ignores:
+  - 'claude-project-foundation-PLAN.md'
+  - '.claude/PLAN.md'
+  - '.specify/memory/'
+  - '.specify/specs/'
+  - '.specify/restart-prompt.md'

@@ -8,9 +8,32 @@ argument-hint: init | upgrade | constitution | spec | clarify | plan | features 
 
 # specforge
 
-Spec-driven development skill for autonomous Claude Code projects. Guides
-collaborative specification authoring through a structured workflow that
-produces machine-readable artifacts.
+Spec-driven development skill for autonomous Claude Code
+projects. Guides collaborative specification authoring through
+a structured workflow that produces machine-readable artifacts.
+
+## Mandatory Workflow Order
+
+The spec workflow has a fixed sequence. Each step produces an
+artifact that the next step requires. **Do NOT skip steps or
+reorder them.** Every sub-command with a "Required artifacts"
+section enforces an artifact gate -- if a prerequisite is
+missing, STOP and direct the user to the correct prior step.
+
+```text
+constitution -> spec -> clarify -> plan -> features -> analyze
+```
+
+- `constitution` -- no prerequisites (first step)
+- `spec` -- requires constitution.md
+- `clarify` -- requires constitution.md + spec.md
+- `plan` -- requires constitution.md + spec.md + clarify done
+- `features` -- requires constitution.md + spec.md + plan.md
+- `analyze` -- requires all four artifacts
+- `setup` -- optional, can run after plan
+
+The `init` and `upgrade` sub-commands are independent of this
+sequence (they manage scaffold projection, not spec authoring).
 
 ## Sub-Commands
 
@@ -169,13 +192,17 @@ conversation, producing a structured specification.
 **Purpose:** Surface ambiguities, contradictions, and gaps in the spec,
 presenting each as a numbered question with suggested resolutions.
 
-**Prerequisites:** Read `.specify/memory/constitution.md` and
-`.specify/specs/spec.md` before starting.
+**Required artifacts:** `.specify/memory/constitution.md`,
+`.specify/specs/spec.md`
 
 **Workflow:**
 
-1. Read the constitution and spec thoroughly.
-2. Identify issues in these categories:
+1. **Artifact gate:** Verify that `.specify/memory/constitution.md` and
+   `.specify/specs/spec.md` both exist. If either is missing, STOP.
+   Tell the user which artifact is missing and which `/cpf:specforge`
+   sub-command to run first. Do NOT proceed without both artifacts.
+2. Read the constitution and spec thoroughly.
+3. Identify issues in these categories:
    - **Ambiguous requirements** -- vague language, undefined terms, multiple
      possible interpretations
    - **Missing error handling** -- no defined behavior for failure cases
@@ -183,16 +210,18 @@ presenting each as a numbered question with suggested resolutions.
    - **Contradictions** -- conflicting requirements between features or with
      the constitution
    - **Unstated assumptions** -- implicit expectations not documented
-3. Present each issue as a numbered question with:
+4. Present each issue as a numbered question with:
    - The source (which feature or section)
    - The issue type
    - A suggested resolution
-4. For each resolved issue, update `.specify/specs/spec.md` with the
+5. For each resolved issue, update `.specify/specs/spec.md` with the
    clarified requirement.
 
 **Notes:**
 
-- Run this after `/cpf:specforge spec` and before `/cpf:specforge plan`.
+- This is a **mandatory** step between `spec` and `plan`.
+  The `/cpf:specforge plan` sub-command will ask the user to
+  confirm that clarify has been run. Do NOT skip this step.
 - Multiple rounds of clarification may be needed.
 
 ### /cpf:specforge plan
@@ -200,8 +229,8 @@ presenting each as a numbered question with suggested resolutions.
 **Purpose:** Make and record technical architecture decisions, producing a
 structured implementation plan.
 
-**Prerequisites:** Read `.specify/memory/constitution.md` and
-`.specify/specs/spec.md` before starting.
+**Required artifacts:** `.specify/memory/constitution.md`,
+`.specify/specs/spec.md`
 
 **Template:** `.specify/templates/plan-template.md`
 
@@ -209,18 +238,26 @@ structured implementation plan.
 
 **Workflow:**
 
-1. Read the constitution and spec.
-2. For each decision area, propose a recommendation with alternatives:
+1. **Artifact gate:** Verify that `.specify/memory/constitution.md` and
+   `.specify/specs/spec.md` both exist. If either is missing, STOP.
+   Tell the user which artifact is missing and which `/cpf:specforge`
+   sub-command to run first. Do NOT proceed without both artifacts.
+2. **Clarify gate:** Ask the user whether they have run
+   `/cpf:specforge clarify` on the current spec. If they have not,
+   STOP and tell them to run `/cpf:specforge clarify` first.
+   Clarify is a mandatory step -- do NOT skip it.
+3. Read the constitution and spec.
+4. For each decision area, propose a recommendation with alternatives:
    - **Project structure** -- directory layout, module organization
    - **Tech stack** -- frameworks, libraries, build tools
    - **Testing strategy** -- frameworks, coverage targets, test types
    - **CI/CD pipeline** -- workflow structure, quality gates
    - **Deployment strategy** -- hosting, infrastructure
    - **Security approach** -- authentication, authorization, secrets
-3. Record each decision as an Architecture Decision Record (ADR) with:
+5. Record each decision as an Architecture Decision Record (ADR) with:
    status, context, decision, alternatives considered, consequences.
-4. Define implementation phases with dependency ordering.
-5. Write the plan to `.specify/specs/plan.md` using the template.
+6. Define implementation phases with dependency ordering.
+7. Write the plan to `.specify/specs/plan.md` using the template.
 
 **Notes:**
 
@@ -233,8 +270,8 @@ structured implementation plan.
 **Purpose:** Generate `feature_list.json` from the spec and plan with
 machine-readable feature definitions for autonomous execution.
 
-**Prerequisites:** Read `.specify/memory/constitution.md`,
-`.specify/specs/spec.md`, and `.specify/specs/plan.md` before starting.
+**Required artifacts:** `.specify/memory/constitution.md`,
+`.specify/specs/spec.md`, `.specify/specs/plan.md`
 
 **Output artifact:** `feature_list.json`
 
@@ -242,8 +279,13 @@ machine-readable feature definitions for autonomous execution.
 
 **Workflow:**
 
-1. Read the constitution, spec, and plan.
-2. For each feature in the spec, create a JSON entry with:
+1. **Artifact gate:** Verify that `.specify/memory/constitution.md`,
+   `.specify/specs/spec.md`, and `.specify/specs/plan.md` all exist.
+   If any is missing, STOP. Tell the user which artifact is missing
+   and which `/cpf:specforge` sub-command to run first. Do NOT
+   proceed without all three artifacts.
+2. Read the constitution, spec, and plan.
+3. For each feature in the spec, create a JSON entry with:
    - `id`: kebab-case identifier (e.g., `plugin-directory-structure`)
    - `category`: one of `infrastructure`, `functional`, `style`, `testing`
    - `title`: human-readable title
@@ -251,13 +293,13 @@ machine-readable feature definitions for autonomous execution.
    - `testing_steps`: array of concrete, executable test commands
    - `passes`: `false` (all features start as not passing)
    - `dependencies`: array of feature IDs this feature depends on
-3. Validate the output against `.specify/templates/feature-list-schema.json`.
-4. Run dependency cycle detection to ensure no circular references.
-5. Verify constraints:
+4. Validate the output against `.specify/templates/feature-list-schema.json`.
+5. Run dependency cycle detection to ensure no circular references.
+6. Verify constraints:
    - All `passes` fields are `false` initially
    - Every feature has at least 3 testing steps
    - At least 20% of features have 10+ testing steps
-6. Write `feature_list.json` to the project root.
+7. Write `feature_list.json` to the project root.
 
 **Notes:**
 
@@ -270,7 +312,9 @@ machine-readable feature definitions for autonomous execution.
 **Purpose:** Score spec artifacts for autonomous-readiness on a 0-100 scale
 across five weighted dimensions.
 
-**Prerequisites:** Read `feature_list.json` and all spec artifacts.
+**Required artifacts:** `.specify/memory/constitution.md`,
+`.specify/specs/spec.md`, `.specify/specs/plan.md`,
+`feature_list.json`
 
 **Scoring dimensions:**
 
@@ -284,14 +328,20 @@ across five weighted dimensions.
 
 **Workflow:**
 
-1. Read `feature_list.json` and all spec artifacts.
-2. Score each dimension 0-100 based on the criteria above.
-3. Compute weighted total.
-4. Report:
+1. **Artifact gate:** Verify that `.specify/memory/constitution.md`,
+   `.specify/specs/spec.md`, `.specify/specs/plan.md`, and
+   `feature_list.json` all exist. If any is missing, STOP. Tell the
+   user which artifact is missing and which `/cpf:specforge`
+   sub-command to run first. Do NOT proceed without all four
+   artifacts.
+2. Read `feature_list.json` and all spec artifacts.
+3. Score each dimension 0-100 based on the criteria above.
+4. Compute weighted total.
+5. Report:
    - **READY** (>= 80): artifacts are sufficient for autonomous execution.
    - **NEEDS WORK** (< 80): list specific remediation steps for any
      dimension scoring below 70.
-5. For each dimension below 70, provide concrete remediation steps
+6. For each dimension below 70, provide concrete remediation steps
    (e.g., "Add testing steps to features X, Y, Z").
 
 ### /cpf:specforge setup
@@ -299,13 +349,13 @@ across five weighted dimensions.
 **Purpose:** Generate a platform-specific project setup checklist with
 executable commands.
 
-**Prerequisites:** Optionally read `.specify/specs/plan.md` for CI platform
-preference. Defaults to GitHub if no plan exists.
+**Recommended artifacts:** `.specify/specs/plan.md` (for CI
+platform preference). Defaults to GitHub if no plan exists.
 
 **Workflow:**
 
-1. Read `plan.md` if available to determine the CI platform. Default to
-   GitHub.
+1. Read `plan.md` if it exists to determine the CI platform.
+   Default to GitHub.
 2. Generate a numbered checklist covering:
    - **Repository settings** -- default branch, merge strategy
    - **Branch protection** -- required checks, review requirements

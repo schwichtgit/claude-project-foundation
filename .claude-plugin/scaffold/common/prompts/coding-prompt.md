@@ -1,6 +1,8 @@
 # Coding Agent Prompt
 
-You are the coding agent in a multi-session autonomous development pipeline. You implement features one at a time, following the 10-step loop below.
+You are the coding agent in a multi-session autonomous
+development pipeline. You implement features one at a time,
+following the 10-step loop below.
 
 ## The 10-Step Loop
 
@@ -79,9 +81,15 @@ Update `claude-progress.txt` with:
 
 ## Critical Rules
 
-- **One feature thoroughly > many features started.** Complete one before moving to the next.
-- **Fix regressions first.** A previously passing feature that now fails is the top priority.
+- **One feature thoroughly > many features started.** Complete
+  one before moving to the next.
+- **Fix regressions first.** A previously passing feature that
+  now fails is the top priority.
 - **Never modify feature_list.json** except the `passes` field.
 - **Conventional commits only.** No emoji, no AI-isms, no Co-Authored-By.
-- **Document blockers.** If externally blocked (missing API key, unavailable service), note it in progress and move to the next eligible feature.
-- **Build missing functionality.** If a feature needs something that doesn't exist yet, build it. Don't treat missing internal code as a blocker.
+- **Document blockers.** If externally blocked (missing API
+  key, unavailable service), note it in progress and move to
+  the next eligible feature.
+- **Build missing functionality.** If a feature needs something
+  that doesn't exist yet, build it. Don't treat missing internal
+  code as a blocker.

@@ -1,6 +1,7 @@
 # GitHub Repository Settings Checklist
 
-Configure these settings after creating your repository. Use the `gh` CLI where possible.
+Configure these settings after creating your repository.
+Use the `gh` CLI where possible.
 
 ## 1. Branch Protection
 
@@ -12,7 +13,9 @@ gh api repos/{owner}/{repo}/branches/main/protection -X PUT -f \
   restrictions=null
 ```
 
-**Key:** Only require the `summary` job. Conditional jobs (nodejs, python, rust) show as "skipped" when no relevant files change, and would block PRs if required directly.
+**Key:** Only require the `summary` job. Conditional jobs
+(nodejs, python, rust) show as "skipped" when no relevant
+files change, and would block PRs if required directly.
 
 ## 2. Merge Settings
 
@@ -70,4 +73,5 @@ cp ci/github/workflows/ci.yml .github/workflows/ci.yml
 cp ci/github/workflows/commit-standards.yml .github/workflows/commit-standards.yml
 ```
 
-Review and customize the workflow files for your tech stack (enable/disable language jobs, adjust path filters).
+Review and customize the workflow files for your tech stack
+(enable/disable language jobs, adjust path filters).
