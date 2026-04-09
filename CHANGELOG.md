@@ -5,17 +5,17 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0-alpha.6] - 2026-04-09
+
+Dev environment validation, workflow enforcement, hook
+resilience, and branch-based development.
 
 ### Added
 
-- Upgrade notification on session start when scaffold
-  version is behind plugin version (once per session,
-  non-blocking)
 - `/cpf:specforge doctor` sub-command for dev environment
   validation with three-tier tool checks (required,
   recommended, optional), platform-specific install hints,
-  and text/JSON output formats
+  and text/JSON output formats (#32)
 - `scripts/doctor.sh` standalone script invoked by the
   skill sub-command, also usable directly from terminal
 - `.specify/doctor-registry.json` tool registry defining
@@ -23,7 +23,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Doctor integration in `/cpf:specforge init` -- runs
   automatically after scaffold projection
 - `/cpf:specforge help` sub-command for quick reference
-  card showing all sub-commands and workflow order
+  card showing all sub-commands and workflow order (#34)
+- Upgrade notification on session start when scaffold
+  version is behind plugin version (once per session,
+  non-blocking) (#35)
+- Branch enforcement in pre-commit hook -- blocks commits
+  to `main`/`master` with `CPF_ALLOW_MAIN_COMMIT=1`
+  opt-out (#33)
+- Troubleshooting section in README (#36)
+
+### Fixed
+
+- Rewrap all scaffold markdown files to 80 characters,
+  fixing MD013 violations in downstream projects with
+  strict markdownlint configs (#31)
+- Migrate from `.markdownlint.json` + `.markdownlintignore`
+  to `.markdownlint-cli2.yaml` with 80-char enforcement
+  (#31)
+- Add mandatory artifact gates to specforge sub-commands
+  (clarify, plan, features, analyze) -- missing
+  prerequisites now STOP execution instead of being
+  silently skipped (#31)
+- Add visible `jq` guard to all 6 hooks (warn to stderr,
+  fail-open) instead of silent no-op (#33)
+- Add `python3` guard in `validate-pr.sh` and `npx` guard
+  in `_formatter-dispatch.sh` (#33)
+
+### Changed
+
+- DavidAnson/markdownlint-cli2-action bumped from v22
+  to v23 (#30)
 
 ## [0.1.0-alpha.5] - 2026-03-21
 
@@ -246,6 +275,7 @@ sub-commands, agent definitions, git hooks/scripts, and test suites.
 - **WORKFLOW.md corruption** -- Corrected first line of `.specify/WORKFLOW.md`
   from `claude# Workflow Documentation` to `# Workflow Documentation`.
 
+[0.1.0-alpha.6]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/schwichtgit/claude-project-foundation/releases/tag/v0.1.0-alpha.3
