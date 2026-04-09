@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all checked tools with install commands per platform
 - Doctor integration in `/cpf:specforge init` -- runs
   automatically after scaffold projection
+- `/cpf:specforge help` sub-command for quick reference
+  card showing all sub-commands and workflow order
 
 ## [0.1.0-alpha.5] - 2026-03-21
 
