@@ -165,11 +165,12 @@ and committed with conventional commit messages.
 | `init`         | Project scaffold into host project         | Directory structure + hooks          |
 | `upgrade`      | Update scaffold with three-tier merge      | Updated files + `.specforge-version` |
 | `doctor`       | Check dev environment prerequisites        | Compliance report (stdout)           |
+| `help`         | Print sub-command reference card           | Quick reference (conversation)       |
 
 Run `constitution` through `analyze` in order. Use
-`init` to bootstrap a new project, `upgrade` to
-pull in scaffold updates, and `doctor` to validate
-prerequisites.
+`init` to bootstrap a new project, `upgrade` to pull
+in scaffold updates, `doctor` to validate prerequisites,
+and `help` for a quick reference card.
 
 ## Autonomous Execution
 

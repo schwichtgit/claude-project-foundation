@@ -3,7 +3,7 @@ description: >-
   Spec-driven development skill for autonomous Claude Code projects. Guides
   collaborative specification authoring and scaffold projection through a
   structured workflow that produces machine-readable artifacts.
-argument-hint: init | upgrade | constitution | spec | clarify | plan | features | analyze | setup | doctor
+argument-hint: init | upgrade | constitution | spec | clarify | plan | features | analyze | setup | doctor | help
 ---
 
 # specforge
@@ -487,3 +487,39 @@ categorization to preserve project-specific customizations.
 - Running upgrade is safe to abort mid-way; already-overwritten files are at
   the new version, unapplied files remain at the old version.
 - The diff display uses `diff -u` (unified format) for readability.
+
+### /cpf:specforge help
+
+**Purpose:** Print a concise reference card showing all
+sub-commands, their purpose, and the mandatory workflow order.
+
+**Workflow:**
+
+1. Print the following reference card to the user:
+
+```text
+specforge workflow (mandatory order):
+
+  1. /cpf:specforge init          -- Scaffold project
+  2. /cpf:specforge constitution  -- Project principles
+  3. /cpf:specforge spec          -- Document features
+  4. /cpf:specforge clarify       -- Resolve ambiguities
+  5. /cpf:specforge plan          -- Architecture decisions
+  6. /cpf:specforge features      -- Generate feature_list
+  7. /cpf:specforge analyze       -- Score readiness (80+)
+
+Utility commands (run anytime):
+
+  /cpf:specforge doctor   -- Check dev prerequisites
+  /cpf:specforge setup    -- Platform repo settings
+  /cpf:specforge upgrade  -- Update scaffold files
+  /cpf:specforge help     -- This reference card
+
+See .specify/WORKFLOW.md for full documentation.
+```
+
+**Notes:**
+
+- No prerequisites or artifact gates.
+- This sub-command has no side effects -- it only prints
+  information to the conversation.
