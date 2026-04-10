@@ -186,7 +186,16 @@ glab api "projects/${PROJECT_PATH}" \
   -f "remove_source_branch_after_merge=true"
 ```
 
+Require pipelines to pass before merge:
+
+```bash
+glab api "projects/${PROJECT_PATH}" \
+  --method PUT \
+  -f "only_allow_merge_if_pipeline_succeeds=true"
+```
+
 Add to your project checklist:
 
 - [ ] Merge request settings: delete source branch after
       merge -- enabled
+- [ ] Merge request settings: pipelines must succeed -- enabled

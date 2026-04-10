@@ -18,10 +18,11 @@
       ".markdownlint-cli2.yaml",
       ".specify/doctor-registry.json",
       "scripts/doctor.sh",
-      ".specify/proposals/.gitkeep"
+      ".specify/proposals/.gitkeep",
+      ".github/workflows/ci-base.yml",
+      "ci/gitlab/gitlab-ci-base.yml"
     ],
     "review": [
-      ".github/workflows/ci.yml",
       ".github/workflows/release.yml",
       ".github/workflows/codeql.yml",
       ".github/CODEOWNERS",
@@ -30,7 +31,6 @@
       ".github/ISSUE_TEMPLATE/bug_report.yml",
       ".github/ISSUE_TEMPLATE/config.yml",
       ".github/ISSUE_TEMPLATE/feature_request.yml",
-      ".gitlab-ci.yml",
       "Jenkinsfile",
       ".prettierrc.json",
       ".prettierignore",
@@ -45,6 +45,8 @@
       "ci/jenkins/jenkinsfile-guide.md"
     ],
     "skip": [
+      ".github/workflows/ci.yml",
+      ".gitlab-ci.yml",
       "CLAUDE.md",
       ".specify/memory/*",
       ".specify/specs/*",

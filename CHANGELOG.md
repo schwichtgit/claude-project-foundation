@@ -5,6 +5,44 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Pre-commit staged content fix, CI base/host split, and
+workflow documentation.
+
+### Added
+
+- GitLab CI base/host file split via `include: local` --
+  plugin jobs in overwrite-tier base file, host
+  `.gitlab-ci.yml` in skip tier (#45)
+- GitHub Actions base/host workflow split via
+  `workflow_call` -- same pattern as GitLab (#45)
+- Jenkins CI split documentation in Jenkinsfile and
+  jenkinsfile-guide.md (#45)
+- Error handling section in CLAUDE.md.template (#45)
+- MR/PR state check (verify not already merged) in
+  WORKFLOW.md and CLAUDE.md.template (#45)
+- GitLab `only_allow_merge_if_pipeline_succeeds` setting
+  in gitlab-ci-guide.md setup checklist (#45)
+
+### Fixed
+
+- Pre-commit md and yml handlers now lint staged content
+  via `git show ":$file"` instead of working copy (#45)
+
+### Changed
+
+- `.gitlab-ci.yml` and `.github/workflows/ci.yml` moved
+  from review tier to skip tier (host-owned after split)
+- `ci/gitlab/gitlab-ci-base.yml` and
+  `.github/workflows/ci-base.yml` added as overwrite tier
+
+### Breaking
+
+- Existing GitLab/GitHub projects must manually add the
+  `include:` / `uses:` reference to their CI host file
+  after upgrade. See migration notes in CHANGELOG.
+
 ## [0.1.0-alpha.9] - 2026-04-10
 
 Pre-commit lint handlers, CI extension points, and workflow

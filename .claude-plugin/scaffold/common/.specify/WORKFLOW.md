@@ -90,6 +90,17 @@ default.
 
 ## MR/PR Workflow
 
+Before any new commit on a branch:
+
+1. `git fetch origin`
+2. Check MR/PR state:
+   - GitLab: `glab mr view`
+   - GitHub: `gh pr view`
+3. If the MR/PR is already merged, stop. Create a new
+   branch from `origin/main` for the next piece of work.
+
+Do not commit to a branch whose MR/PR has been merged.
+
 Before opening a merge request or pull request:
 
 1. `git fetch origin`

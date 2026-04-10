@@ -1410,6 +1410,139 @@
       ],
       "passes": true,
       "dependencies": []
+    },
+    {
+      "id": "precommit-lint-staged-content",
+      "category": "infrastructure",
+      "title": "Pre-commit Lint Staged Content",
+      "description": "Fix md and yml|yaml cases in scripts/hooks/pre-commit to lint staged content via git show :$file piped to stdin instead of linting the working copy on disk. Uses markdownlint-cli2 - for md and python3 yaml.safe_load from stdin for yaml.",
+      "testing_steps": [
+        "Verify `grep 'git show' .claude-plugin/scaffold/common/scripts/hooks/pre-commit` finds staged content reads in both md and yml cases",
+        "Verify `grep 'markdownlint-cli2 -' .claude-plugin/scaffold/common/scripts/hooks/pre-commit` finds stdin invocation for md case",
+        "Verify `grep 'sys.stdin' .claude-plugin/scaffold/common/scripts/hooks/pre-commit` finds stdin read for yml case",
+        "Verify `shellcheck .claude-plugin/scaffold/common/scripts/hooks/pre-commit` exits 0",
+        "Verify the md handler remains conditional on node_modules/.bin/markdownlint-cli2",
+        "Verify the yml handler remains conditional on python3 availability"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "fix-scaffold-markdown-lint-violations",
+      "category": "infrastructure",
+      "title": "Fix Scaffold Markdown Lint Violations",
+      "description": "Rewrap ci/gitlab/gitlab-ci-guide.md to 80 characters to fix 10 MD013 violations. Verify all scaffold markdown files pass markdownlint with the scaffold .markdownlint-cli2.yaml config.",
+      "testing_steps": [
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` and verify zero violations",
+        "Verify no lines in gitlab-ci-guide.md exceed 80 characters (excluding tables and code blocks)",
+        "Run `npx markdownlint-cli2 '.claude-plugin/scaffold/**/*.md'` and verify zero violations across all scaffold markdown",
+        "Verify prose content is rewrapped not truncated -- meaning preserved",
+        "Run `npx prettier --check .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "error-handling-template-section",
+      "category": "functional",
+      "title": "Error Handling Template Section",
+      "description": "Add an Error Handling section to CLAUDE.md.template instructing that command failures must be reported and diagnosed before taking recovery actions. Prevents silent recovery that hides errors.",
+      "testing_steps": [
+        "Verify `grep 'Error Handling' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the section heading",
+        "Verify `grep -i 'silently recover' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the prohibition",
+        "Verify `grep -i 'diagnose.*root cause' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the diagnostic requirement",
+        "Verify the section is placed after MR/PR Workflow and before Communication Style",
+        "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "gitlab-ci-base-host-split",
+      "category": "functional",
+      "title": "GitLab CI Base/Host File Split",
+      "description": "Split scaffold .gitlab-ci.yml into ci/gitlab/gitlab-ci-base.yml (overwrite tier, all plugin jobs) and .gitlab-ci.yml (skip tier, include: local + project extension point). Upgrade proposes migration to the user.",
+      "testing_steps": [
+        "Verify `test -f .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml` exits 0",
+        "Verify `grep 'include' .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` finds the include: local directive",
+        "Verify `grep 'gitlab-ci-base.yml' .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` references the base file",
+        "Verify `grep 'PROJECT-SPECIFIC' .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` finds the extension point marker",
+        "Verify `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml'))\"` exits 0",
+        "Verify `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/gitlab/.gitlab-ci.yml'))\"` exits 0",
+        "Verify base file contains shellcheck, markdownlint, prettier, commit-standards, plugin-validation, summary, and release jobs",
+        "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert 'ci/gitlab/gitlab-ci-base.yml' in d['tiers']['overwrite']\"` exits 0",
+        "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.gitlab-ci.yml' in d['tiers']['skip']\"` exits 0",
+        "Verify .gitlab-ci.yml is removed from the review tier in upgrade-tiers.json"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "github-ci-base-host-split",
+      "category": "functional",
+      "title": "GitHub Actions Base/Host Workflow Split",
+      "description": "Split scaffold ci.yml into .github/workflows/ci-base.yml (overwrite tier, on: workflow_call, all plugin jobs including paths-filter) and .github/workflows/ci.yml (skip tier, calls base + project extension point). Upgrade proposes migration to the user.",
+      "testing_steps": [
+        "Verify `test -f .claude-plugin/scaffold/github/.github/workflows/ci-base.yml` exits 0",
+        "Verify `grep 'workflow_call' .claude-plugin/scaffold/github/.github/workflows/ci-base.yml` finds the reusable trigger",
+        "Verify `grep 'ci-base.yml' .claude-plugin/scaffold/github/.github/workflows/ci.yml` references the base workflow",
+        "Verify `grep 'PROJECT-SPECIFIC' .claude-plugin/scaffold/github/.github/workflows/ci.yml` finds the extension point marker",
+        "Verify `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci-base.yml'))\"` exits 0",
+        "Verify `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci.yml'))\"` exits 0",
+        "Verify base contains paths-filter changes job, markdownlint, prettier, shellcheck, commit-standards, plugin-validation, summary jobs",
+        "Verify base declares its own permissions block",
+        "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.github/workflows/ci-base.yml' in d['tiers']['overwrite']\"` exits 0",
+        "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.github/workflows/ci.yml' in d['tiers']['skip']\"` exits 0",
+        "Verify .github/workflows/ci.yml is removed from the review tier"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "jenkins-ci-split-documentation",
+      "category": "functional",
+      "title": "Jenkins CI Split Documentation",
+      "description": "Add documentation to Jenkinsfile scaffold and jenkinsfile-guide.md explaining how to split into base + project files using the load pattern for scripted pipelines. Keep declarative scaffold unchanged.",
+      "testing_steps": [
+        "Verify `grep -i 'load\\|split' .claude-plugin/scaffold/jenkins/Jenkinsfile` finds the documentation comment",
+        "Verify `grep -i 'scripted\\|load' .claude-plugin/scaffold/jenkins/ci/jenkins/jenkinsfile-guide.md` finds the split documentation section",
+        "Verify the existing declarative pipeline structure is unchanged",
+        "Verify the extension point marker from alpha.9 is preserved",
+        "Run `npx prettier --check .claude-plugin/scaffold/jenkins/ci/jenkins/jenkinsfile-guide.md` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "mr-state-check-workflow",
+      "category": "functional",
+      "title": "MR State Check Workflow Documentation",
+      "description": "Add start-of-session check to WORKFLOW.md and CLAUDE.md.template: before committing to a branch, verify the MR/PR has not been merged. Covers both GitLab (glab mr view) and GitHub (gh pr view). Prevents post-merge commits.",
+      "testing_steps": [
+        "Verify `grep -i 'merged\\|mr.*view\\|pr.*view' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` finds the MR state check",
+        "Verify `grep -i 'merged\\|mr.*state\\|pr.*state' .claude-plugin/scaffold/common/CLAUDE.md.template` finds equivalent guidance",
+        "Verify the guidance covers both GitLab and GitHub commands",
+        "Verify the instruction says to create a new branch if MR is merged",
+        "Run `npx prettier --check .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0",
+        "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "gitlab-setup-pipeline-must-succeed",
+      "category": "functional",
+      "title": "GitLab Setup Pipeline Must Succeed Setting",
+      "description": "Add only_allow_merge_if_pipeline_succeeds to GitLab setup checklist in gitlab-ci-guide.md. The remove_source_branch_after_merge setting already exists from alpha.9. Verify GitHub repo-settings.md already covers equivalent.",
+      "testing_steps": [
+        "Verify `grep 'only_allow_merge_if_pipeline_succeeds' .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` finds the setting",
+        "Verify `grep 'remove_source_branch_after_merge' .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` confirms existing setting is preserved",
+        "Verify `grep 'allow_squash_merge\\|delete_branch_on_merge' .claude-plugin/scaffold/github/ci/github/repo-settings.md` confirms GitHub already covers equivalent",
+        "Run `npx prettier --check .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
     }
   ]
 }
