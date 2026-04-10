@@ -1093,6 +1093,323 @@
       ],
       "passes": true,
       "dependencies": []
+    },
+    {
+      "id": "tool-tier-registry",
+      "category": "infrastructure",
+      "title": "Tool Tier Registry JSON",
+      "description": "Create .specify/doctor-registry.json defining required, recommended, and optional tools with binary names, version flags, aliases, project types, and platform-specific install commands. Source of truth in scaffold at .claude-plugin/scaffold/common/.specify/doctor-registry.json.",
+      "testing_steps": [
+        "Verify .claude-plugin/scaffold/common/.specify/doctor-registry.json exists and is valid JSON (jq empty < file)",
+        "Verify each entry has required fields: name, purpose, tier, project_types, version_flag, aliases, install",
+        "Verify install object has darwin, linux, and generic string fields for every entry",
+        "Verify at least 3 entries with tier=required exist: jq, git, python3",
+        "Verify recommended entries cover Node (npm, npx, prettier), Python (ruff), Rust (cargo, rustfmt), Go (gofmt, go), Shell (shellcheck, shfmt)",
+        "Verify optional entries include markdownlint-cli2, golangci-lint, black, autopep8, rubocop, google-java-format",
+        "Verify tier field is one of: required, recommended, optional for every entry",
+        "Verify project_types is an empty array for all required-tier entries",
+        "Verify python3 entry has aliases array containing python",
+        "Verify all install.darwin commands reference brew where applicable"
+      ],
+      "passes": true,
+      "dependencies": []
+    },
+    {
+      "id": "project-type-auto-detection",
+      "category": "infrastructure",
+      "title": "Project Type Auto-Detection",
+      "description": "Implement detect_project_types() function in doctor.sh that scans the project root and one level of subdirectories for config files (package.json, Cargo.toml, pyproject.toml, go.mod, Gemfile, build.gradle, pom.xml) and user-authored .sh files to determine which project types are present.",
+      "testing_steps": [
+        "Run doctor.sh in the CPF repo and verify it detects node project type (package.json exists)",
+        "Create a temporary directory with a Cargo.toml and verify rust is detected",
+        "Create a temporary directory with a pyproject.toml and verify python is detected",
+        "Create a temporary directory with a go.mod and verify go is detected",
+        "Create a temporary directory with a Gemfile and verify ruby is detected",
+        "Create a temporary directory with a build.gradle and verify java is detected",
+        "Verify a directory with only scripts/install-hooks.sh does NOT detect shell type",
+        "Create a directory with a custom .sh file at the root and verify shell IS detected",
+        "Create a directory with both package.json and go.mod and verify both node and go are detected",
+        "Verify detection searches one level of subdirectories (e.g., subdir/package.json triggers node)"
+      ],
+      "passes": true,
+      "dependencies": []
+    },
+    {
+      "id": "tool-presence-check",
+      "category": "functional",
+      "title": "Tool Presence and Version Check",
+      "description": "Implement check_tool() function that runs command -v for each tool in the registry, checks aliases if primary binary not found, runs the version_flag command to capture version info, and returns PASS/FAIL/WARN/INFO status based on tier and project type relevance.",
+      "testing_steps": [
+        "Run doctor.sh and verify git (universally installed) shows PASS with a version string",
+        "Verify a tool with version_flag=null shows PASS without a version string when found",
+        "Verify a missing required tool shows FAIL status",
+        "Verify a missing recommended tool (for a detected project type) shows WARN status",
+        "Verify a missing optional tool shows INFO status",
+        "Verify a tool for a non-detected project type is skipped entirely (not in output)",
+        "Verify python3 alias fallback: if python3 is not found, check python as alias",
+        "Verify version_flag failure shows found with version unknown rather than crashing",
+        "Verify the jq bootstrap check runs before registry parsing with hardcoded install hints",
+        "Verify the jq bootstrap check exits with code 1 and prints darwin and linux install commands"
+      ],
+      "passes": true,
+      "dependencies": ["tool-tier-registry", "project-type-auto-detection"]
+    },
+    {
+      "id": "compliance-report",
+      "category": "functional",
+      "title": "Compliance Report Output",
+      "description": "Implement compliance report in two output formats: text (human-readable, default) and JSON (machine-parseable). Both contain identical data: platform, project types, per-tool results with status/version/install hints, summary counts, and overall readiness. Text groups by tier with PASS/WARN/FAIL/INFO labels. JSON outputs a single object with tools array, summary object, and ready boolean.",
+      "testing_steps": [
+        "Run doctor.sh --output=text and verify output contains header, platform line, and Required heading",
+        "Verify text output groups tools under correct tier headings with 2-space indent",
+        "Verify text output uses fixed-width status labels: PASS, WARN, FAIL, INFO, SKIP",
+        "Verify missing tools show platform-specific install commands on 8-space indented continuation line",
+        "Verify text summary line shows correct pass/warn/fail counts",
+        "Verify text shows READY when all required tools pass, NOT READY when any fail",
+        "Verify empty tiers are omitted from text output",
+        "Run doctor.sh --output=json and verify output is valid JSON (pipe to jq empty)",
+        "Verify JSON output has top-level fields: platform, project_types, tools, summary, ready",
+        "Verify JSON tools array entries have fields: name, tier, status, version, install_hint",
+        "Verify JSON status values are one of: pass, warn, fail, info, skip",
+        "Verify JSON version is null for missing tools and null for tools with no version_flag",
+        "Verify JSON install_hint is null for present tools and a string for missing tools",
+        "Verify JSON summary has passed, warnings, failures integer fields that sum to total tools",
+        "Verify JSON ready is true when failures==0, false otherwise",
+        "Verify text and JSON contain the same tools with the same statuses",
+        "Verify exit code is 0 when all required tools pass (both formats)",
+        "Verify exit code is 1 when any required tool is missing (both formats)",
+        "Verify --output=text is the default when no --output flag is given"
+      ],
+      "passes": true,
+      "dependencies": ["tool-presence-check"]
+    },
+    {
+      "id": "standalone-script",
+      "category": "functional",
+      "title": "Standalone doctor.sh Script",
+      "description": "Create scripts/doctor.sh as a self-contained bash script with set -euo pipefail, argument parsing for --output=text|json, --registry, and --project-dir flags, project root detection via git rev-parse, and the complete doctor pipeline: bootstrap jq check, detect platform, detect project types, iterate registry, check tools, output report in requested format.",
+      "testing_steps": [
+        "Verify .claude-plugin/scaffold/common/scripts/doctor.sh exists and is executable",
+        "Run scripts/doctor.sh with no arguments from the CPF repo root and verify it completes with text output",
+        "Run scripts/doctor.sh --output=json and verify valid JSON output",
+        "Run scripts/doctor.sh --registry /nonexistent and verify it errors about missing registry",
+        "Run scripts/doctor.sh --project-dir /tmp and verify it uses /tmp as the project root",
+        "Verify --registry with a relative path resolves against the effective project root, not CWD",
+        "Verify the script uses git rev-parse --show-toplevel for default project root with PWD fallback",
+        "Verify the script starts with set -euo pipefail and includes a bash shebang",
+        "Run shellcheck on the script and verify zero errors",
+        "Verify the script completes in under 2 seconds on a standard workstation",
+        "Verify the jq bootstrap error is plain text to stderr even when --output=json is requested",
+        "Verify the script handles being run from a subdirectory of the project (finds project root correctly)"
+      ],
+      "passes": true,
+      "dependencies": [
+        "tool-tier-registry",
+        "tool-presence-check",
+        "compliance-report"
+      ]
+    },
+    {
+      "id": "init-integration",
+      "category": "functional",
+      "title": "Init Integration with Doctor",
+      "description": "Update the /cpf:specforge init sub-command in SKILL.md to run scripts/doctor.sh after install-hooks.sh and version tracking. Display the compliance report visually separated from the init summary. Include a recheck reminder line.",
+      "testing_steps": [
+        "Read SKILL.md init workflow and verify doctor is listed as a step after install-hooks.sh",
+        "Verify init instructions include running scripts/doctor.sh",
+        "Verify init instructions include the recheck reminder text mentioning both /cpf:specforge doctor and scripts/doctor.sh",
+        "Verify init instructions state doctor output should be visually separated from file counts",
+        "Verify init instructions state that doctor failures do not block init completion"
+      ],
+      "passes": true,
+      "dependencies": ["standalone-script"]
+    },
+    {
+      "id": "skill-sub-command",
+      "category": "functional",
+      "title": "Specforge Doctor Skill Sub-Command",
+      "description": "Add /cpf:specforge doctor sub-command to SKILL.md that runs scripts/doctor.sh --output=text via the Bash tool for human-readable display, and optionally scripts/doctor.sh --output=json for structured parsing. Displays stdout output to the user and summarizes missing required tools if the script exits with code 1. Add doctor to argument-hint frontmatter.",
+      "testing_steps": [
+        "Verify SKILL.md contains a ### /cpf:specforge doctor section",
+        "Verify the doctor section includes Purpose, Workflow, and Notes subsections",
+        "Verify the workflow instructs running scripts/doctor.sh from the project root",
+        "Verify the workflow instructs displaying the script output to the user",
+        "Verify the workflow instructs summarizing missing required tools on exit code 1",
+        "Verify the SKILL.md argument-hint frontmatter includes doctor"
+      ],
+      "passes": true,
+      "dependencies": ["standalone-script"]
+    },
+    {
+      "id": "upgrade-tiers-registration",
+      "category": "functional",
+      "title": "Register Doctor Files in Upgrade Tiers",
+      "description": "Add doctor-registry.json and scripts/doctor.sh to the overwrite tier in upgrade-tiers.json so they are always replaced on /cpf:specforge upgrade.",
+      "testing_steps": [
+        "Read upgrade-tiers.json and verify .specify/doctor-registry.json is in the overwrite array",
+        "Read upgrade-tiers.json and verify scripts/doctor.sh is in the overwrite array",
+        "Verify both entries are strings matching the exact projected paths in host projects"
+      ],
+      "passes": true,
+      "dependencies": ["tool-tier-registry", "standalone-script"]
+    },
+    {
+      "id": "doctor-self-test",
+      "category": "testing",
+      "title": "Doctor Self-Test on CPF Repo",
+      "description": "Verify doctor works correctly on the CPF source repo itself. The repo is a Node + Shell project (package.json exists, user-authored .sh files exist). All required tools should be present on the development machine.",
+      "testing_steps": [
+        "Run scripts/doctor.sh from the CPF repo root and capture output",
+        "Verify output detects node as a project type",
+        "Verify output lists jq, git, python3 under Required heading",
+        "Verify output lists npm, npx, prettier under Recommended heading (node project)",
+        "Verify output shows shellcheck and shfmt as recommended if shell type is detected",
+        "Verify the summary line shows zero failures on a fully equipped dev machine",
+        "Verify the overall assessment is READY",
+        "Verify scripts/doctor.sh exits with code 0",
+        "Verify the output includes version strings for tools that have version_flag set",
+        "Run /cpf:specforge doctor (skill invocation) and verify it displays the same report"
+      ],
+      "passes": true,
+      "dependencies": ["standalone-script"]
+    },
+    {
+      "id": "documentation-update",
+      "category": "functional",
+      "title": "Update README and CHANGELOG",
+      "description": "Add doctor to the README.md workflow table and usage sections. Add a feature entry to CHANGELOG.md for the new sub-command.",
+      "testing_steps": [
+        "Verify README.md workflow table includes a doctor row",
+        "Verify README.md mentions scripts/doctor.sh as a standalone option",
+        "Verify CHANGELOG.md has an entry for the doctor feature under the Unreleased or next version section",
+        "Run markdownlint on README.md and CHANGELOG.md and verify zero errors"
+      ],
+      "passes": true,
+      "dependencies": ["skill-sub-command"]
+    },
+    {
+      "id": "precommit-markdown-lint",
+      "category": "infrastructure",
+      "title": "Pre-commit Markdown Lint Handler",
+      "description": "Add an md case to lint_staged_files() in scripts/hooks/pre-commit that runs markdownlint-cli2 on staged .md files. Conditional on node_modules/.bin/markdownlint-cli2 existing. Catches MD013, MD036 and other violations locally before push.",
+      "testing_steps": [
+        "Verify `grep -A5 'md)' .claude-plugin/scaffold/common/scripts/hooks/pre-commit` finds the md case branch",
+        "Verify the md handler references markdownlint-cli2",
+        "Verify the handler checks for node_modules/.bin/markdownlint-cli2 before running",
+        "Verify `shellcheck .claude-plugin/scaffold/common/scripts/hooks/pre-commit` exits 0",
+        "Create a test .md file with an MD036 violation, stage it, and verify pre-commit fails",
+        "Verify that when node_modules is absent, the md handler silently skips (exit 0)",
+        "Verify the handler lints the file on disk (not via stdin), matching existing pattern"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "precommit-yaml-lint",
+      "category": "infrastructure",
+      "title": "Pre-commit YAML Lint Handler",
+      "description": "Add a yml|yaml case to lint_staged_files() in scripts/hooks/pre-commit that validates YAML syntax via python3 yaml.safe_load. Conditional on python3 being available. YAML syntax only, no GitLab CI schema validation.",
+      "testing_steps": [
+        "Verify `grep -A5 'yml|yaml' .claude-plugin/scaffold/common/scripts/hooks/pre-commit` finds the yaml case branch",
+        "Verify the handler uses python3 with yaml.safe_load for validation",
+        "Verify the handler checks for python3 via command -v before running",
+        "Verify `shellcheck .claude-plugin/scaffold/common/scripts/hooks/pre-commit` exits 0",
+        "Create a test .yml file with invalid YAML, stage it, and verify pre-commit fails",
+        "Verify that when python3 is absent, the yaml handler silently skips (exit 0)",
+        "Verify valid YAML files pass the handler without errors"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "ci-extension-point-markers",
+      "category": "functional",
+      "title": "CI Extension Point Markers (All Platforms)",
+      "description": "Add distinctive extension point comment blocks to all three CI scaffold files (.gitlab-ci.yml, Jenkinsfile, ci.yml) that separate plugin-owned jobs from project-specific extensions. Prevents upgrade diffs from silently dropping host-project CI jobs.",
+      "testing_steps": [
+        "Verify `grep 'PROJECT-SPECIFIC' .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` finds the extension point marker",
+        "Verify `grep 'PROJECT-SPECIFIC' .claude-plugin/scaffold/jenkins/Jenkinsfile` finds the extension point marker",
+        "Verify `grep 'PROJECT-SPECIFIC' .claude-plugin/scaffold/github/.github/workflows/ci.yml` finds the extension point marker",
+        "Verify the GitLab marker uses YAML comment syntax (#)",
+        "Verify the Jenkins marker uses Groovy comment syntax (//)",
+        "Verify the GitHub marker uses YAML comment syntax (#)",
+        "Verify all three markers use consistent wording about specforge upgrade behavior",
+        "Verify `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/gitlab/.gitlab-ci.yml'))\"` exits 0",
+        "Verify `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci.yml'))\"` exits 0",
+        "Verify the GitLab marker is placed between the summary job and the release stage",
+        "Verify the Jenkins marker is placed between the Lint stage and the Test stage",
+        "Verify the GitHub marker is placed before the summary job"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "mr-pr-rebase-workflow",
+      "category": "functional",
+      "title": "MR/PR Rebase Workflow Documentation",
+      "description": "Add a rebase requirement to WORKFLOW.md and CLAUDE.md.template documenting that developers must fetch and rebase onto main before opening an MR/PR. Platform-neutral guidance with concrete git commands.",
+      "testing_steps": [
+        "Verify `grep -i 'rebase' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` finds rebase guidance",
+        "Verify `grep 'git fetch' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` finds the fetch command",
+        "Verify `grep 'git rebase' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` finds the rebase command",
+        "Verify `grep -i 'rebase\\|merge request\\|pull request' .claude-plugin/scaffold/common/CLAUDE.md.template` finds MR/PR workflow guidance",
+        "Verify the guidance is platform-neutral (mentions both MR and PR)",
+        "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
+        "Run `npx prettier --check .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "gitlab-branch-auto-delete-and-mr-template",
+      "category": "functional",
+      "title": "GitLab Branch Auto-Deletion and MR Template",
+      "description": "Add branch auto-deletion glab api step to GitLab setup docs. Create GitLab MR template at scaffold/gitlab/.gitlab/merge_request_templates/Default.md with delete-source-branch reminder. Verify GitHub already covers auto-delete in repo-settings.md. Classify MR template in upgrade-tiers.json as review tier.",
+      "testing_steps": [
+        "Verify `grep 'remove_source_branch' .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` finds the auto-delete setting",
+        "Verify `test -f .claude-plugin/scaffold/gitlab/.gitlab/merge_request_templates/Default.md` exits 0",
+        "Verify `grep -i 'delete.*source.*branch' .claude-plugin/scaffold/gitlab/.gitlab/merge_request_templates/Default.md` finds the reminder checklist item",
+        "Verify `grep 'delete_branch_on_merge' .claude-plugin/scaffold/github/ci/github/repo-settings.md` confirms GitHub already covers auto-delete",
+        "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.gitlab/merge_request_templates/Default.md' in d['tiers']['review']\"` exits 0",
+        "Run `npx prettier --check .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/gitlab/.gitlab/merge_request_templates/Default.md` and verify exit 0",
+        "Verify the glab api command in gitlab-ci-guide.md uses the correct endpoint and PUT method",
+        "Verify the MR template includes a Summary section and Test Plan section matching the GitHub PR template pattern",
+        "Verify the MR template is formatted consistently with the existing GitHub PR template"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "specforge-unique-feature-ids",
+      "category": "functional",
+      "title": "Enforce Globally Unique Feature IDs in Specforge",
+      "description": "Update the specforge features sub-command in SKILL.md to require reading existing feature_list.json before generating new entries. Feature IDs must not duplicate existing IDs. Spec IDs (INFRA-NNN, FUNC-NNN) must continue from highest existing number. Explicitly prohibit creating separate feature list files.",
+      "testing_steps": [
+        "Verify `grep -i 'unique' .claude-plugin/skills/specforge/SKILL.md` finds uniqueness requirement in features section",
+        "Verify `grep -i 'existing.*feature_list' .claude-plugin/skills/specforge/SKILL.md` finds the read-existing requirement",
+        "Verify `grep -i 'single.*feature_list\\|one.*feature_list\\|never.*separate' .claude-plugin/skills/specforge/SKILL.md` finds the single-file prohibition",
+        "Verify `grep -i 'highest.*existing\\|continue.*numbering\\|next.*available' .claude-plugin/skills/specforge/SKILL.md` finds the sequential numbering requirement for spec IDs",
+        "Verify the features sub-command workflow step 1 or 2 includes reading existing feature_list.json"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "specforge-clarify-ci-scope-prompt",
+      "category": "functional",
+      "title": "Clarify Sub-Command CI Scope Prompt",
+      "description": "Update the specforge clarify sub-command in SKILL.md to check whether any spec feature targets a single CI platform. When detected, ask the user whether scope should expand to all supported platforms (GitHub, GitLab, Jenkins). This is an LLM judgment call based on feature description and affected files, not a mechanical check.",
+      "testing_steps": [
+        "Verify `grep -i 'platform\\|CI.*scope' .claude-plugin/skills/specforge/SKILL.md` finds the CI scope check in the clarify section",
+        "Verify the clarify workflow includes a step or bullet about single-platform features",
+        "Verify the instruction mentions asking the user about expanding to all platforms",
+        "Verify the instruction lists GitHub, GitLab, and Jenkins as the supported platforms",
+        "Verify the instruction notes that inherently platform-specific features should document applicability rather than forcing all platforms"
+      ],
+      "passes": false,
+      "dependencies": []
     }
   ]
 }
