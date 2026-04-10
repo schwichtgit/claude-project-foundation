@@ -177,6 +177,34 @@ For automatic PR detection, configure a Multibranch Pipeline job in Jenkins:
 3. Set the build configuration to "by Jenkinsfile" with script path `Jenkinsfile`
 4. Jenkins will automatically discover branches and PRs
 
+## Splitting Base and Project Configuration
+
+For projects that need to separate plugin-owned stages from
+project-specific stages, convert from declarative to scripted
+pipeline using the `load` step:
+
+1. Create `ci/jenkins/base.groovy` with your shared stages
+   as a closure
+2. In `Jenkinsfile`, use scripted pipeline syntax:
+
+```groovy
+node {
+    checkout scm
+    def base = load 'ci/jenkins/base.groovy'
+    base()
+    stage('Project Tests') { sh 'make test' }
+}
+```
+
+The `load` step requires `checkout scm` first (the file
+must exist in the workspace). This pattern works with
+scripted pipelines only -- declarative pipelines cannot
+merge two `pipeline {}` blocks.
+
+See the Jenkins documentation on
+[Pipeline: Shared Groovy Libraries](https://www.jenkins.io/doc/book/pipeline/shared-libraries/)
+for team-wide shared pipelines.
+
 ## Parity with GitHub Actions
 
 | Quality Gate       | GitHub Actions Job  | Jenkins Stage         |

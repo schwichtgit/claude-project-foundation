@@ -1,3 +1,16 @@
+// For projects that outgrow the declarative pipeline below,
+// Jenkins supports splitting into base + project files using
+// scripted pipelines with the load() step:
+//
+//   // Jenkinsfile (scripted)
+//   node {
+//       checkout scm
+//       def base = load 'ci/jenkins/base.groovy'
+//       base()
+//       stage('Project Tests') { sh 'make test' }
+//   }
+//
+// See ci/jenkins/jenkinsfile-guide.md for full documentation.
 pipeline {
     agent any
 
