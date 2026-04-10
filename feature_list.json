@@ -1091,7 +1091,7 @@
         "Run `npx prettier --check .claude-plugin/scaffold/github/ci/github/dependabot.yml` and verify exit 0",
         "Verify active ecosystems (github-actions, npm) are unchanged by diffing only uncommented lines"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     }
   ]
