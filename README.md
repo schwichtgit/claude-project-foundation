@@ -9,7 +9,7 @@ or any two-agent pattern for multi-session autonomous
 implementation with production-grade quality
 enforcement.
 
-**Status:** All 42 features passing (v0.1.0-alpha.3).
+**Status:** 50 features passing (v0.1.0-alpha.6).
 Full CI parity across GitHub, GitLab, and Jenkins.
 The foundation applies its own quality gates in CI.
 
@@ -218,6 +218,7 @@ push and PR:
 
 | Check             | Tool                        | What it enforces                           |
 | ----------------- | --------------------------- | ------------------------------------------ |
+| Path filtering    | dorny/paths-filter          | Skip jobs when irrelevant files change     |
 | Markdown lint     | markdownlint-cli2           | Consistent markdown style                  |
 | Format check      | Prettier                    | Consistent formatting (md, yaml, json)     |
 | Shell lint        | ShellCheck                  | Shell script correctness                   |

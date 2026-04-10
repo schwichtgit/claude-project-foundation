@@ -9,12 +9,52 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Path change detection (PR only)
+  # ---------------------------------------------------------------------------
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      markdown: ${{ steps.filter.outputs.markdown }}
+      formatting: ${{ steps.filter.outputs.formatting }}
+      scripts: ${{ steps.filter.outputs.scripts }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            markdown:
+              - '**/*.md'
+              - '.markdownlint-cli2.yaml'
+            formatting:
+              - '**/*.md'
+              - '**/*.yml'
+              - '**/*.yaml'
+              - '**/*.json'
+              - '.prettierrc.json'
+              - '.prettierignore'
+            scripts:
+              - '**/*.sh'
+              - 'scripts/**'
+            # Uncomment and customize for your project:
+            # frontend:
+            #   - 'src/**'
+            #   - 'package.json'
+            # backend:
+            #   - 'api/**'
+            #   - 'pyproject.toml'
+
   # ---------------------------------------------------------------------------
   # Markdown lint
   # ---------------------------------------------------------------------------
   markdownlint:
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.markdown == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -26,6 +66,8 @@ jobs:
   # Prettier format check
   # ---------------------------------------------------------------------------
   prettier:
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.formatting == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -39,6 +81,8 @@ jobs:
   # Shell script lint
   # ---------------------------------------------------------------------------
   shellcheck:
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.scripts == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -178,7 +222,14 @@ jobs:
   summary:
     if: always()
     needs:
-      [markdownlint, prettier, shellcheck, commit-standards, plugin-validation]
+      [
+        changes,
+        markdownlint,
+        prettier,
+        shellcheck,
+        commit-standards,
+        plugin-validation,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Check results
