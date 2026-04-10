@@ -1424,7 +1424,7 @@
         "Verify the md handler remains conditional on node_modules/.bin/markdownlint-cli2",
         "Verify the yml handler remains conditional on python3 availability"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1439,7 +1439,7 @@
         "Verify prose content is rewrapped not truncated -- meaning preserved",
         "Run `npx prettier --check .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1454,7 +1454,7 @@
         "Verify the section is placed after MR/PR Workflow and before Communication Style",
         "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1474,7 +1474,7 @@
         "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.gitlab-ci.yml' in d['tiers']['skip']\"` exits 0",
         "Verify .gitlab-ci.yml is removed from the review tier in upgrade-tiers.json"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1495,7 +1495,7 @@
         "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.github/workflows/ci.yml' in d['tiers']['skip']\"` exits 0",
         "Verify .github/workflows/ci.yml is removed from the review tier"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1510,7 +1510,7 @@
         "Verify the extension point marker from alpha.9 is preserved",
         "Run `npx prettier --check .claude-plugin/scaffold/jenkins/ci/jenkins/jenkinsfile-guide.md` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1526,7 +1526,7 @@
         "Run `npx prettier --check .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0",
         "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1541,7 +1541,7 @@
         "Run `npx prettier --check .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` and verify exit 0",
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-guide.md` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     }
   ]
