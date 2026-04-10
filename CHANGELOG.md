@@ -5,6 +5,40 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Upstream scaffold improvements from ai-resume field testing.
+
+### Added
+
+- Conditional CI job execution via `dorny/paths-filter@v4`
+  in scaffold `ci.yml` -- markdownlint, prettier, and
+  shellcheck only run when relevant files change (#38, #39)
+- Specforge workflow tracking table in CLAUDE.md.template
+  replacing the text-block diagram (#38)
+- Scanner separation best practice in repo-settings.md (#39)
+- Three optional CLAUDE.md.template sections: API Endpoints,
+  Container Deployment, Service Environment (#39)
+- `.specify/proposals/` directory in scaffold for pre-spec
+  planning documents (#38)
+- Directory semantics section in WORKFLOW.md documenting
+  `.claude/` vs `.specify/` boundaries (#38)
+- Structured delegation policy (mandatory, parallelization,
+  main-only) in CLAUDE.md.template (#38)
+- Structured unit/E2E testing subsections in
+  CLAUDE.md.template (#38)
+- Hooks table and commit strategy section in
+  CLAUDE.md.template (#38)
+
+### Changed
+
+- `actions/checkout` bumped from v4 to v6 in scaffold
+  `commit-standards.yml` (#38)
+- Dependabot configs now include `commit-message` with
+  `build` prefix for valid conventional commits (#38)
+- Default markdownlint ignores added for `node_modules`,
+  `.venv`, and `target` directories (#38)
+
 ## [0.1.0-alpha.6] - 2026-04-09
 
 Dev environment validation, workflow enforcement, hook

@@ -43,6 +43,20 @@ gh api repos/{owner}/{repo} -X PATCH \
   -f security_and_analysis='{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}'
 ```
 
+### Best Practice: Separate Workflows per Scanner
+
+Keep each security scanner in its own workflow file:
+
+- **Independent failure modes** -- a Trivy failure does not
+  mask a CodeQL result or vice versa
+- **Independent triggers** -- CodeQL on every push, container
+  scanning only when Dockerfiles or dependencies change
+- **Clearer ownership** -- code analysis vs image scanning
+
+The scaffold ships `codeql.yml` as a separate workflow.
+Follow the same pattern when adding container scanning
+(Trivy, Grype) or other security tools.
+
 ## 4. Dependabot
 
 Copy the dependabot config to your repo:

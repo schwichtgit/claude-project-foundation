@@ -9,6 +9,13 @@ when working with code in this repository.
 **Tech Stack:** [PRIMARY_LANGUAGE], [FRAMEWORK], [DATABASE]
 **Repository:** [REPO_URL]
 
+## Service Environment (optional -- delete if not applicable)
+
+| Service   | Directory   | Activate Command   |
+| --------- | ----------- | ------------------ |
+| [SERVICE] | [DIRECTORY] | [ACTIVATE_COMMAND] |
+| [SERVICE] | [DIRECTORY] | [ACTIVATE_COMMAND] |
+
 ## Development Workflow
 
 ### Subagent Delegation Policy
@@ -66,9 +73,15 @@ This project uses `/cpf:specforge` for spec-driven development.
 The workflow steps are **mandatory and sequential** -- do not
 skip or reorder them:
 
-```text
-constitution -> spec -> clarify -> plan -> features -> analyze
-```
+| Phase | Command                  | Artifact          | Status   |
+| ----- | ------------------------ | ----------------- | -------- |
+| 1     | `/cpf:specforge const`   | constitution.md   | [STATUS] |
+| 2     | `/cpf:specforge spec`    | spec.md           | [STATUS] |
+| 3     | `/cpf:specforge clarify` | spec.md (updated) | [STATUS] |
+| 4     | `/cpf:specforge plan`    | plan.md           | [STATUS] |
+| 5     | `/cpf:specforge feat`    | feature_list.json | [STATUS] |
+| 6     | `/cpf:specforge analyze` | score report      | [STATUS] |
+| 7     | `/cpf:specforge setup`   | setup checklist   | [STATUS] |
 
 See `.specify/WORKFLOW.md` for the full process documentation.
 Each sub-command enforces artifact gates: if a prerequisite
@@ -78,6 +91,13 @@ artifact is missing, stop and run the required prior step first.
 
 [Describe the project architecture: main modules, data flow,
 key abstractions.]
+
+## API Endpoints (optional -- delete if not applicable)
+
+| Method   | Path   | Description   |
+| -------- | ------ | ------------- |
+| [METHOD] | [PATH] | [DESCRIPTION] |
+| [METHOD] | [PATH] | [DESCRIPTION] |
 
 ## Testing
 
@@ -92,6 +112,13 @@ key abstractions.]
 - **Framework:** [E2E_FRAMEWORK]
 - **Prerequisites:** [E2E_PREREQUISITES]
 - **Run:** [E2E_COMMAND]
+
+## Container Deployment (optional -- delete if not applicable)
+
+- **Build:** [CONTAINER_BUILD_COMMAND]
+- **Ports:** [EXPOSED_PORTS]
+- **Health check:** [HEALTH_CHECK_ENDPOINT]
+- **Reverse proxy notes:** [PROXY_NOTES]
 
 ## Quality Standards
 

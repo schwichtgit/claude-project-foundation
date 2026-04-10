@@ -968,6 +968,110 @@
       ],
       "passes": false,
       "dependencies": ["scaffold-proposals-directory"]
+    },
+    {
+      "id": "ci-paths-filter-pattern",
+      "category": "infrastructure",
+      "title": "CI Paths-Filter Pattern",
+      "description": "Add dorny/paths-filter@v4 as a standalone changes job in the scaffold ci.yml. Gate markdownlint, prettier, and shellcheck on relevant path changes. Leave commit-standards and plugin-validation unconditional. Include commented-out placeholders for project-specific filters.",
+      "testing_steps": [
+        "Verify `grep 'dorny/paths-filter@v4' .claude-plugin/scaffold/github/.github/workflows/ci.yml` exits 0",
+        "Verify `grep 'needs.*changes' .claude-plugin/scaffold/github/.github/workflows/ci.yml` shows markdownlint, prettier, and shellcheck reference the changes job",
+        "Verify `grep -A2 'commit-standards' .claude-plugin/scaffold/github/.github/workflows/ci.yml` shows commit-standards does NOT depend on changes job",
+        "Verify `grep 'pull-requests: read' .claude-plugin/scaffold/github/.github/workflows/ci.yml` exits 0",
+        "Verify `grep 'markdown:' .claude-plugin/scaffold/github/.github/workflows/ci.yml` shows a markdown filter pattern",
+        "Verify `grep 'scripts:' .claude-plugin/scaffold/github/.github/workflows/ci.yml` shows a scripts filter pattern",
+        "Verify commented-out placeholder filters exist for project-specific paths (frontend, backend)",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci.yml'))\"` to validate YAML",
+        "Verify the summary job still lists all jobs in its needs array",
+        "Verify the changes job outputs are referenced with correct syntax in downstream job if conditions"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "specforge-tracking-table",
+      "category": "functional",
+      "title": "Specforge Workflow Tracking Table",
+      "description": "Replace the text-block workflow diagram in CLAUDE.md.template Spec-Driven Workflow section with a structured table showing Phase, Command, Artifact, and Status columns for all 7 specforge phases.",
+      "testing_steps": [
+        "Verify `grep 'constitution' .claude-plugin/scaffold/common/CLAUDE.md.template` finds a table row with constitution phase",
+        "Verify `grep 'STATUS' .claude-plugin/scaffold/common/CLAUDE.md.template` finds status placeholders in the table",
+        "Verify `grep -c 'specforge' .claude-plugin/scaffold/common/CLAUDE.md.template` shows specforge commands in table rows",
+        "Verify the old text-block code diagram (constitution -> spec -> ...) is removed",
+        "Verify explanatory text about mandatory order and artifact gates is preserved",
+        "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "scanner-separation-docs",
+      "category": "functional",
+      "title": "Scanner Separation Best Practice",
+      "description": "Add a best-practices note to ci/github/repo-settings.md section 3 (Security) documenting the pattern of keeping security scanners in separate workflows for independent failure modes, triggers, and ownership.",
+      "testing_steps": [
+        "Verify `grep -i 'separate.*workflow' .claude-plugin/scaffold/github/ci/github/repo-settings.md` finds the scanner separation recommendation",
+        "Verify `grep -i 'CodeQL' .claude-plugin/scaffold/github/ci/github/repo-settings.md` references CodeQL as already-separate",
+        "Verify `grep -i 'Trivy\\|container' .claude-plugin/scaffold/github/ci/github/repo-settings.md` mentions additional scanners as examples",
+        "Run `npx prettier --check .claude-plugin/scaffold/github/ci/github/repo-settings.md` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/github/ci/github/repo-settings.md` and verify exit 0",
+        "Verify the note mentions independent failure modes as a benefit",
+        "Verify the note mentions independent triggers as a benefit",
+        "Verify the note mentions clearer ownership as a benefit",
+        "Verify the note does not prescribe specific scanner tools beyond CodeQL as an example",
+        "Verify the note is placed within the existing Security section (section 3)"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "template-api-endpoints",
+      "category": "functional",
+      "title": "CLAUDE.md.template API Endpoints Section",
+      "description": "Add an optional API Endpoints section to CLAUDE.md.template with a Method/Path/Description table. Placed after Architecture, before Testing. Heading uses the optional-delete pattern.",
+      "testing_steps": [
+        "Verify `grep 'API Endpoints.*optional' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the section heading",
+        "Verify `grep 'Method.*Path.*Description' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the table header",
+        "Verify `grep 'delete if not applicable' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the delete instruction in the heading",
+        "Verify the section appears after Architecture and before Testing in the file",
+        "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["specforge-tracking-table"]
+    },
+    {
+      "id": "template-container-deployment",
+      "category": "functional",
+      "title": "CLAUDE.md.template Container Deployment Section",
+      "description": "Add an optional Container Deployment section to CLAUDE.md.template with placeholders for build command, ports, health check, and reverse proxy. Placed after Testing, before Quality Standards.",
+      "testing_steps": [
+        "Verify `grep 'Container Deployment.*optional' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the section heading",
+        "Verify `grep 'BUILD_COMMAND\\|CONTAINER_BUILD' .claude-plugin/scaffold/common/CLAUDE.md.template` finds build command placeholder",
+        "Verify `grep 'PORT\\|port' .claude-plugin/scaffold/common/CLAUDE.md.template` finds port placeholder",
+        "Verify `grep 'HEALTH\\|health' .claude-plugin/scaffold/common/CLAUDE.md.template` finds health check placeholder",
+        "Verify the section appears after Testing and before Quality Standards",
+        "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["template-api-endpoints"]
+    },
+    {
+      "id": "template-service-environment",
+      "category": "functional",
+      "title": "CLAUDE.md.template Service Environment Section",
+      "description": "Add an optional Service Environment section to CLAUDE.md.template with a Service/Directory/Activate Command table. Placed after Project Overview, before Development Workflow.",
+      "testing_steps": [
+        "Verify `grep 'Service Environment.*optional' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the section heading",
+        "Verify `grep 'Service.*Directory.*Activate' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the table header",
+        "Verify the section appears after Project Overview and before Development Workflow",
+        "Verify `grep 'delete if not applicable' .claude-plugin/scaffold/common/CLAUDE.md.template` finds delete instructions",
+        "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["template-container-deployment"]
     }
   ]
 }
