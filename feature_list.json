@@ -833,6 +833,141 @@
         "gitlab-ci-parity",
         "jenkins-ci-parity"
       ]
+    },
+    {
+      "id": "markdownlint-default-ignores",
+      "category": "infrastructure",
+      "title": "Markdownlint Default Ignores",
+      "description": "Add default directory ignores to .markdownlint-cli2.yaml scaffold for node_modules, .venv, and target directories that commonly contain third-party markdown. Prevents lint failures from vendored content in downstream projects.",
+      "testing_steps": [
+        "Verify `grep 'node_modules' .claude-plugin/scaffold/common/.markdownlint-cli2.yaml` finds both node_modules patterns",
+        "Verify `grep '.venv' .claude-plugin/scaffold/common/.markdownlint-cli2.yaml` finds both .venv patterns",
+        "Verify `grep 'target' .claude-plugin/scaffold/common/.markdownlint-cli2.yaml` finds the target pattern",
+        "Verify `grep 'PLAN.md' .claude-plugin/scaffold/common/.markdownlint-cli2.yaml` confirms existing .claude/PLAN.md ignore is preserved",
+        "Run `npx prettier --check .claude-plugin/scaffold/common/.markdownlint-cli2.yaml` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "checkout-action-version-bump",
+      "category": "infrastructure",
+      "title": "Checkout Action Version Bump",
+      "description": "Bump actions/checkout from v4 to v6 in all scaffold workflow files. Only commit-standards.yml still references v4; all other workflows already use v6.",
+      "testing_steps": [
+        "Verify `grep -r 'actions/checkout@v4' .claude-plugin/scaffold/` returns no matches",
+        "Verify `grep 'actions/checkout@v6' .claude-plugin/scaffold/github/ci/github/workflows/commit-standards.yml` exits 0",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/ci/github/workflows/commit-standards.yml'))\"` to validate YAML syntax"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "dependabot-commit-prefixes",
+      "category": "infrastructure",
+      "title": "Dependabot Conventional Commit Prefixes",
+      "description": "Add commit-message configuration with prefix 'build' and include 'scope' to all dependabot ecosystem entries in both dependabot.yml scaffold files. Ensures dependabot PRs produce valid conventional commits that pass commit-msg hooks.",
+      "testing_steps": [
+        "Verify `grep -c 'prefix' .claude-plugin/scaffold/github/.github/dependabot.yml` returns 2 (one per active ecosystem)",
+        "Verify `grep -c 'prefix' .claude-plugin/scaffold/github/ci/github/dependabot.yml` returns at least 2 for active ecosystems",
+        "Verify `grep -A1 'prefix' .claude-plugin/scaffold/github/.github/dependabot.yml` shows 'build' as the prefix value",
+        "Verify `grep -A1 'include' .claude-plugin/scaffold/github/.github/dependabot.yml` shows 'scope' as the include value",
+        "Verify commented-out ecosystem blocks in ci/github/dependabot.yml also include commit-message config",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/dependabot.yml'))\"` to validate YAML",
+        "Run `npx prettier --check .claude-plugin/scaffold/github/.github/dependabot.yml` and verify exit 0",
+        "Run `npx prettier --check .claude-plugin/scaffold/github/ci/github/dependabot.yml` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "scaffold-proposals-directory",
+      "category": "infrastructure",
+      "title": "Scaffold Proposals Directory",
+      "description": "Add .specify/proposals/.gitkeep to the common scaffold so downstream projects have the proposals directory after init. Add .specify/proposals/.gitkeep to overwrite tier and .specify/proposals/* to skip tier in upgrade-tiers.json.",
+      "testing_steps": [
+        "Verify `test -f .claude-plugin/scaffold/common/.specify/proposals/.gitkeep` exits 0",
+        "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.specify/proposals/.gitkeep' in d['tiers']['overwrite']\"` exits 0",
+        "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.specify/proposals/*' in d['tiers']['skip']\"` exits 0",
+        "Verify `python3 -c \"import json; json.load(open('.claude-plugin/upgrade-tiers.json'))\"` exits 0 (valid JSON)"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "template-delegation-policy",
+      "category": "functional",
+      "title": "CLAUDE.md.template Delegation Policy",
+      "description": "Expand the brief Subagent Guidance section in CLAUDE.md.template into a structured three-category delegation policy: mandatory delegation (multi-file changes, security fixes, test suites), parallelization rules, and main-conversation-only tasks.",
+      "testing_steps": [
+        "Verify `grep -c 'Mandatory' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the mandatory delegation category",
+        "Verify `grep -c 'Parallel' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the parallelization category",
+        "Verify `grep -c 'Main conversation' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the main-only category",
+        "Verify the delegation section includes concrete examples for each category",
+        "Verify the section does not reference project-specific tool names",
+        "Verify `grep -v 'Subagent Guidance' .claude-plugin/scaffold/common/CLAUDE.md.template` confirms the old section header is replaced or expanded",
+        "Run `npx prettier --check .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
+        "Verify the section includes a note that projects should customize the examples",
+        "Verify no project-specific framework or library names appear in the delegation examples"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "template-testing-subsections",
+      "category": "functional",
+      "title": "CLAUDE.md.template Testing Subsections",
+      "description": "Replace the single [TEST_COMMAND] placeholder with structured subsections for unit tests (framework, file pattern, run command) and optional E2E tests (framework, prerequisites, run command).",
+      "testing_steps": [
+        "Verify `grep 'Unit Tests' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the unit test subsection",
+        "Verify `grep 'E2E' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the E2E test subsection",
+        "Verify `grep 'UNIT_TEST_FRAMEWORK\\|TEST_FRAMEWORK' .claude-plugin/scaffold/common/CLAUDE.md.template` finds framework placeholders",
+        "Verify `grep 'TEST_FILE_PATTERN\\|test.*pattern' .claude-plugin/scaffold/common/CLAUDE.md.template` finds file pattern placeholders",
+        "Verify the E2E section is marked as optional",
+        "Verify the old single [TEST_COMMAND] placeholder is replaced",
+        "Run `npx prettier --check .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["template-delegation-policy"]
+    },
+    {
+      "id": "template-hooks-table-commit-strategy",
+      "category": "functional",
+      "title": "CLAUDE.md.template Hooks Table and Commit Strategy",
+      "description": "Replace the bullet-list hook descriptions with a scannable table (hook, trigger, purpose) containing the 5 standard cpf hooks plus a placeholder row. Add a Commit Strategy subsection covering atomic commits, push individual commits, squash at PR merge.",
+      "testing_steps": [
+        "Verify `grep -c '|' .claude-plugin/scaffold/common/CLAUDE.md.template | head -1` shows table pipe characters in the hooks section",
+        "Verify `grep 'protect-files\\|Pre-edit' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the protect-files hook row",
+        "Verify `grep 'validate-bash\\|Pre-bash' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the validate-bash hook row",
+        "Verify `grep 'format\\|Post-edit' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the format hook row",
+        "Verify `grep 'commit-msg\\|Commit-msg' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the commit-msg hook row",
+        "Verify `grep 'Commit Strategy\\|commit strategy' .claude-plugin/scaffold/common/CLAUDE.md.template` finds the commit strategy section",
+        "Verify `grep -i 'atomic' .claude-plugin/scaffold/common/CLAUDE.md.template` finds atomic commit guidance",
+        "Verify `grep -i 'squash' .claude-plugin/scaffold/common/CLAUDE.md.template` finds squash-at-merge guidance",
+        "Verify the old bullet-list format for hooks is replaced",
+        "Run `npx prettier --check .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["template-testing-subsections"]
+    },
+    {
+      "id": "directory-semantics-documentation",
+      "category": "functional",
+      "title": "Directory Semantics Documentation",
+      "description": "Add a Directory Semantics section to scaffold/common/.specify/WORKFLOW.md documenting the .claude/ vs .specify/ boundary conventions. Defines what belongs in .claude/ (tooling only), .specify/memory/, .specify/specs/, .specify/proposals/, and .specify/templates/.",
+      "testing_steps": [
+        "Verify `grep 'Directory Semantics\\|Directory semantics' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` finds the new section",
+        "Verify `grep '.claude/' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` documents the .claude/ directory purpose",
+        "Verify `grep 'proposals' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` documents the proposals directory purpose",
+        "Verify `grep 'tooling' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` clarifies .claude/ is for tooling configuration only",
+        "Verify `grep 'ephemeral\\|session-scoped' .claude-plugin/scaffold/common/.specify/WORKFLOW.md` addresses temporary documents",
+        "Run `npx prettier --check .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0",
+        "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["scaffold-proposals-directory"]
     }
   ]
 }
