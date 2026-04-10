@@ -1072,6 +1072,27 @@
       ],
       "passes": true,
       "dependencies": ["template-container-deployment"]
+    },
+    {
+      "id": "dependabot-multi-ecosystem-template",
+      "category": "infrastructure",
+      "title": "Dependabot Multi-Ecosystem Template",
+      "description": "Add commented-out pip, cargo, and gomod ecosystem blocks to scaffold .github/dependabot.yml for parity with ci/github/dependabot.yml. Also add gomod block to ci/github/dependabot.yml. Each block includes schedule, commit-message, and groups config.",
+      "testing_steps": [
+        "Verify `grep '# Python' .claude-plugin/scaffold/github/.github/dependabot.yml` finds the pip section comment",
+        "Verify `grep '# Rust' .claude-plugin/scaffold/github/.github/dependabot.yml` finds the cargo section comment",
+        "Verify `grep '# Go' .claude-plugin/scaffold/github/.github/dependabot.yml` finds the gomod section comment",
+        "Verify `grep 'pip' .claude-plugin/scaffold/github/.github/dependabot.yml` finds commented-out pip ecosystem",
+        "Verify `grep 'cargo' .claude-plugin/scaffold/github/.github/dependabot.yml` finds commented-out cargo ecosystem",
+        "Verify `grep 'gomod' .claude-plugin/scaffold/github/.github/dependabot.yml` finds commented-out gomod ecosystem",
+        "Verify `grep 'gomod' .claude-plugin/scaffold/github/ci/github/dependabot.yml` finds commented-out gomod ecosystem",
+        "Verify `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/dependabot.yml'))\"` exits 0 (valid YAML)",
+        "Run `npx prettier --check .claude-plugin/scaffold/github/.github/dependabot.yml` and verify exit 0",
+        "Run `npx prettier --check .claude-plugin/scaffold/github/ci/github/dependabot.yml` and verify exit 0",
+        "Verify active ecosystems (github-actions, npm) are unchanged by diffing only uncommented lines"
+      ],
+      "passes": false,
+      "dependencies": []
     }
   ]
 }
