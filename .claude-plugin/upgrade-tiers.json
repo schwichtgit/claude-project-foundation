@@ -17,7 +17,8 @@
       "prompts/coding-prompt.md",
       ".markdownlint-cli2.yaml",
       ".specify/doctor-registry.json",
-      "scripts/doctor.sh"
+      "scripts/doctor.sh",
+      ".specify/proposals/.gitkeep"
     ],
     "review": [
       ".github/workflows/ci.yml",
@@ -46,6 +47,7 @@
       "CLAUDE.md",
       ".specify/memory/*",
       ".specify/specs/*",
+      ".specify/proposals/*",
       "feature_list.json",
       "claude-progress.txt",
       "README.md",

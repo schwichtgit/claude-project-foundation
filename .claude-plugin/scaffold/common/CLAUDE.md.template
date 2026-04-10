@@ -11,13 +11,29 @@ when working with code in this repository.
 
 ## Development Workflow
 
-### Subagent Guidance
+### Subagent Delegation Policy
 
-Use the Task tool with specialized agents for:
+Customize these categories for your project.
 
-- Complex multi-file changes
-- Running test suites
-- Exploring unfamiliar parts of the codebase
+**Mandatory delegation** (always use subagents):
+
+- Multi-file changes spanning 3+ files
+- Security-sensitive fixes (auth, secrets, permissions)
+- Running full test suites
+- Large refactors or migrations
+
+**Parallelization** (launch concurrent subagents):
+
+- Independent analyses with no data dependencies
+- Simultaneous lint, test, and type-check runs
+- Reviewing multiple files or modules at once
+
+**Main conversation only** (do not delegate):
+
+- Orchestration and sequencing decisions
+- User-facing questions and confirmations
+- Quick single-file reads or edits
+- Plan creation and updates
 
 ### Commands
 
@@ -25,11 +41,14 @@ Use the Task tool with specialized agents for:
 # Start development
 ./init.sh
 
-# Run tests
-[TEST_COMMAND]
+# Unit tests
+[UNIT_TEST_COMMAND]
 
 # Run single test
 [SINGLE_TEST_COMMAND]
+
+# E2E tests (optional -- delete if not applicable)
+[E2E_TEST_COMMAND]
 
 # Lint
 [LINT_COMMAND]
@@ -60,22 +79,33 @@ artifact is missing, stop and run the required prior step first.
 [Describe the project architecture: main modules, data flow,
 key abstractions.]
 
+## Testing
+
+### Unit Tests
+
+- **Framework:** [UNIT_TEST_FRAMEWORK]
+- **Test files:** [TEST_FILE_PATTERN]
+- **Run all:** [UNIT_TEST_COMMAND]
+
+### E2E Tests (optional -- delete if not applicable)
+
+- **Framework:** [E2E_FRAMEWORK]
+- **Prerequisites:** [E2E_PREREQUISITES]
+- **Run:** [E2E_COMMAND]
+
 ## Quality Standards
 
-Quality is enforced by the Claude Project Foundation hooks:
+Quality is enforced by Claude Project Foundation hooks:
 
-- **Pre-edit:** Blocks modification of sensitive files
-  (.env, keys, credentials, lock files)
-- **Pre-bash:** Blocks destructive commands
-  (rm -rf /, force push, hard reset)
-- **Post-edit:** Auto-formats files by language
-  (Prettier, Ruff, rustfmt, etc.)
-- **On stop:** Runs lint, type check, and test suite
-  before allowing session end
-- **Pre-commit:** Checks for secrets, forbidden files,
-  runs linters
-- **Commit-msg:** Validates conventional commits, blocks
-  AI-isms and emoji
+| Hook           | Trigger    | Purpose                               |
+| -------------- | ---------- | ------------------------------------- |
+| protect-files  | Pre-edit   | Block sensitive file modifications    |
+| validate-bash  | Pre-bash   | Block destructive commands            |
+| format-check   | Post-edit  | Auto-format files by language         |
+| verify-quality | On stop    | Run lint, type check, and test suite  |
+| pre-commit     | Pre-commit | Check for secrets and forbidden files |
+| commit-msg     | Commit-msg | Validate conventional commits         |
+| [HOOK_NAME]    | [TRIGGER]  | [PURPOSE]                             |
 
 Coverage threshold: [COVERAGE_THRESHOLD]% (configured in constitution)
 
@@ -89,6 +119,12 @@ Coverage threshold: [COVERAGE_THRESHOLD]% (configured in constitution)
 - No emoji in commit messages or PR titles
 - No AI-isms or self-referential language
 - No Co-Authored-By trailers
+
+### Commit Strategy
+
+- Make atomic commits with clear messages as you work
+- Push individual commits (do not squash before push)
+- Squash happens at PR merge time (configured in GitHub)
 
 ## Communication Style
 

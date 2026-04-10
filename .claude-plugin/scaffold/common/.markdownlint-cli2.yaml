@@ -10,3 +10,8 @@ config:
 
 ignores:
   - '.claude/PLAN.md'
+  - 'node_modules/**'
+  - '**/node_modules/**'
+  - '.venv/**'
+  - '**/.venv/**'
+  - '**/target/**'
