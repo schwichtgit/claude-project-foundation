@@ -1301,7 +1301,7 @@
         "Verify that when node_modules is absent, the md handler silently skips (exit 0)",
         "Verify the handler lints the file on disk (not via stdin), matching existing pattern"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1318,7 +1318,7 @@
         "Verify that when python3 is absent, the yaml handler silently skips (exit 0)",
         "Verify valid YAML files pass the handler without errors"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1340,7 +1340,7 @@
         "Verify the Jenkins marker is placed between the Lint stage and the Test stage",
         "Verify the GitHub marker is placed before the summary job"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1358,7 +1358,7 @@
         "Run `npx prettier --check .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0",
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1378,7 +1378,7 @@
         "Verify the MR template includes a Summary section and Test Plan section matching the GitHub PR template pattern",
         "Verify the MR template is formatted consistently with the existing GitHub PR template"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1393,7 +1393,7 @@
         "Verify `grep -i 'highest.*existing\\|continue.*numbering\\|next.*available' .claude-plugin/skills/specforge/SKILL.md` finds the sequential numbering requirement for spec IDs",
         "Verify the features sub-command workflow step 1 or 2 includes reading existing feature_list.json"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1408,7 +1408,7 @@
         "Verify the instruction lists GitHub, GitLab, and Jenkins as the supported platforms",
         "Verify the instruction notes that inherently platform-specific features should document applicability rather than forcing all platforms"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     }
   ]
