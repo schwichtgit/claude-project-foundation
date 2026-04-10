@@ -846,7 +846,7 @@
         "Verify `grep 'PLAN.md' .claude-plugin/scaffold/common/.markdownlint-cli2.yaml` confirms existing .claude/PLAN.md ignore is preserved",
         "Run `npx prettier --check .claude-plugin/scaffold/common/.markdownlint-cli2.yaml` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -859,7 +859,7 @@
         "Verify `grep 'actions/checkout@v6' .claude-plugin/scaffold/github/ci/github/workflows/commit-standards.yml` exits 0",
         "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/ci/github/workflows/commit-standards.yml'))\"` to validate YAML syntax"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -877,7 +877,7 @@
         "Run `npx prettier --check .claude-plugin/scaffold/github/.github/dependabot.yml` and verify exit 0",
         "Run `npx prettier --check .claude-plugin/scaffold/github/ci/github/dependabot.yml` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -891,7 +891,7 @@
         "Verify `python3 -c \"import json; d=json.load(open('.claude-plugin/upgrade-tiers.json')); assert '.specify/proposals/*' in d['tiers']['skip']\"` exits 0",
         "Verify `python3 -c \"import json; json.load(open('.claude-plugin/upgrade-tiers.json'))\"` exits 0 (valid JSON)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -911,7 +911,7 @@
         "Verify the section includes a note that projects should customize the examples",
         "Verify no project-specific framework or library names appear in the delegation examples"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -928,7 +928,7 @@
         "Verify the old single [TEST_COMMAND] placeholder is replaced",
         "Run `npx prettier --check .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["template-delegation-policy"]
     },
     {
@@ -949,7 +949,7 @@
         "Run `npx prettier --check .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["template-testing-subsections"]
     },
     {
@@ -966,7 +966,7 @@
         "Run `npx prettier --check .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0",
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["scaffold-proposals-directory"]
     },
     {
@@ -986,7 +986,7 @@
         "Verify the summary job still lists all jobs in its needs array",
         "Verify the changes job outputs are referenced with correct syntax in downstream job if conditions"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1003,7 +1003,7 @@
         "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1023,7 +1023,7 @@
         "Verify the note does not prescribe specific scanner tools beyond CodeQL as an example",
         "Verify the note is placed within the existing Security section (section 3)"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1038,7 +1038,7 @@
         "Verify the section appears after Architecture and before Testing in the file",
         "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["specforge-tracking-table"]
     },
     {
@@ -1054,7 +1054,7 @@
         "Verify the section appears after Testing and before Quality Standards",
         "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["template-api-endpoints"]
     },
     {
@@ -1070,7 +1070,7 @@
         "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0",
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["template-container-deployment"]
     }
   ]
