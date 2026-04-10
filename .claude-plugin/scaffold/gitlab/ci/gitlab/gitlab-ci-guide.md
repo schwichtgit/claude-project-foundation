@@ -177,3 +177,16 @@ Configure these in your GitLab project under **Settings > Merge requests**:
 - Delete source branch on merge
 - Under **Settings > Repository > Protected branches**, require
   only the `summary` job to pass
+
+Enable branch auto-deletion after merge:
+
+```bash
+glab api "projects/${PROJECT_PATH}" \
+  --method PUT \
+  -f "remove_source_branch_after_merge=true"
+```
+
+Add to your project checklist:
+
+- [ ] Merge request settings: delete source branch after
+      merge -- enabled

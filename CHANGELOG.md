@@ -5,6 +5,35 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Pre-commit lint handlers, CI extension points, and workflow
+improvements.
+
+### Added
+
+- Pre-commit markdown lint handler via markdownlint-cli2,
+  conditional on node_modules (#43)
+- Pre-commit YAML syntax validation via python3
+  yaml.safe_load, conditional on python3 (#43)
+- CI extension point markers in all three platforms (GitLab,
+  Jenkins, GitHub) preventing upgrade from dropping
+  host-project jobs (#43)
+- MR/PR rebase workflow documentation in WORKFLOW.md and
+  CLAUDE.md.template (#43)
+- GitLab MR template with delete-source-branch reminder and
+  branch auto-deletion setup in gitlab-ci-guide.md (#43)
+- Specforge clarify sub-command now prompts about
+  single-platform CI scope expansion (#43)
+
+### Changed
+
+- Specforge features sub-command now requires globally
+  unique feature IDs and prohibits separate feature list
+  files (#43)
+- Merged 10 doctor features from feature_list_doctor.json
+  into main feature_list.json (#43)
+
 ## [0.1.0-alpha.8] - 2026-04-09
 
 Multi-ecosystem dependabot template.

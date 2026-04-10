@@ -153,6 +153,15 @@ Coverage threshold: [COVERAGE_THRESHOLD]% (configured in constitution)
 - Push individual commits (do not squash before push)
 - Squash happens at PR merge time (configured in GitHub)
 
+### MR/PR Workflow
+
+Before opening a merge request or pull request:
+
+1. `git fetch origin`
+2. `git rebase origin/main`
+3. Verify CI passes on the rebased branch
+4. Open the MR/PR -- diff should contain only branch work
+
 ## Communication Style
 
 - Technical and direct

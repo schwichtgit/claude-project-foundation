@@ -41,6 +41,7 @@
       "ci/github/PULL_REQUEST_TEMPLATE.md",
       "ci/github/workflows/commit-standards.yml",
       "ci/gitlab/gitlab-ci-guide.md",
+      ".gitlab/merge_request_templates/Default.md",
       "ci/jenkins/jenkinsfile-guide.md"
     ],
     "skip": [

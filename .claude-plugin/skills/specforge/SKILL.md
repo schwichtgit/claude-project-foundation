@@ -220,6 +220,10 @@ presenting each as a numbered question with suggested resolutions.
    - **Contradictions** -- conflicting requirements between features or with
      the constitution
    - **Unstated assumptions** -- implicit expectations not documented
+   - **Single-platform CI scope** -- features that target one CI
+     platform (GitHub, GitLab, or Jenkins) but could apply to all.
+     When detected, ask the user whether the scope should expand
+     to all supported platforms.
 4. Present each issue as a numbered question with:
    - The source (which feature or section)
    - The issue type
@@ -295,7 +299,13 @@ machine-readable feature definitions for autonomous execution.
    and which `/cpf:specforge` sub-command to run first. Do NOT
    proceed without all three artifacts.
 2. Read the constitution, spec, and plan.
-3. For each feature in the spec, create a JSON entry with:
+3. **ID uniqueness check:** Read the existing `feature_list.json`
+   if it exists. Record all current feature IDs. New feature IDs
+   must not duplicate any existing ID. There is exactly one
+   `feature_list.json` -- never create separate feature list files
+   (e.g., `feature_list_doctor.json`). Always append to the
+   existing file.
+4. For each feature in the spec, create a JSON entry with:
    - `id`: kebab-case identifier (e.g., `plugin-directory-structure`)
    - `category`: one of `infrastructure`, `functional`, `style`, `testing`
    - `title`: human-readable title
@@ -303,19 +313,23 @@ machine-readable feature definitions for autonomous execution.
    - `testing_steps`: array of concrete, executable test commands
    - `passes`: `false` (all features start as not passing)
    - `dependencies`: array of feature IDs this feature depends on
-4. Validate the output against `.specify/templates/feature-list-schema.json`.
-5. Run dependency cycle detection to ensure no circular references.
-6. Verify constraints:
+5. Validate the output against `.specify/templates/feature-list-schema.json`.
+6. Run dependency cycle detection to ensure no circular references.
+7. Verify constraints:
    - All `passes` fields are `false` initially
    - Every feature has at least 3 testing steps
    - At least 20% of features have 10+ testing steps
-7. Write `feature_list.json` to the project root.
+8. Write `feature_list.json` to the project root.
 
 **Notes:**
 
 - Feature IDs must be kebab-case and unique.
 - Dependencies reference other feature IDs by their `id` field.
 - The coding agent uses this file to select and track features.
+- Spec feature IDs (INFRA-NNN, FUNC-NNN, TEST-NNN) must be globally
+  unique across all spec files in the project. Read existing specs in
+  `.specify/specs/` to find the highest used number before assigning
+  new IDs. Do not restart numbering at 001 per document.
 
 ### /cpf:specforge analyze
 

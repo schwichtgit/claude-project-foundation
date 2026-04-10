@@ -216,6 +216,12 @@ jobs:
           test -f ".claude-plugin/$SKILL_PATH"
           echo "PASS: SKILL.md exists at $SKILL_PATH"
 
+  # ===========================================================================
+  # PROJECT-SPECIFIC JOBS -- add your jobs below this marker.
+  # specforge upgrade will show this section in diffs but will
+  # not remove jobs you add here.
+  # ===========================================================================
+
   # ---------------------------------------------------------------------------
   # Summary (ONLY job to require in branch protection)
   # ---------------------------------------------------------------------------
