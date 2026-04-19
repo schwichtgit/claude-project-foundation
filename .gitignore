@@ -1,6 +1,9 @@
 # Claude Mind memory files
 .claude/mind.*
 
+# Local Claude archive (never tracked)
+.claude/archive/
+
 # OS
 .DS_Store
 Thumbs.db
