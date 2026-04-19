@@ -106,33 +106,71 @@ landing GitHub-only and tracking GitLab/Jenkins as follow-ups.
 
 ---
 
-### ADR-002: Guard via `hashFiles` (Actions) and `rules: exists:` (GitLab) and `fileExists` (Jenkins), not a shared shell snippet
+### ADR-002: Remove plugin-validation from scaffold base; move to a commented host-tier example
 
 **Date:** 2026-04-19
-**Status:** Accepted
+**Status:** Accepted (superseded an earlier "guard with
+platform-native existence checks" draft — see Rejected below)
 
-**Context:** INFRA-016 needs to skip plugin-validation when
-`.claude-plugin/plugin.json` is missing. Each platform has a
-native idiom for "only run this job if file X exists."
+**Context:** INFRA-016 surfaced because plugin-validation
+unconditionally calls `jq empty .claude-plugin/plugin.json`
+and fails on downstream projects that do not author their own
+Claude Code plugin. The initial instinct was to guard the job
+with platform-native existence checks (`hashFiles`,
+`rules: exists:`, `fileExists`).
 
-**Decision:** Use each platform's native existence check rather
-than pushing a shell-based `[ -f ... ]` guard into every job.
+A review of how the scaffold is consumed overturned that plan.
+Downstream projects consume the cpf plugin from the Claude
+Code plugin cache (`~/.claude/plugins/...`), not from a
+repo-local `.claude-plugin/` directory. The plugin cache is
+invisible to CI runners. Only repos that author their _own_
+plugin ship a `.claude-plugin/`, and the cpf source repo is
+one of them — but cpf's own `.github/workflows/ci.yml` keeps a
+plugin-validation job embedded directly rather than inheriting
+it from the scaffold `ci-base.yml`. The scaffold base is a
+downstream-facing artifact; it should not carry a check that
+is a cpf-authorial concern.
+
+**Decision:** Remove `plugin-validation` entirely from all
+three scaffold base files and drop it from each `summary`
+job's dependency list. Provide a commented-out example of the
+job in each host-tier file (the scaffold's skip-tier files
+that downstream projects own after init) with the header
+`Uncomment if this project ships its own Claude Code plugin
+manifest.` Plugin-authoring downstream projects uncomment one
+block; everyone else carries no dead weight.
 
 **Alternatives considered:**
 
-1. **Shared shell guard:** one shell line in every job step.
-   Uniform, but noisy and easy to forget on a new step.
-2. **Platform-native (chosen):** `hashFiles`, `rules: exists:`,
-   `fileExists`. Reads cleanly in each scaffold file and
-   matches what CI reviewers expect.
+1. **Guard with platform-native existence checks** (rejected,
+   originally drafted): uses `hashFiles` / `rules: exists:` /
+   `fileExists`. Still pushes a cpf-authorial concern into
+   every downstream CI run, adds three different syntactic
+   flavors of "skip-when-missing" to the base, and invites
+   other drift (e.g., the job expects `jq` on the runner image
+   even though 95% of runs will skip it).
+2. **Shared shell-level guard** (rejected): `[ -f
+.claude-plugin/plugin.json ]` in every step. Uniform but
+   noisy; doesn't solve the design problem.
+3. **Remove from base, document in host-tier example**
+   (chosen): lowest ongoing surface in downstream CI, highest
+   signal-to-noise — the block that does nothing for a given
+   project literally isn't in that project's CI.
 
 **Consequences:**
 
-- Three different idioms. Reviewers of GitLab CI see GitLab
-  syntax; reviewers of GitHub see GitHub syntax. This is the
-  right trade-off.
-- Jenkins `fileExists` wraps the entire `steps {}` body; other
-  platforms gate per-step. Functionally equivalent.
+- Scaffold base files shrink. Downstream CI runs gain nothing
+  from the job's absence (it was failing anyway) but no longer
+  need to think about it.
+- Plugin-authoring downstream projects do one extra step on
+  init (uncomment the example block). That's the right trade:
+  they are the minority and they already know they are
+  authoring a plugin.
+- The cpf source repo is unaffected — it keeps its own
+  embedded plugin-validation job in its top-level ci.yml and
+  does not `uses: ./.github/workflows/ci-base.yml`.
+- `summary` needs lists shrink. GitHub Actions and GitLab
+  summary logic continue to work without change.
 
 ---
 
@@ -244,27 +282,30 @@ prettier@^3 --check .`; assert exit 0.
    replay; assert skip of install + pass of check.
 3. cpf's own PR CI: unchanged (cpf has a root `package.json`).
 
-### Phase 3: INFRA-016 — Plugin-validation skip
+### Phase 3: INFRA-016 — Remove plugin-validation, add host-tier example
 
 **Files:**
 
-| File                                                           | Change                                                                                                                                                                                                                                               |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.claude-plugin/scaffold/github/.github/workflows/ci-base.yml` | Add first step `check` that sets output `exists` from `hashFiles('.claude-plugin/plugin.json')`; gate every subsequent step with `if: steps.check.outputs.exists == 'true'`; add `if: steps.check.outputs.exists != 'true'` on a `SKIP` logger step. |
-| `.claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml`  | Add `rules: - exists: ['.claude-plugin/plugin.json']` to the `plugin-validation` job.                                                                                                                                                                |
-| `.claude-plugin/scaffold/jenkins/Jenkinsfile`                  | Wrap `plugin-validation` stage body in `if (fileExists('.claude-plugin/plugin.json')) { ... } else { echo 'SKIP: ...' }`.                                                                                                                            |
-| Summary logic (all three)                                      | Audit; patch only if `skipped` currently treated as failure.                                                                                                                                                                                         |
+| File                                                           | Change                                                                                                                                                              |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.claude-plugin/scaffold/github/.github/workflows/ci-base.yml` | Delete `plugin-validation` job; drop it from the `summary` `needs:` list and from the summary's `result` check loop.                                                |
+| `.claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml`  | Delete `plugin-validation` job; drop it from the `summary` `needs:` list.                                                                                           |
+| `.claude-plugin/scaffold/jenkins/Jenkinsfile`                  | Replace the live `Plugin Validation` stage with a commented-out example block and a "Uncomment the stage below if this project ships..." header. Same file is host. |
+| `.claude-plugin/scaffold/github/.github/workflows/ci.yml`      | Append a commented-out `plugin-validation` job below the PROJECT-SPECIFIC marker with the "Uncomment if this project ships..." header.                              |
+| `.claude-plugin/scaffold/gitlab/.gitlab-ci.yml`                | Append a commented-out `plugin-validation` job below the PROJECT-SPECIFIC marker with the same header.                                                              |
 
 **Verification:**
 
-1. Fixture `/tmp/pv-noplugin/` (no `.claude-plugin/`). Run
-   GitHub job via `act`; assert all validation steps skipped
-   and summary passes.
-2. cpf's own PR CI: plugin-validation runs fully (cpf has
-   `.claude-plugin/`).
-3. GitLab: `glab ci lint` on modified yaml.
-4. Jenkins: Groovy syntax check via `Jenkinsfile` local replay
-   or manual review.
+1. `grep -c 'plugin-validation' <base-file>` returns 0 for all
+   three scaffold base files (no live job or needs ref).
+2. `grep -E 'Uncomment (if|the stage below)' <host-file>`
+   finds the commented-example header in each host-tier file.
+3. `python3 -c "import yaml; yaml.safe_load(open('<f>'))"` on
+   all four modified yaml files exits 0.
+4. `npx prettier@^3 --check` on the four yaml files exits 0.
+5. cpf's own PR CI: unchanged. cpf's `.github/workflows/ci.yml`
+   keeps its embedded plugin-validation job (it does not
+   `uses:` the scaffold `ci-base.yml`).
 
 ### Phase 4: Release
 

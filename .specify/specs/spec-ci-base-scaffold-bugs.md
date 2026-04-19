@@ -19,8 +19,8 @@ identically. Source:
 
 - Shellcheck vendored-directory exclusions (P0)
 - Prettier job works when no root `package.json` exists (P0)
-- Plugin-validation skips cleanly when `.claude-plugin/` is
-  absent in a downstream project (P0)
+- Plugin-validation removed from the scaffold base; moved to a
+  commented-out example in the host-tier files (P0)
 
 Out of scope: issue 4 (verify-quality hook redesign) -- covered
 in a separate spec.
@@ -137,7 +137,7 @@ use `npx prettier`; no change needed there.
 
 ---
 
-### INFRA-016: Plugin-Validation Guards Against Missing .claude-plugin
+### INFRA-016: Remove Plugin-Validation From Scaffold Base
 
 **Description:** The `plugin-validation` job in every CI base
 unconditionally calls `jq empty .claude-plugin/plugin.json`.
@@ -145,49 +145,66 @@ Downstream projects that consume the scaffold but are not
 themselves cpf plugins have no `.claude-plugin/` directory.
 `jq` exits 2, the job fails, and `summary` blocks the PR.
 
-Plugin validation is relevant only to the cpf source repo (and
-to downstream repos that intentionally ship their own plugin).
-Guard the entire job so it skips cleanly when
-`.claude-plugin/plugin.json` is absent, with a visible `SKIP:`
-log line rather than a silent no-op.
+Plugin validation is a cpf-authorial concern that leaked into
+the scaffold base. Downstream projects consume the cpf plugin
+from the Claude Code plugin cache (`~/.claude/plugins/...`)
+which is invisible to CI runners — CI has nothing to validate.
+Only repos that author their own Claude Code plugin ship a
+`.claude-plugin/` directory, and the cpf source repo itself
+keeps its own plugin-validation job embedded in its top-level
+CI (not inherited from the scaffold ci-base).
+
+The correct fix is to remove plugin-validation from the
+scaffold base entirely and provide a commented-out example in
+each host-tier file that plugin-authoring projects can
+uncomment. Guarding the job (original proposal) was rejected:
+it pushes authorial concern into every downstream CI run, adds
+platform-specific existence-check syntax, and invites the same
+drift (e.g., `jq` missing from the runner image) that a
+"skip" branch is supposed to prevent.
 
 **Approach:**
 
-- GitHub: add a first `check` step that sets a step-output
-  based on `hashFiles('.claude-plugin/plugin.json')`; gate
-  each subsequent `run` step with `if: steps.check.outputs.
-exists == 'true'`. Alternatively: gate each step with
-  `if: hashFiles('.claude-plugin/plugin.json') != ''` directly.
-- GitLab: add a `rules:` clause with `exists:
-['.claude-plugin/plugin.json']` on the `plugin-validation`
-  job so GitLab skips the job natively.
-- Jenkins: wrap the `plugin-validation` stage body in a
-  `fileExists('.claude-plugin/plugin.json')` conditional and
-  log `SKIP: .claude-plugin/plugin.json not found`.
+- **Remove** the `plugin-validation` job from:
+  - `.claude-plugin/scaffold/github/.github/workflows/ci-base.yml`
+  - `.claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml`
+  - `.claude-plugin/scaffold/jenkins/Jenkinsfile` (stage form)
+- **Drop** `plugin-validation` from each `summary` job's
+  `needs:` / dependency list.
+- **Add a commented-out example block** to each host-tier file
+  below the PROJECT-SPECIFIC marker with a header:
+  "Uncomment if this project ships its own Claude Code plugin
+  manifest." Host-tier files:
+  - `.claude-plugin/scaffold/github/.github/workflows/ci.yml`
+  - `.claude-plugin/scaffold/gitlab/.gitlab-ci.yml`
+  - `.claude-plugin/scaffold/jenkins/Jenkinsfile` (below the
+    PROJECT-SPECIFIC marker — the same file serves as both
+    base and host for Jenkins)
+- The cpf source repo's own `.github/workflows/ci.yml`
+  (top-level, not scaffolded) retains its embedded
+  plugin-validation job. No change needed there — cpf already
+  keeps that job outside the scaffold.
 
-The `summary` job must treat `skipped` or `success` as pass.
-GitHub Actions already does this (skipped != failure); GitLab
-similarly. Verify the existing summary logic does not fail on
-skipped results.
-
-**Affected files:** same as INFRA-014.
+**Affected files:** ci-base files above, plus the three
+host-tier files that receive the commented example.
 
 **Acceptance Criteria:**
 
-- [ ] GitHub `plugin-validation` job skips all validation
-      steps when `.claude-plugin/plugin.json` does not exist
-      and logs `SKIP:` to the job summary.
-- [ ] GitLab `plugin-validation` job uses `rules:` with
-      `exists:` so it is not created when the file is missing.
-- [ ] Jenkins `plugin-validation` stage logs `SKIP:` and
-      returns success when the file is missing.
-- [ ] The `summary` job in all three platforms treats `skipped`
-      as non-failing (verified by simulated run with and
-      without `.claude-plugin/`).
-- [ ] The cpf source repo (which has `.claude-plugin/`) still
-      runs full plugin validation on PR and push.
+- [ ] No live `plugin-validation` job remains in any of the
+      three scaffold base files (verified via grep).
+- [ ] Each base file's `summary` job needs list no longer
+      references plugin-validation.
+- [ ] Each host-tier file contains a commented-out example
+      block of the plugin-validation job with the "Uncomment
+      if this project ships its own..." header.
+- [ ] The cpf source repo's CI still runs plugin-validation on
+      PR and push (via its own top-level ci.yml, which does
+      not `uses:` the scaffold ci-base).
 - [ ] Prettier and markdownlint pass on the modified YAML and
-      Jenkinsfile.
+      Jenkinsfile (commented lines included).
+- [ ] YAML parses cleanly via
+      `python3 -c "import yaml; yaml.safe_load(...)"` on all
+      four modified yaml files.
 
 **Dependencies:** None
 
@@ -240,9 +257,14 @@ polyglot/monorepo downstream projects`.
 3. **INFRA-016 multi-platform summary audit:** included in the
    scope of this spec. GitLab and Jenkins summary jobs are
    inspected and fixed if they treat `skipped` as failure.
-4. **INFRA-016 guard strategy:** belt-and-suspenders --
-   keep path-filter gating where present and add the
-   file-existence guard inside the job.
+4. **INFRA-016 strategy:** remove the job from the scaffold
+   base; add a commented-out example to the host-tier files
+   for plugin-authoring downstream projects. The prior
+   "belt-and-suspenders guard" plan was rejected — plugin
+   validation is a cpf-authorial concern that does not belong
+   in the scaffold's downstream-facing base (downstream
+   consumers get the cpf plugin from the Claude Code plugin
+   cache, invisible to CI).
 
 ## Deferred Questions
 

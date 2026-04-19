@@ -20,3 +20,43 @@ include:
 #     - ruff check .
 #   rules:
 #     - if: $CI_MERGE_REQUEST_IID
+
+# Uncomment if this project ships its own Claude Code plugin manifest
+# (i.e., has its own .claude-plugin/plugin.json at the repo root).
+# Plugin validation is NOT part of the ci-base pipeline because most
+# downstream projects consume the cpf plugin from the Claude Code plugin
+# cache and have no .claude-plugin/ of their own.
+#
+# plugin-validation:
+#   stage: lint
+#   image: alpine:latest
+#   before_script:
+#     - apk add --no-cache jq
+#   script:
+#     - jq empty .claude-plugin/plugin.json
+#     - jq -e '.name' .claude-plugin/plugin.json > /dev/null
+#     - jq -e '.version' .claude-plugin/plugin.json > /dev/null
+#     - jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
+#     - |
+#       for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
+#         test -f ".claude-plugin/$path" || { echo "FAIL: .claude-plugin/$path"; exit 1; }
+#       done
+#     - |
+#       for path in $(jq -r '.agents[]?.path // empty' .claude-plugin/plugin.json); do
+#         test -f ".claude-plugin/$path" || { echo "FAIL: .claude-plugin/$path"; exit 1; }
+#       done
+#     - |
+#       HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
+#       jq empty ".claude-plugin/$HOOKS_REL"
+#       jq -r '.. | .command? // empty' ".claude-plugin/$HOOKS_REL" | while IFS= read -r cmd; do
+#         SCRIPT=$(echo "$cmd" | sed 's|\${CLAUDE_PLUGIN_ROOT}|.claude-plugin|g')
+#         test -f "$SCRIPT" || { echo "FAIL: $SCRIPT (from $cmd)"; exit 1; }
+#       done
+#   rules:
+#     - if: $CI_MERGE_REQUEST_IID
+#       changes:
+#         - .claude-plugin/**/*
+#     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+#       changes:
+#         - .claude-plugin/**/*
+#     - if: $CI_COMMIT_TAG
