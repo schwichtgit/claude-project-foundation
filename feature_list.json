@@ -1543,6 +1543,68 @@
       ],
       "passes": true,
       "dependencies": []
+    },
+    {
+      "id": "ci-shellcheck-exclude-vendored-dirs",
+      "category": "infrastructure",
+      "title": "CI Base: Shellcheck Excludes Vendored Directories",
+      "description": "Add -not -path exclusions for .venv, node_modules, target, and dist to the shellcheck find invocations in the GitHub, GitLab, and Jenkins CI base scaffolds. Prevents false-positive failures from third-party scripts in vendored or build directories.",
+      "testing_steps": [
+        "Run `grep -E \"not -path '\\./\\\\.venv|not -path '\\*/\\.venv\" .claude-plugin/scaffold/github/.github/workflows/ci-base.yml` and verify the exclusion is present on the shellcheck job find line",
+        "Run `grep -E 'not -path .*node_modules|not -path .*target|not -path .*dist' .claude-plugin/scaffold/github/.github/workflows/ci-base.yml` and verify all three exclusions are present",
+        "Run `grep -E 'not -path .*\\.venv|not -path .*node_modules' .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml` and verify the exclusions are present in the GitLab shellcheck script",
+        "Run `grep -E 'not -path .*\\.venv|not -path .*node_modules' .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify the exclusions are present in the Jenkins shellcheck stage",
+        "Create fixture directory `/tmp/sc-fixture/.venv/bin/` with a bad script, `/tmp/sc-fixture/scripts/ok.sh` with a good script, cd into it, run the patched find command and verify only `scripts/ok.sh` is returned",
+        "Run `grep -c 'scripts/hooks' .claude-plugin/scaffold/github/.github/workflows/ci-base.yml` and verify the second find invocation targeting scripts/hooks is preserved",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci-base.yml'))\"` and verify exit 0",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml'))\"` and verify exit 0",
+        "Run `npx prettier@^3 --check .claude-plugin/scaffold/github/.github/workflows/ci-base.yml .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "ci-prettier-no-root-package-json",
+      "category": "infrastructure",
+      "title": "CI Base: Prettier Job Works Without Root package.json",
+      "description": "Guard the npm install step in the GitHub CI base prettier job with `if: hashFiles('package.json') != ''` and pin the prettier invocation to `npx --yes prettier@^3 --check .` on all three platforms. Enables polyglot/monorepo downstream projects that have no root package.json to use the scaffold without CI failing.",
+      "testing_steps": [
+        "Run `grep -A2 'Install root dev dependencies' .claude-plugin/scaffold/github/.github/workflows/ci-base.yml` and verify the step has `if: hashFiles('package.json') != ''`",
+        "Run `grep -E 'npx .*prettier@\\^3' .claude-plugin/scaffold/github/.github/workflows/ci-base.yml` and verify the prettier invocation includes the `@^3` pin",
+        "Run `grep -E 'npx .*prettier@\\^3' .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml` and verify the GitLab prettier invocation includes the `@^3` pin",
+        "Run `grep -E 'npx .*prettier@\\^3' .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify the Jenkins prettier invocation includes the `@^3` pin",
+        "Create empty fixture dir `/tmp/pf-nopkg/` with one `README.md`, run `npx --yes prettier@^3 --check .` in it and verify exit 0",
+        "Create fixture `/tmp/pf-monorepo/frontend/package.json` with prettier devDep; at `/tmp/pf-monorepo/` (no root package.json), verify `hashFiles('package.json')` returns empty and the fallback `npx --yes prettier@^3 --check .` works",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci-base.yml'))\"` and verify exit 0",
+        "Run `npx prettier@^3 --check .claude-plugin/scaffold/github/.github/workflows/ci-base.yml .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "ci-remove-plugin-validation-from-scaffold",
+      "category": "infrastructure",
+      "title": "CI Base: Remove Plugin-Validation From Scaffold Base",
+      "description": "Plugin validation is a cpf-authorial concern that leaked into the scaffold base. Downstream projects consume the cpf plugin from the Claude Code plugin cache and have no .claude-plugin/ directory of their own, so the base job always fails on them. Remove plugin-validation entirely from the GitHub, GitLab, and Jenkins scaffold base files, drop it from each summary job's dependency list, and add a commented-out example block to each host-tier file (ci.yml, .gitlab-ci.yml, Jenkinsfile below the PROJECT-SPECIFIC marker) that plugin authors can uncomment when they ship their own plugin manifest.",
+      "testing_steps": [
+        "Run `grep -cE '^\\s+plugin-validation:|\\bplugin-validation\\b' .claude-plugin/scaffold/github/.github/workflows/ci-base.yml | awk '{print $1}'` — verify the only remaining matches are inside comment lines beginning with `#` (explanatory text). Run `grep -E '^  plugin-validation:' .claude-plugin/scaffold/github/.github/workflows/ci-base.yml` and verify zero matches (no live job header).",
+        "Run `grep -E '^plugin-validation:' .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml` and verify zero matches (no live top-level job). Confirm the only remaining reference is inside the explanatory comment block.",
+        "Run `grep -E \"^\\s*stage\\('Plugin Validation'\\)\" .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify no uncommented stage declaration remains (matches must all be preceded by // comment markers)",
+        "Run `grep -A1 'summary:' .claude-plugin/scaffold/github/.github/workflows/ci-base.yml | grep -E 'needs:'` and verify the needs list does not include plugin-validation",
+        "Run `grep -B1 -A8 'summary:' .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml | grep -c 'plugin-validation'` and verify count is 0",
+        "Run `grep -E 'Uncomment if this project ships its own' .claude-plugin/scaffold/github/.github/workflows/ci.yml` and verify the commented example header is present in the host-tier file",
+        "Run `grep -E 'Uncomment if this project ships its own' .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify the commented example header is present in the host-tier file",
+        "Run `grep -E 'Uncomment the stage below if this project ships' .claude-plugin/scaffold/jenkins/Jenkinsfile` and verify the commented example header is present in the host-tier file",
+        "Run `grep -E '^# plugin-validation:' .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify the commented job declaration is present (every line of the example is a comment)",
+        "Run `grep -cE '^\\s*# plugin-validation:' .claude-plugin/scaffold/github/.github/workflows/ci.yml` and verify the commented job declaration is present",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci-base.yml'))\"` and verify exit 0",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci.yml'))\"` and verify exit 0",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml'))\"` and verify exit 0",
+        "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/gitlab/.gitlab-ci.yml'))\"` and verify exit 0",
+        "Run `npx prettier@^3 --check .claude-plugin/scaffold/github/.github/workflows/ci-base.yml .claude-plugin/scaffold/github/.github/workflows/ci.yml .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
     }
   ]
 }

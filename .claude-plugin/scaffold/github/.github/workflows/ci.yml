@@ -23,3 +23,37 @@ jobs:
   #   steps:
   #     - uses: actions/checkout@v6
   #     - run: npm test
+
+  # Uncomment if this project ships its own Claude Code plugin manifest
+  # (i.e., has its own .claude-plugin/plugin.json at the repo root).
+  # Plugin validation is NOT part of the ci-base workflow because most
+  # downstream projects consume the cpf plugin from the Claude Code plugin
+  # cache and have no .claude-plugin/ of their own.
+  #
+  # plugin-validation:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #     - name: Validate plugin.json
+  #       run: |
+  #         jq empty .claude-plugin/plugin.json
+  #         jq -e '.name' .claude-plugin/plugin.json > /dev/null
+  #         jq -e '.version' .claude-plugin/plugin.json > /dev/null
+  #         jq -e '.hooks' .claude-plugin/plugin.json > /dev/null
+  #     - name: Validate referenced paths exist
+  #       run: |
+  #         for path in $(jq -r '.skills[]?.path // empty' .claude-plugin/plugin.json); do
+  #           test -f ".claude-plugin/$path" || { echo "FAIL: .claude-plugin/$path"; exit 1; }
+  #         done
+  #         for path in $(jq -r '.agents[]?.path // empty' .claude-plugin/plugin.json); do
+  #           test -f ".claude-plugin/$path" || { echo "FAIL: .claude-plugin/$path"; exit 1; }
+  #         done
+  #     - name: Validate hooks.json and referenced scripts
+  #       run: |
+  #         HOOKS_REL=$(jq -r '.hooks' .claude-plugin/plugin.json)
+  #         HOOKS_PATH=".claude-plugin/$HOOKS_REL"
+  #         jq empty "$HOOKS_PATH"
+  #         jq -r '.. | .command? // empty' "$HOOKS_PATH" | while IFS= read -r cmd; do
+  #           SCRIPT=$(echo "$cmd" | sed 's|\${CLAUDE_PLUGIN_ROOT}|.claude-plugin|g')
+  #           test -f "$SCRIPT" || { echo "FAIL: $SCRIPT (from $cmd)"; exit 1; }
+  #         done
