@@ -234,7 +234,7 @@ a jq-based validator helper.
 
 **Date:** 2026-04-19
 **Status:** Accepted
-**Features:** INFRA-017, INFRA-027, INFRA-028
+**Features:** INFRA-017, INFRA-027, INFRA-028, INFRA-031
 
 **Context:** Today the plugin projects read-only assets
 (`prompts/`, `ci/principles/`, `.specify/templates/`) into
@@ -242,8 +242,8 @@ the host repo at top-level paths that look like project
 content. That mixing causes confusion and breaks clean
 upgrades.
 
-**Decision:** All plugin-owned host-side state lives under
-`.cpf/` at the project root:
+**Decision:** All **plugin-internal** host-side state lives
+under `.cpf/` at the project root:
 
 - `.cpf/policy.json` -- declarative hook policy
 - `.cpf/overrides/<plugin-relative-path>` -- user shadows
@@ -251,6 +251,37 @@ upgrades.
 - `.cpf/upstream-cache/<file>` -- review-tier diff
   baselines (Jenkinsfile and anything else the review tier
   adopts later)
+
+The rule binds **plugin-internal artifacts** -- templates,
+scripts, internal state, anything the plugin authored for
+its own machinery. Two categories sit outside the rule by
+design and live where their consumers require them, not
+under `.cpf/`:
+
+1. **Third-party tool config at host root.** Tools such as
+   prettier, markdownlint-cli2, ESLint, the shell, and git
+   default-discover their config from the project root.
+   Files in this category include `.prettierignore`,
+   `.markdownlint-cli2.yaml`, `.prettierrc.json`, and
+   `.gitignore`. They are recorded in the
+   `_third_party_tool_config` array at the top of
+   `.claude-plugin/upgrade-tiers.json`. Adding a new file
+   to this category requires adding it to that array and
+   updating ADR-002.
+2. **External-platform-mandated paths.** CI platforms and
+   tooling look for files at fixed locations: `.github/`,
+   `.gitlab/`, `.gitlab-ci.yml`, `Jenkinsfile`,
+   `ci/principles/`, `ci/github/`, `ci/gitlab/`,
+   `ci/jenkins/`. These are governed by the platform, not
+   by the plugin, and cannot be relocated under `.cpf/`.
+
+A CI lint (`scripts/check-namespace-discipline.sh`) reads
+`upgrade-tiers.json` and asserts every entry projected
+across the overwrite, review, customizable, and skip tiers
+either begins with `.cpf/`, appears in
+`_third_party_tool_config`, or matches an
+external-platform glob. Plugin-cache entries are not
+scanned because they never project to the host.
 
 **Alternatives Considered:**
 
@@ -264,11 +295,21 @@ upgrades.
    `specs/`). Boundaries blur.
 3. **Top-level files (current behavior):** the bug being
    fixed.
+4. **Relocate third-party tool config under `.cpf/` via
+   symlinks or `--ignore-path` flags.** Considered and
+   rejected. Tool configs default-discover from cwd; moving
+   them would either break the default discovery contract
+   or require every callsite (CI, pre-commit hook,
+   contributor IDE) to pass an explicit override flag. The
+   cure is worse than the symptom. INFRA-031 documents the
+   exception list rather than working around it.
 
 **Consequences:**
 
-- Clean mental model: "anything the plugin owns on the host
-  lives under `.cpf/`."
+- Clean mental model: "anything **plugin-internal** the
+  plugin owns on the host lives under `.cpf/`. Third-party
+  tool config and external-platform paths live where the
+  tool/platform looks."
 - Survives if the user disables / uninstalls the Claude
   plugin layer (files are not hidden under `.claude/`).
 - Follows overwhelming `.toolname/` prior art (`.git/`,
@@ -276,6 +317,12 @@ upgrades.
 - Every existing scaffold projection that ships to the host
   gets re-evaluated against the "does host meaningfully
   edit this?" boundary rule.
+- The boundary is enforceable. Adding a new host-root
+  projection is a deliberate act: edit
+  `_third_party_tool_config` (or the external-platform
+  glob list inside the lint), update this ADR, and the
+  CI lint stops failing. Quietly adding a non-tool-config
+  file at host root trips the lint.
 
 ---
 

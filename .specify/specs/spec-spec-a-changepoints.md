@@ -160,6 +160,63 @@ features step.
   drops a shadow at `.cpf/overrides/lib/cpf-generate-configs.sh`
   takes precedence.
 
+### INFRA-018 (platform-config-generation) -- INFRA-031 follow-up 2026-04-19
+
+- INFRA-031 (`namespace-discipline-and-projection-minimization`)
+  retires the bundled scaffold copies of `.prettierignore` and
+  `.markdownlint-cli2.yaml`. The INFRA-018 generator becomes the
+  sole writer of those two files. Init and upgrade still seed the
+  files via the same generator step (no behavior change for the
+  host); the deletion is pure deduplication of the two-step
+  "scaffold projection then immediate generator overwrite" flow.
+- The byte-equality contract recorded above no longer compares
+  the generator output against bundled scaffold copies (those
+  copies are gone). `scripts/test-config-generation.sh` Tests 9
+  and 10 enforce that the bundled copies stay deleted and that
+  `_third_party_tool_config` records the canonical exception
+  list. `scripts/check-config-determinism.sh` continues to assert
+  byte-equal generator output across two runs from the same
+  policy input.
+
+### INFRA-031 (namespace-discipline-and-projection-minimization) -- 2026-04-19
+
+- ADR-002 amended to spell out the in-scope vs. out-of-scope
+  boundary explicitly. Plugin-internal artifacts on the host
+  live under `.cpf/`. Third-party tool config (recorded in the
+  new `_third_party_tool_config` array at the top of
+  `.claude-plugin/upgrade-tiers.json`) lives at host root by
+  tool default-discovery convention. External platforms own
+  their own paths (`.github/`, `.gitlab/`, `Jenkinsfile`,
+  `.gitlab-ci.yml`, `ci/{github,gitlab,jenkins,principles}/`).
+- New CI lint at `scripts/check-namespace-discipline.sh` reads
+  `upgrade-tiers.json` and asserts every entry across overwrite,
+  review, customizable, and skip tiers classifies into one of
+  the three categories. Plugin-cache entries are not scanned
+  (they never project). Wired into the `shellcheck` job in
+  `.github/workflows/ci.yml`.
+- Doctor registry source-of-truth stays at
+  `.claude-plugin/scaffold/common/.specify/doctor-registry.json`.
+  The host-projected copy is removed; doctor.sh resolves the
+  registry via `cpf-resolve-asset.sh` (CLI form), which finds
+  the bundled file through its existing
+  `$CLAUDE_PLUGIN_ROOT/scaffold/common/<path>` fallback. Hosts
+  that need a custom registry drop one at
+  `.cpf/overrides/.specify/doctor-registry.json`. Rationale:
+  the resolver's transitional `scaffold/common/` fallback is
+  already the documented home for plugin-cache assets
+  (templates, prompts, ci/principles); the doctor registry is
+  one more peer for the eventual relocation noted in INFRA-027
+  changepoints. Inventing a new `.claude-plugin/data/` subtree
+  for a single file would add a path no other asset uses.
+- `$CLAUDE_PLUGIN_ROOT` semantic inconsistency between
+  `hooks.json` (parent of `.claude-plugin/`) and
+  `cpf-resolve-asset.sh` BASH_SOURCE fallback
+  (`.claude-plugin/` itself) is acknowledged here and left
+  unresolved. doctor.sh follows SKILL.md's documented
+  convention (`$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh`).
+  Filed as a separate ticket per the plan's "Out of scope"
+  section; do not entangle with INFRA-031.
+
 ## Changelog
 
 - 2026-04-19: stub created during INFRA-017 implementation.
@@ -170,3 +227,7 @@ features step.
   byte-equality contracts for the two generated lint configs,
   shellcheck-excludes.txt consumer pending in INFRA-019, and the
   `.prettierignore` review -> overwrite tier move.
+- 2026-04-19: INFRA-031 notes appended -- ADR-002 in-scope vs.
+  tool-config boundary clarified, bundled lint configs deleted,
+  doctor-registry resolver migration, namespace-discipline lint
+  added to CI.
