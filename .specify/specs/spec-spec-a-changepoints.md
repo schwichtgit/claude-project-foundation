@@ -415,6 +415,79 @@ pattern ]]` semantics with shellcheck disables for SC2053 and
   should also note the new `INTERNAL:` stderr prefix as a contract
   downstream grep consumers may rely on.
 
+### INFRA-029 (upgrade-migration-guide-alpha12) -- 2026-04-20
+
+- New top-level `migrations` map in `.claude-plugin/upgrade-tiers.json`
+  is a peer of `tiers` and `_third_party_tool_config`, NOT a tier
+  category. Keys are target version strings; values are migration
+  metadata (`policy_seed`, `reorg_paths`, `jenkinsfile_tier_change`,
+  `v02_countdown`). The `scripts/check-namespace-discipline.sh` lint
+  reads only `.tiers[$t][]` and `._third_party_tool_config[]` and
+  ignores every other top-level key by construction; INFRA-029
+  added an explicit comment to the lint header recording that
+  `migrations` is in that "ignored by design" bucket so a future
+  reader doesn't mistake the absence of an `if [[ key ==
+"migrations" ]]` filter for an oversight.
+- Migration-state file is `.specforge-migrations-applied` at project
+  root: plain text, one applied target version per line. Append-only
+  during normal use; `--rerun-migration <ver>` strips the entry,
+  re-runs the guide in display-only mode, then re-appends. Format
+  intentionally line-oriented (no JSON) so `git diff` stays readable
+  and the file works without jq when the user inspects it manually.
+  Sibling to `.specforge-version` and `.specforge-ci-platform` for
+  symmetry; lives at the project root rather than under `.cpf/` so a
+  bare clone (no plugin install) can still read which migrations have
+  been accepted.
+- Suppression on the cpf source repo is enforced twice: the upgrade
+  skill blocks at step 1 of its own workflow, AND
+  `cpf-migrate-alpha12.sh` re-checks `.claude-plugin/plugin.json` for
+  `name == "cpf"` at the top of every invocation. Belt-and-suspenders:
+  the lib is also reachable via direct invocation (e.g., for
+  `--rerun-migration`), and that path bypasses the skill's check.
+  The lib's check exits 0 silently with a one-line stderr-friendly
+  notice; no file mutations occur.
+- The `infer` path is implemented in
+  `.claude-plugin/lib/cpf-policy-infer.sh`. It parses the host's
+  `.prettierignore` (comment-stripping awk), `.markdownlint-cli2.yaml`
+  (single-quoted-scalar `ignores:` block), and `.cpf/shellcheck-
+excludes.txt` into the three `exclude` arrays, then composes the
+  final policy on top of the bundled scaffold copy. The byte-equality
+  contract: feeding the inferred policy back through
+  `cpf-generate-configs.sh` regenerates the host's `.prettierignore`
+  byte-equal to the pre-upgrade file. The `.markdownlint-cli2.yaml`
+  contract is narrower -- only the `ignores:` block round-trips
+  byte-equal; the hardcoded `config:` header is always re-emitted by
+  the generator (Option A from INFRA-018 stays in force). Hosts that
+  customize the `config:` block accept that they will be re-set to the
+  bundled defaults on infer; the migration's stderr summary surfaces
+  the per-field source so the operator can audit drift.
+- Per-version migration script naming: `cpf-migrate-<suffix>.sh` where
+  `<suffix>` is the post-`0.1.0-` portion of the target version with
+  the dot dropped (e.g., `alpha.12` -> `alpha12`). The skill's step 5
+  hardcodes the alpha.12 entry today; the next migration adds a sibling
+  entry to `migrations` and a sibling lib script, plus one line in the
+  skill's iteration loop. The migrations map's data shape is
+  intentionally minimal (four boolean/array fields) so the per-
+  version script logic stays in bash, not in declarative metadata that
+  drifts from the script.
+- `--rerun-migration <ver>` is exposed only via direct lib invocation,
+  not through the skill's CLI surface. Rationale: re-running a guide
+  is a debugging affordance for migration authors, not an end-user
+  workflow. Surfacing it through the skill would require a second
+  prompt path and risk normal users triggering it accidentally. Direct
+  invocation against
+  `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-migrate-alpha12.sh" --rerun-migration 0.1.0-alpha.12`
+  is documented in SKILL.md but not in `/cpf:specforge help`.
+- Test fixtures simulate alpha.11 hosts via `mktemp -d` workdirs.
+  `CPF_MIGRATE_ANSWER={defaults,infer,skip}` drives the prompt non-
+  interactively (the lib also accepts piped stdin, but env-var-driven
+  answers keep test scripts grep-friendly). The cpf source-repo
+  suppression test uses a synthesized `.claude-plugin/plugin.json` with
+  `name == "cpf"` -- it does not require running against the real
+  source tree. All 13 testing_steps from `feature_list.json` map to
+  exactly one or two assertions in `scripts/test-upgrade-migration.sh`
+  for a total of 23 PASS lines.
+
 ## Changelog
 
 - 2026-04-19: stub created during INFRA-017 implementation.
@@ -447,3 +520,10 @@ pattern ]]` semantics with shellcheck disables for SC2053 and
   `on_missing_tests` resolution with `skip` default in both policy-
   loaded and ADR-006 fallback paths, `INTERNAL:` stderr prefix as a
   downstream contract, INFRA-029 migration-guide hand-off notes.
+- 2026-04-20: INFRA-029 notes appended -- alpha.12 migration guide
+  with policy-seed prompt, reorg notice, Jenkinsfile tier-change and
+  v0.2.0 countdown announcements; `migrations` map peer of `tiers`;
+  `.specforge-migrations-applied` idempotence file; per-version script
+  naming convention; cpf source-repo belt-and-suspenders suppression;
+  infer-path byte-equality contract with `cpf-generate-configs.sh`;
+  `--rerun-migration` exposed only via direct lib invocation.

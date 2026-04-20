@@ -1811,7 +1811,7 @@
         "Run upgrade on the cpf source repo (name=cpf in plugin.json) and verify the migration guide is suppressed entirely",
         "Run `shellcheck .claude-plugin/lib/cpf-migrate-alpha12.sh .claude-plugin/lib/cpf-policy-infer.sh` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "policy-json-schema-loader",
         "native-tool-config-for-hooks",
