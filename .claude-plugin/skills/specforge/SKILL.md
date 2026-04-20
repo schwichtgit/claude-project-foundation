@@ -122,34 +122,45 @@ principles needed for spec-driven development.
    `scaffold/<platform>/` under the plugin root to the target project
    root, where `<platform>` is the selected CI platform. Apply the
    same plugin-cache-prefix skip filter.
-8. **Conflict resolution via diffs:** For each file that already exists in
+8. **Generate platform configs from policy:** Resolve the generator with
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" lib/cpf-generate-configs.sh`
+   and run it as
+   `bash "$GEN" --project-dir "$CLAUDE_PROJECT_DIR"`. The script reads
+   `.cpf/policy.json` (now present from step 6) and writes
+   `.prettierignore`, `.markdownlint-cli2.yaml`, and
+   `.cpf/shellcheck-excludes.txt` with write-if-different semantics, so
+   the bundled scaffold copies seeded in step 6 are left untouched when
+   the policy defaults are unchanged. A nonzero exit aborts init with
+   the generator's stderr message; do not proceed to conflict
+   resolution if generation failed.
+9. **Conflict resolution via diffs:** For each file that already exists in
    the target project:
    - If the existing file is identical to the scaffold version, skip it
      silently.
    - If the existing file differs, show `diff -u <existing> <scaffold>` and
      ask "Overwrite <file>? [y/n/d(iff)]". On `y`, overwrite. On `n`, skip.
      On `d`, show the diff again.
-9. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
-   from `CLAUDE.md.template` with these placeholders replaced:
-   - `{{PROJECT_NAME}}` -- from `basename $PWD` or git remote name
-   - `{{LANGUAGE}}` -- auto-detected from config files (package.json,
-     Cargo.toml, pyproject.toml, go.mod, etc.); comma-separated if multiple
-     (e.g., "JavaScript, Go"); "Unknown" if none detected
-   - `{{CI_PLATFORM}}` -- the selected CI platform
-10. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-11. **Auto-run install-hooks.sh:** Execute
+10. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
+    from `CLAUDE.md.template` with these placeholders replaced:
+    - `{{PROJECT_NAME}}` -- from `basename $PWD` or git remote name
+    - `{{LANGUAGE}}` -- auto-detected from config files (package.json,
+      Cargo.toml, pyproject.toml, go.mod, etc.); comma-separated if multiple
+      (e.g., "JavaScript, Go"); "Unknown" if none detected
+    - `{{CI_PLATFORM}}` -- the selected CI platform
+11. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+12. **Auto-run install-hooks.sh:** Execute
     `.cpf/scripts/install-hooks.sh` to install git hooks into
     `.git/hooks/`.
-12. **Doctor check:** Run `.cpf/scripts/doctor.sh` to validate
+13. **Doctor check:** Run `.cpf/scripts/doctor.sh` to validate
     prerequisites. Display the compliance report. Doctor
     failures do not block init -- the report is
     informational. Visually separate doctor output from
     file counts with a blank line and header.
-13. **Version tracking:** Write the plugin version (from
+14. **Version tracking:** Write the plugin version (from
     `plugin.json`) to `.specforge-version` at the project
     root. Write the selected CI platform to
     `.specforge-ci-platform`.
-14. **Summary:** Print file counts (copied, skipped), the
+15. **Summary:** Print file counts (copied, skipped), the
     selected CI platform, and next steps including:
     "Run `/cpf:specforge constitution` to define your
     project principles."
@@ -542,20 +553,32 @@ categorization to preserve project-specific customizations.
 11. **Customizable tier:** For each file in the "customizable" list, copy
     the bundled default from the scaffold only if the file is missing in the
     host project. If present, leave it untouched.
-12. **New files:** Files present in the scaffold but not listed in any tier
+12. **Generate platform configs from policy:** After the customizable tier
+    has guaranteed `.cpf/policy.json` is present on the host, regenerate
+    the policy-derived lint configs. Resolve the generator with
+    `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" lib/cpf-generate-configs.sh`
+    and run it as
+    `bash "$GEN" --project-dir "$CLAUDE_PROJECT_DIR"`. The generator
+    writes `.prettierignore`, `.markdownlint-cli2.yaml`, and
+    `.cpf/shellcheck-excludes.txt` with write-if-different semantics, so
+    the bundled scaffold copies the overwrite tier seeded in step 8 are
+    left untouched when the host's policy still matches the bundled
+    defaults. A nonzero exit aborts upgrade with the generator's stderr
+    message; do not proceed to "new files" if generation failed.
+13. **New files:** Files present in the scaffold but not listed in any tier
     in `upgrade-tiers.json` (and not under a plugin-cache prefix) are
     treated as overwrite (copied without prompting).
-13. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
+14. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
     longer present in the scaffold are logged as: "Deprecated: <file>
     (no longer in plugin, can be manually removed)". They are NOT deleted
     from the host project.
-14. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-15. **Re-run install-hooks.sh:** Execute `.cpf/scripts/install-hooks.sh` to
+15. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+16. **Re-run install-hooks.sh:** Execute `.cpf/scripts/install-hooks.sh` to
     update git hooks.
-16. **Update version tracking:** Write the new plugin version to
+17. **Update version tracking:** Write the new plugin version to
     `.specforge-version`. Update `.specforge-ci-platform` if the user
     switched platforms.
-17. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
+18. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
     skipped, new, and deprecated files.
 
 **Notes:**
