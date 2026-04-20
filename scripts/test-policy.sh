@@ -57,18 +57,21 @@ else
     cpf_validate_policy "$BUNDLED_POLICY" || true
 fi
 
-# --- 2: missing required fields rejected ---
+# --- 2: missing required fields ---
+# INFRA-019 made orchestrator optional (defaults to "none" at the
+# dispatcher) so the format-changed and post-edit hook stanzas, which are
+# inline rather than orchestrator-dispatched, can omit it. severity is
+# still required.
 echo ""
 echo "=== required fields enforced ==="
 
 NO_ORCH="$(write_policy no-orch '{
   "hooks": { "verify-quality": { "severity": "error" } }
 }')"
-ERR_OUT="$(cpf_validate_policy "$NO_ORCH" 2>&1 || true)"
-if echo "$ERR_OUT" | grep -q 'missing required field "orchestrator"'; then
-    pass "missing orchestrator detected"
+if cpf_validate_policy "$NO_ORCH" >/dev/null 2>&1; then
+    pass "missing orchestrator accepted (defaults to none)"
 else
-    fail "missing orchestrator not detected: $ERR_OUT"
+    fail "missing orchestrator should now be accepted"
 fi
 
 NO_SEV="$(write_policy no-sev '{

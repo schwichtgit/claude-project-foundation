@@ -27,7 +27,7 @@
     "hook": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["orchestrator", "severity"],
+      "required": ["severity"],
       "allOf": [
         {
           "if": {

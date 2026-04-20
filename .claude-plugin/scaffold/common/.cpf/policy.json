@@ -44,6 +44,12 @@
       "severity": "error",
       "on_missing_runner": "warn",
       "on_missing_tests": "skip"
+    },
+    "format-changed": {
+      "severity": "warning"
+    },
+    "post-edit": {
+      "severity": "warning"
     }
   }
 }

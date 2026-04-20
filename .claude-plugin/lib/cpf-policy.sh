@@ -87,9 +87,8 @@ cpf_validate_policy() {
         | to_entries[]
         | . as $e
         | [
-            ( if ($e.value | has("orchestrator")) | not
-                then "\($e.key): missing required field \"orchestrator\""
-              elif (orch_values | index($e.value.orchestrator)) == null
+            ( if ($e.value | has("orchestrator"))
+                and (orch_values | index($e.value.orchestrator)) == null
                 then "\($e.key): invalid orchestrator \"\($e.value.orchestrator)\" (allowed: \(orch_values | join(", ")))"
               else empty end ),
             ( if ($e.value | has("severity")) | not
