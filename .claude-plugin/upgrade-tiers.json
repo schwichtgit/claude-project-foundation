@@ -1,5 +1,6 @@
 {
   "tiers": {
+    "customizable": [".cpf/policy.json"],
     "overwrite": [
       "ci/principles/commit-gate.md",
       "ci/principles/pr-gate.md",

@@ -1620,12 +1620,12 @@
         "Source `cpf-policy.sh` and call `cpf_policy_list prettier include` against the bundled default; verify output contains `**/*.md`",
         "Call `cpf_policy_get nonexistent-hook severity` and verify empty output plus exit 0 (fail-open at the loader level)",
         "Run init/upgrade against a policy with `orchestrator = \"bogus\"` and verify nonzero exit with an error message naming the offending hook and value",
-        "Run `.claude-plugin/hooks/doctor.sh` in a fixture host project without `.cpf/policy.json` and verify output contains `WARN: .cpf/policy.json missing`",
-        "Run `.claude-plugin/hooks/doctor.sh` in the cpf source repo (name=cpf in plugin.json) and verify no missing-policy warning is emitted",
+        "In a fixture host dir without `.cpf/policy.json`, run `.claude-plugin/scaffold/common/scripts/doctor.sh --project-dir <fixture>` and verify output contains `WARN: .cpf/policy.json missing`",
+        "Run `.claude-plugin/scaffold/common/scripts/doctor.sh --project-dir .` in the cpf source repo (name=cpf in plugin.json) and verify no missing-policy warning is emitted",
         "Run `grep -E '\"\\.cpf/policy\\.json\"' upgrade-tiers.json` and verify the entry appears under the customizable tier",
         "Run `shellcheck .claude-plugin/lib/cpf-policy.sh` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {

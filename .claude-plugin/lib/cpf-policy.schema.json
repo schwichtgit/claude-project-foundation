@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/schwichtgit/claude-project-foundation/.claude-plugin/lib/cpf-policy.schema.json",
+  "title": "cpf policy",
+  "description": "Declarative hook policy for cpf-scaffolded projects. Consumed by .claude-plugin/lib/cpf-policy.sh at runtime and by /cpf:specforge init and upgrade for semantic validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["hooks"],
+  "properties": {
+    "_comment": {
+      "type": "string",
+      "description": "Free-form note field. Ignored by the loader. Authored copies may reference this schema URL here."
+    },
+    "$schema": {
+      "type": "string",
+      "description": "Optional schema reference for editor tooling."
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Map of hook name to hook stanza. Hook names are free-form strings matching the name used by cpf_policy_get / cpf_policy_list callers.",
+      "additionalProperties": {
+        "$ref": "#/$defs/hook"
+      }
+    }
+  },
+  "$defs": {
+    "hook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["orchestrator", "severity"],
+      "properties": {
+        "include": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns selecting files in scope. Consumed by config generators."
+        },
+        "exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Glob patterns excluded from scope. Consumed by config generators."
+        },
+        "orchestrator": {
+          "type": "string",
+          "enum": ["none", "task", "custom"],
+          "description": "Dispatch style. none = invoke the native tool directly. task = delegate to a Taskfile target. custom = invoke the command in custom_command."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["error", "warning", "info"],
+          "description": "How the hook's overall exit code maps to caller-visible severity."
+        },
+        "on_missing_runner": {
+          "type": "string",
+          "enum": ["warn", "fail", "skip"],
+          "description": "Behavior when the chosen orchestrator's runner (task, custom_command) is not found on the host."
+        },
+        "on_missing_tests": {
+          "type": "string",
+          "enum": ["warn", "skip"],
+          "description": "Behavior when a test runner reports no tests collected."
+        },
+        "custom_command": {
+          "type": "string",
+          "description": "Shell command invoked when orchestrator == custom."
+        }
+      }
+    }
+  }
+}

@@ -446,6 +446,10 @@ categorization to preserve project-specific customizations.
   latest version without prompting. These files should not be customized.
 - **review** -- Commonly customized files. Changes are shown as `diff -u`
   output for the user to review and selectively accept or reject.
+- **customizable** -- User-owned configuration files (e.g., `.cpf/policy.json`)
+  that `init` seeds from the bundled default and `upgrade` never overwrites.
+  If the file is missing during upgrade, copy the bundled default; otherwise
+  leave the user's copy untouched.
 - **skip** -- Project-specific files that are never modified by upgrade.
 
 **Version tracking:** `.specforge-version`, `.specforge-ci-platform`
@@ -476,20 +480,23 @@ categorization to preserve project-specific customizations.
    the plugin version, show `diff -u <existing> <plugin>` output and ask
    "Accept this change? [y/n]". Skip files that are identical.
 9. **Skip tier:** Do nothing for files in the "skip" list.
-10. **New files:** Files present in the scaffold but not listed in any tier
+10. **Customizable tier:** For each file in the "customizable" list, copy
+    the bundled default from the scaffold only if the file is missing in the
+    host project. If present, leave it untouched.
+11. **New files:** Files present in the scaffold but not listed in any tier
     in `upgrade-tiers.json` are treated as overwrite (copied without
     prompting).
-11. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
+12. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
     longer present in the scaffold are logged as: "Deprecated: <file>
     (no longer in plugin, can be manually removed)". They are NOT deleted
     from the host project.
-12. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-13. **Re-run install-hooks.sh:** Execute `scripts/install-hooks.sh` to
+13. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+14. **Re-run install-hooks.sh:** Execute `scripts/install-hooks.sh` to
     update git hooks.
-14. **Update version tracking:** Write the new plugin version to
+15. **Update version tracking:** Write the new plugin version to
     `.specforge-version`. Update `.specforge-ci-platform` if the user
     switched platforms.
-15. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
+16. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
     skipped, new, and deprecated files.
 
 **Notes:**
