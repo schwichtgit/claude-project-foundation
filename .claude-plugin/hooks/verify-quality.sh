@@ -74,12 +74,98 @@ run_optional_check() {
 }
 
 # ---------------------------------------------------------------------------
-# Legacy walker. Preserved from the alpha.11 hook body verbatim. Wrapped in
-# a function so the dispatcher can call it for `orchestrator = "none"` and
-# the ADR-006 missing-policy fallback can route through the same code path.
+# INFRA-025 helpers for the Python branch of the legacy walker.
+#
+# These two helpers are deliberately scoped to the verify-quality hook (single
+# call site) rather than promoted to .claude-plugin/lib/. They do NOT carry
+# the `# REMOVE AT v0.2.0` marker because the per-service runner contract is
+# permanent; only the surrounding walker scaffolding is slated for removal.
+# ---------------------------------------------------------------------------
+
+# Read the per-service opt-out list from `[tool.cpf.hooks] skip = [...]` in
+# the given service's pyproject.toml. Pure-bash parsing -- no Python or jq
+# dependency. Returns one tool name per line on stdout. Missing file or
+# missing section => empty output.
+cpf_pyproject_skip_list() {
+    local svc_dir="$1"
+    local pyproject="$svc_dir/pyproject.toml"
+    [[ -f "$pyproject" ]] || return 0
+
+    awk '
+        /^\[tool\.cpf\.hooks\]/ { in_section = 1; next }
+        /^\[/ { in_section = 0 }
+        in_section && /^[[:space:]]*skip[[:space:]]*=/ {
+            line = $0
+            sub(/^[^=]*=/, "", line)
+            # Strip everything outside the bracket pair, then split on commas.
+            sub(/^[[:space:]]*\[/, "", line)
+            sub(/\][[:space:]]*$/, "", line)
+            n = split(line, parts, ",")
+            for (i = 1; i <= n; i++) {
+                tool = parts[i]
+                gsub(/[[:space:]"'"'"']/, "", tool)
+                if (length(tool) > 0) {
+                    print tool
+                }
+            }
+        }
+    ' "$pyproject"
+}
+
+# Return 0 if the given pyproject.toml has the `[tool.<name>]` section.
+cpf_pyproject_has_section() {
+    local svc_dir="$1" section="$2"
+    local pyproject="$svc_dir/pyproject.toml"
+    [[ -f "$pyproject" ]] || return 1
+    grep -qE "^\[tool\.${section}(\..*)?\]" "$pyproject"
+}
+
+# Resolve the runner for <tool> in <svc_dir>. Sets the global
+# `_CPF_RUNNER_CMD` array to the argv prefix that should be invoked. Returns
+# 0 if a runner was resolved, 1 if neither `.venv/bin/<tool>` exists nor `uv`
+# is on PATH. NEVER falls back to bare `<tool>` from $PATH -- that is the
+# central contract of INFRA-025.
+resolve_python_runner() {
+    local svc_dir="$1" tool="$2"
+    _CPF_RUNNER_CMD=()
+
+    local venv_bin="$svc_dir/.venv/bin/$tool"
+    if [[ -x "$venv_bin" ]]; then
+        _CPF_RUNNER_CMD=("$venv_bin")
+        return 0
+    fi
+
+    if command -v uv >/dev/null 2>&1; then
+        _CPF_RUNNER_CMD=(uv run --project "$svc_dir" "$tool")
+        return 0
+    fi
+
+    return 1
+}
+
+# ---------------------------------------------------------------------------
+# Legacy walker. Preserved from the alpha.11 hook body verbatim except for
+# the Python branch, which INFRA-025 refactored in place to use per-service
+# runner resolution. The Node, Rust, and Go branches are unchanged. The
+# function is wrapped so the dispatcher can call it for `orchestrator = "none"`
+# and the ADR-006 missing-policy fallback can route through the same code
+# path.
 # REMOVE AT v0.2.0
 # ---------------------------------------------------------------------------
 run_legacy_walk_and_detect() {
+    # ADR-006 fallback path may invoke the walker before policy is loaded.
+    # Default `on_missing_runner` to "warn" so both code paths agree.
+    local on_missing_runner="${ON_MISSING_RUNNER:-warn}"
+    if [[ "$POLICY_LOADED" -eq 1 ]]; then
+        local policy_runner
+        policy_runner="$(cpf_policy_get verify-quality on_missing_runner)"
+        [[ -n "$policy_runner" ]] && on_missing_runner="$policy_runner"
+    fi
+    case "$on_missing_runner" in
+        warn | skip) ;;
+        *) on_missing_runner="warn" ;;
+    esac
+
     local search_dirs=("$PROJECT_ROOT")
 
     # Also check one level of subdirectories for monorepo support
@@ -114,20 +200,102 @@ run_legacy_walk_and_detect() {
             fi
         fi
 
-        # Python
-        if [[ -f "$dir/pyproject.toml" ]] || [[ -f "$dir/requirements.txt" ]]; then
+        # Python (INFRA-025: per-service runner resolution; never falls back
+        # to bare $PATH binaries). Baseline lint+test pair is always
+        # attempted; type-check and formatter are attempted only if the
+        # corresponding pyproject section is present. Per-service opt-out via
+        # [tool.cpf.hooks] skip in the service's pyproject.toml runs BEFORE
+        # resolver attempts.
+        if [[ -f "$dir/pyproject.toml" ]]; then
             found_project=true
             echo ""
             echo "Python project: $rel_dir"
 
-            if command -v ruff >/dev/null 2>&1; then
-                run_check "Ruff lint ($rel_dir)" ruff check "$dir"
-                run_optional_check "Ruff format ($rel_dir)" ruff format --check "$dir"
+            local svc_dir="${dir%/}"
+            local svc_tools=()
+            svc_tools+=("ruff")
+            svc_tools+=("pytest")
+            if cpf_pyproject_has_section "$svc_dir" "mypy"; then
+                svc_tools+=("mypy")
+            fi
+            if cpf_pyproject_has_section "$svc_dir" "black"; then
+                svc_tools+=("black")
             fi
 
-            if command -v pytest >/dev/null 2>&1; then
-                run_check "Pytest ($rel_dir)" pytest "$dir" --tb=no -q
+            local svc_skip_list
+            svc_skip_list="$(cpf_pyproject_skip_list "$svc_dir")"
+
+            local missing_resolver=0
+            local resolved_any=0
+            local svc_tool
+            for svc_tool in "${svc_tools[@]}"; do
+                # Per-service opt-out is applied first.
+                if [[ -n "$svc_skip_list" ]] \
+                    && printf '%s\n' "$svc_skip_list" \
+                        | grep -Fxq "$svc_tool"; then
+                    echo "  SKIP: opted out ($svc_tool)" >&2
+                    continue
+                fi
+
+                if ! resolve_python_runner "$svc_dir" "$svc_tool"; then
+                    missing_resolver=1
+                    continue
+                fi
+                resolved_any=1
+
+                case "$svc_tool" in
+                    ruff)
+                        run_check "Ruff lint ($rel_dir)" \
+                            "${_CPF_RUNNER_CMD[@]}" check "$svc_dir"
+                        run_optional_check "Ruff format ($rel_dir)" \
+                            "${_CPF_RUNNER_CMD[@]}" format --check "$svc_dir"
+                        ;;
+                    pytest)
+                        # INFRA-026 hand-off: pytest is invoked here with
+                        # `--tb=no -q`. INFRA-026 will replace this run_check
+                        # call with explicit exit-code classification (0 PASS,
+                        # 1 FAIL, 2-4 INTERNAL FAIL, 5 SKIP/WARN per
+                        # on_missing_tests).
+                        run_check "Pytest ($rel_dir)" \
+                            "${_CPF_RUNNER_CMD[@]}" "$svc_dir" --tb=no -q
+                        ;;
+                    mypy)
+                        run_check "Mypy ($rel_dir)" \
+                            "${_CPF_RUNNER_CMD[@]}" "$svc_dir"
+                        ;;
+                    black)
+                        run_optional_check "Black ($rel_dir)" \
+                            "${_CPF_RUNNER_CMD[@]}" --check "$svc_dir"
+                        ;;
+                esac
+            done
+
+            if [[ "$missing_resolver" -eq 1 && "$resolved_any" -eq 0 ]]; then
+                case "$on_missing_runner" in
+                    skip)
+                        echo "  SKIP: no resolver for $rel_dir" >&2
+                        ;;
+                    warn | *)
+                        echo "  WARN: no resolver for $rel_dir" >&2
+                        WARNINGS=$((WARNINGS + 1))
+                        ;;
+                esac
             fi
+        elif [[ -f "$dir/requirements.txt" ]]; then
+            # Pure requirements.txt projects (no pyproject.toml) cannot be
+            # resolved per-service; emit WARN/SKIP per policy and skip.
+            found_project=true
+            echo ""
+            echo "Python project: $rel_dir"
+            case "$on_missing_runner" in
+                skip)
+                    echo "  SKIP: no resolver for $rel_dir" >&2
+                    ;;
+                warn | *)
+                    echo "  WARN: no resolver for $rel_dir" >&2
+                    WARNINGS=$((WARNINGS + 1))
+                    ;;
+            esac
         fi
 
         # Rust
