@@ -249,6 +249,59 @@ run_custom_orchestrator() {
 }
 
 # ---------------------------------------------------------------------------
+# Shellcheck pass. Runs regardless of orchestrator choice because shellcheck
+# is fast, language-agnostic, and the find-fragment helper is the single
+# source of truth shared with the ci-base workflow. Severity is mapped via
+# verify-quality.severity (resolved during the policy-load phase below).
+# Skipped silently when the shellcheck binary is not on PATH (mirrors the
+# missing-runner pattern used by run_task_orchestrator).
+# ---------------------------------------------------------------------------
+run_shellcheck_pass() {
+    if ! command -v shellcheck >/dev/null 2>&1; then
+        echo "  WARN: shellcheck binary not on PATH; skipping shell lint" >&2
+        WARNINGS=$((WARNINGS + 1))
+        return 0
+    fi
+
+    local fragment_lib="$CPF_HOOK_LIB_DIR/cpf-shellcheck-fragment.sh"
+    local fragment=""
+    if [[ -f "$fragment_lib" ]]; then
+        fragment="$(bash "$fragment_lib" emit-find-fragment "$PROJECT_ROOT" || echo "")"
+    fi
+
+    local files=()
+    while IFS= read -r -d '' f; do
+        files+=("$f")
+    done < <(eval "find '$PROJECT_ROOT' -name '*.sh' $fragment -print0" 2>/dev/null)
+
+    if [[ "${#files[@]}" -eq 0 ]]; then
+        return 0
+    fi
+
+    echo ""
+    echo "Shellcheck (${#files[@]} file(s))"
+    CHECKS_RUN=$((CHECKS_RUN + 1))
+    if shellcheck -x "${files[@]}" >/dev/null 2>&1; then
+        echo "  PASS"
+        return 0
+    fi
+
+    case "${SEVERITY:-error}" in
+        warning)
+            echo "  WARN: shellcheck reported issues" >&2
+            WARNINGS=$((WARNINGS + 1))
+            ;;
+        info)
+            echo "  INFO: shellcheck reported issues"
+            ;;
+        error | *)
+            echo "  FAIL: shellcheck reported issues" >&2
+            FAILED=$((FAILED + 1))
+            ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
 echo "=== Quality Gate ==="
@@ -256,48 +309,60 @@ echo "=== Quality Gate ==="
 ORCHESTRATOR=""
 SEVERITY=""
 CUSTOM_COMMAND=""
+POLICY_LOADED=0
 
 # ADR-006 fallback: missing or unloadable policy lib -> legacy walk.
 # REMOVE AT v0.2.0 (along with the legacy walker above).
 if [[ ! -f "$POLICY_LIB" ]]; then
+    # REMOVE AT v0.2.0
     echo "cpf: policy loader not found, falling back to legacy walk" \
         "(REMOVE AT v0.2.0)" >&2
-    run_legacy_walk_and_detect
 elif
     # shellcheck source=../lib/cpf-policy.sh
     # shellcheck disable=SC1091
     ! source "$POLICY_LIB" 2>/dev/null
 then
+    # REMOVE AT v0.2.0
     echo "cpf: failed to source policy loader, falling back to legacy walk" \
         "(REMOVE AT v0.2.0)" >&2
-    run_legacy_walk_and_detect
 else
     POLICY_FILE="$(cpf_policy_file)"
     if [[ ! -f "$POLICY_FILE" ]]; then
+        # REMOVE AT v0.2.0
         echo "cpf: .cpf/policy.json missing, falling back to legacy walk" \
             "(REMOVE AT v0.2.0)" >&2
-        run_legacy_walk_and_detect
     else
+        POLICY_LOADED=1
         ORCHESTRATOR="$(cpf_policy_get verify-quality orchestrator)"
         SEVERITY="$(cpf_policy_get verify-quality severity)"
         CUSTOM_COMMAND="$(cpf_policy_get verify-quality custom_command)"
         : "${SEVERITY:=error}"
-        case "${ORCHESTRATOR:-none}" in
-            none | "")
-                run_legacy_walk_and_detect
-                ;;
-            task)
-                run_task_orchestrator
-                ;;
-            custom)
-                run_custom_orchestrator "$CUSTOM_COMMAND" "$SEVERITY"
-                ;;
-            *)
-                echo "ERROR: unknown verify-quality.orchestrator \"$ORCHESTRATOR\"" >&2
-                FAILED=$((FAILED + 1))
-                ;;
-        esac
     fi
+fi
+
+# Run the unconditional shellcheck pass before orchestrator dispatch so all
+# three paths (none/task/custom) share the same shell-lint coverage.
+run_shellcheck_pass
+
+if [[ "$POLICY_LOADED" -eq 0 ]]; then
+    # REMOVE AT v0.2.0
+    run_legacy_walk_and_detect
+else
+    case "${ORCHESTRATOR:-none}" in
+        none | "")
+            run_legacy_walk_and_detect
+            ;;
+        task)
+            run_task_orchestrator
+            ;;
+        custom)
+            run_custom_orchestrator "$CUSTOM_COMMAND" "$SEVERITY"
+            ;;
+        *)
+            echo "ERROR: unknown verify-quality.orchestrator \"$ORCHESTRATOR\"" >&2
+            FAILED=$((FAILED + 1))
+            ;;
+    esac
 fi
 
 echo ""
