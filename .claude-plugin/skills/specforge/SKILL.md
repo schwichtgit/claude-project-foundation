@@ -502,9 +502,42 @@ categorization to preserve project-specific customizations.
    Migration messaging for the reorg lives in INFRA-029.
 8. **Overwrite tier:** For each file in the "overwrite" list, replace it
    with the latest version from the plugin without prompting.
-9. **Review tier:** For each file in the "review" list that differs from
-   the plugin version, show `diff -u <existing> <plugin>` output and ask
-   "Accept this change? [y/n]". Skip files that are identical.
+9. **Review tier:** For each file in the "review" list, handle upgrade
+   review. The `Jenkinsfile` entry has a dedicated flow (step 9a); every
+   other review-tier entry uses the generic flow (step 9b).
+
+   9a. **Jenkinsfile upstream-cache flow (ADR-008).** The baseline is the
+   previously shipped plugin copy cached at
+   `.cpf/upstream-cache/Jenkinsfile`, so the diff shows upstream-vs-upstream
+   and host-local edits (for example, uncommented optional stages) stay
+   invisible. Use the helper rather than inline `diff`:
+   1. Resolve paths:
+
+      ```bash
+      HOST="$CLAUDE_PROJECT_DIR/Jenkinsfile"
+      CACHE="$CLAUDE_PROJECT_DIR/.cpf/upstream-cache/Jenkinsfile"
+      NEW="$CLAUDE_PLUGIN_ROOT/scaffold/jenkins/Jenkinsfile"
+      HELPER="$CLAUDE_PLUGIN_ROOT/lib/cpf-jenkinsfile-upgrade.sh"
+      ```
+
+   2. Run `bash "$HELPER" diff "$HOST" "$CACHE" "$NEW"` and capture the
+      exit code and stdout.
+   3. Exit 0 (baseline and new are identical): skip silently.
+   4. Exit 1 (differences): show the captured diff and ask "Accept upstream
+      Jenkinsfile changes? [y/n]". On accept, run
+      `bash "$HELPER" accept "$HOST" "$CACHE" "$NEW"`. On decline, run
+      `bash "$HELPER" decline "$HOST" "$CACHE" "$NEW"`. Both paths refresh
+      the cache so the same diff will not reappear next run.
+   5. Exit 2 (fresh install -- neither cache nor host exists): run
+      `bash "$HELPER" first-run "$HOST" "$CACHE" "$NEW"` without prompting,
+      seeding both the host copy and the cache.
+   6. Any other exit code: stop the review tier with an error and surface
+      stderr from the helper.
+
+   9b. **Generic review flow.** For every other review-tier entry that
+   differs from the plugin version, show `diff -u <existing> <plugin>`
+   output and ask "Accept this change? [y/n]". Skip files that are identical.
+
 10. **Skip tier:** Do nothing for files in the "skip" list.
 11. **Customizable tier:** For each file in the "customizable" list, copy
     the bundled default from the scaffold only if the file is missing in the

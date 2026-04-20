@@ -1758,8 +1758,8 @@
       "title": "Jenkinsfile Review Tier With Upstream-Cache Diff Baseline",
       "description": "Move Jenkinsfile from overwrite to review tier in upgrade-tiers.json. Diff baseline is `.cpf/upstream-cache/Jenkinsfile` (the previously shipped scaffold version), cached per-install. Diff shows upstream-vs-upstream so host uncommenting stays invisible. Cache refreshes after every upgrade decision (accept or decline) so repeats do not re-show the same diff. First-run fallback: diff against the host copy, then seed the cache.",
       "testing_steps": [
-        "Run `jq '.review | index(\"Jenkinsfile\")' upgrade-tiers.json` and verify the entry is present under the review tier",
-        "Run `jq '.[\"skip\"] | index(\".cpf/upstream-cache/\")' upgrade-tiers.json` and verify the entry is present under the skip tier",
+        "Run `jq '.tiers.review | index(\"Jenkinsfile\")' upgrade-tiers.json` and verify the entry is present under the review tier",
+        "Run `jq '.tiers.skip | index(\".cpf/upstream-cache/\")' upgrade-tiers.json` and verify the entry is present under the skip tier",
         "On a fixture with `.cpf/upstream-cache/Jenkinsfile` seeded to an older plugin version and a newer Jenkinsfile in the plugin cache, run upgrade and verify a `diff -u` is displayed between the upstream-cache and the new plugin copy",
         "Accept the diff prompt and verify both the host-repo `Jenkinsfile` and `.cpf/upstream-cache/Jenkinsfile` are updated to the new upstream version",
         "Decline the diff prompt and verify the host-repo `Jenkinsfile` is unchanged while `.cpf/upstream-cache/Jenkinsfile` is still refreshed to the new upstream",
