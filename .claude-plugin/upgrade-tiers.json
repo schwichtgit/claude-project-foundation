@@ -1,21 +1,11 @@
 {
+  "_comment": "plugin-cache lists subtrees authoritative in the plugin; never projected to hosts. Consumers read via cpf_resolve_asset. See ADR-003.",
   "tiers": {
     "customizable": [".cpf/policy.json"],
     "overwrite": [
-      "ci/principles/commit-gate.md",
-      "ci/principles/pr-gate.md",
-      "ci/principles/release-gate.md",
       ".cpf/scripts/hooks/pre-commit",
       ".cpf/scripts/hooks/commit-msg",
       ".cpf/scripts/install-hooks.sh",
-      ".specify/templates/constitution-template.md",
-      ".specify/templates/spec-template.md",
-      ".specify/templates/plan-template.md",
-      ".specify/templates/tasks-template.md",
-      ".specify/templates/feature-list-schema.json",
-      ".specify/WORKFLOW.md",
-      "prompts/initializer-prompt.md",
-      "prompts/coding-prompt.md",
       ".markdownlint-cli2.yaml",
       ".specify/doctor-registry.json",
       ".cpf/scripts/doctor.sh",
@@ -35,15 +25,12 @@
       "Jenkinsfile",
       ".prettierrc.json",
       ".prettierignore",
-      "CLAUDE.md.template",
       "ci/github/repo-settings.md",
       "ci/github/CODEOWNERS.template",
       "ci/github/dependabot.yml",
       "ci/github/PULL_REQUEST_TEMPLATE.md",
       "ci/github/workflows/commit-standards.yml",
-      "ci/gitlab/gitlab-ci-guide.md",
-      ".gitlab/merge_request_templates/Default.md",
-      "ci/jenkins/jenkinsfile-guide.md"
+      ".gitlab/merge_request_templates/Default.md"
     ],
     "skip": [
       ".github/workflows/ci.yml",
@@ -56,7 +43,18 @@
       "claude-progress.txt",
       "README.md",
       ".gitignore",
-      "init.sh"
+      "init.sh",
+      ".cpf/overrides/",
+      ".cpf/upstream-cache/"
+    ],
+    "plugin-cache": [
+      ".specify/templates/",
+      ".specify/WORKFLOW.md",
+      "prompts/",
+      "ci/principles/",
+      "ci/gitlab/",
+      "ci/jenkins/",
+      "CLAUDE.md.template"
     ]
   }
 }

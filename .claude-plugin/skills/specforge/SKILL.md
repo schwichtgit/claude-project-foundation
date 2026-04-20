@@ -50,7 +50,9 @@ activity, including autonomous Claude Code sessions.
 
 1. Check if `.specify/memory/constitution.md` already exists. If so, ask the
    user whether to start fresh or revise the existing constitution.
-2. Read the template from `.specify/templates/constitution-template.md`.
+2. Resolve the template path via
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" .specify/templates/constitution-template.md`
+   first, then Read the returned path.
 3. Present each section to the user one at a time, in order:
    - **Project Identity** -- name, description, languages, platforms
    - **Non-Negotiable Principles** -- 3-7 principles that must never be violated
@@ -81,7 +83,7 @@ activity, including autonomous Claude Code sessions.
 the directory structure, CI workflows, git hooks, templates, and quality
 principles needed for spec-driven development.
 
-**Scaffold source:** `$CLAUDE_PLUGIN_ROOT/scaffold/`
+**Scaffold source:** `scaffold/` under the plugin root.
 
 **Version tracking:** `.specforge-version`, `.specforge-ci-platform`
 
@@ -106,40 +108,48 @@ principles needed for spec-driven development.
    as: "Detected GitHub. Use GitHub? [Y/n/gitlab/jenkins]". When no default,
    prompt as: "Which CI platform? [github/gitlab/jenkins]". Re-prompt on
    invalid input.
-5. **Scaffold projection (common files):** Copy all files from
-   `$CLAUDE_PLUGIN_ROOT/scaffold/common/` to the target project root,
-   preserving directory structure.
-6. **Scaffold projection (platform files):** Copy all files from
-   `$CLAUDE_PLUGIN_ROOT/scaffold/<platform>/` to the target project root,
-   where `<platform>` is the selected CI platform.
-7. **Conflict resolution via diffs:** For each file that already exists in
+5. **Load plugin-cache prefixes:** Read the plugin-cache tier from
+   `upgrade-tiers.json` at the plugin root via
+   `jq -r '.tiers["plugin-cache"][]' "$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json"`.
+   Any path in the scaffold that begins with one of these prefixes is
+   authoritative in the plugin and must NOT be projected. Hosts read
+   these via `cpf_resolve_asset`, shadowable via `.cpf/overrides/`.
+6. **Scaffold projection (common files):** Copy all files from
+   `scaffold/common/` under the plugin root to the target project
+   root, preserving directory structure. Skip any scaffold-relative
+   path that begins with a plugin-cache prefix loaded in step 5.
+7. **Scaffold projection (platform files):** Copy all files from
+   `scaffold/<platform>/` under the plugin root to the target project
+   root, where `<platform>` is the selected CI platform. Apply the
+   same plugin-cache-prefix skip filter.
+8. **Conflict resolution via diffs:** For each file that already exists in
    the target project:
    - If the existing file is identical to the scaffold version, skip it
      silently.
    - If the existing file differs, show `diff -u <existing> <scaffold>` and
      ask "Overwrite <file>? [y/n/d(iff)]". On `y`, overwrite. On `n`, skip.
      On `d`, show the diff again.
-8. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
+9. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
    from `CLAUDE.md.template` with these placeholders replaced:
    - `{{PROJECT_NAME}}` -- from `basename $PWD` or git remote name
    - `{{LANGUAGE}}` -- auto-detected from config files (package.json,
      Cargo.toml, pyproject.toml, go.mod, etc.); comma-separated if multiple
      (e.g., "JavaScript, Go"); "Unknown" if none detected
    - `{{CI_PLATFORM}}` -- the selected CI platform
-9. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-10. **Auto-run install-hooks.sh:** Execute
+10. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+11. **Auto-run install-hooks.sh:** Execute
     `.cpf/scripts/install-hooks.sh` to install git hooks into
     `.git/hooks/`.
-11. **Doctor check:** Run `.cpf/scripts/doctor.sh` to validate
+12. **Doctor check:** Run `.cpf/scripts/doctor.sh` to validate
     prerequisites. Display the compliance report. Doctor
     failures do not block init -- the report is
     informational. Visually separate doctor output from
     file counts with a blank line and header.
-12. **Version tracking:** Write the plugin version (from
+13. **Version tracking:** Write the plugin version (from
     `plugin.json`) to `.specforge-version` at the project
     root. Write the selected CI platform to
     `.specforge-ci-platform`.
-13. **Summary:** Print file counts (copied, skipped), the
+14. **Summary:** Print file counts (copied, skipped), the
     selected CI platform, and next steps including:
     "Run `/cpf:specforge constitution` to define your
     project principles."
@@ -176,7 +186,9 @@ conversation, producing a structured specification.
 
 1. Read the constitution from `.specify/memory/constitution.md`. Verify it
    exists; if not, prompt the user to run `/cpf:specforge constitution` first.
-2. Read the spec template from `.specify/templates/spec-template.md`.
+2. Resolve the spec template via
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" .specify/templates/spec-template.md`
+   first, then Read the returned path.
 3. Ask the user to describe the project features at a high level.
 4. For each feature described, collaborate with the user to define:
    - A title and description
@@ -271,7 +283,10 @@ structured implementation plan.
 5. Record each decision as an Architecture Decision Record (ADR) with:
    status, context, decision, alternatives considered, consequences.
 6. Define implementation phases with dependency ordering.
-7. Write the plan to `.specify/specs/plan.md` using the template.
+7. Resolve the plan template via
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" .specify/templates/plan-template.md`
+   first, Read the returned path, then write the plan to
+   `.specify/specs/plan.md` using that template.
 
 **Notes:**
 
@@ -313,7 +328,9 @@ machine-readable feature definitions for autonomous execution.
    - `testing_steps`: array of concrete, executable test commands
    - `passes`: `false` (all features start as not passing)
    - `dependencies`: array of feature IDs this feature depends on
-5. Validate the output against `.specify/templates/feature-list-schema.json`.
+5. Resolve the schema via
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" .specify/templates/feature-list-schema.json`
+   first, then validate the output against the returned path.
 6. Run dependency cycle detection to ensure no circular references.
 7. Verify constraints:
    - All `passes` fields are `false` initially
@@ -438,7 +455,7 @@ tools.
 **Purpose:** Update scaffold files in a host project using three-tier file
 categorization to preserve project-specific customizations.
 
-**Tier definitions:** `$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json`
+**Tier definitions:** `upgrade-tiers.json` at the plugin root.
 
 **Tiers:**
 
@@ -451,6 +468,10 @@ categorization to preserve project-specific customizations.
   If the file is missing during upgrade, copy the bundled default; otherwise
   leave the user's copy untouched.
 - **skip** -- Project-specific files that are never modified by upgrade.
+- **plugin-cache** -- Subtrees authoritative in the plugin and never
+  projected to hosts. Consumers read these via `cpf_resolve_asset`
+  with `.cpf/overrides/<relpath>` shadowing. See ADR-003 in the
+  plan document.
 
 **Version tracking:** `.specforge-version`, `.specforge-ci-platform`
 
@@ -472,31 +493,36 @@ categorization to preserve project-specific customizations.
    project the new platform's scaffold files. Do NOT delete old platform
    files; instead, list them with: "Previous <platform> CI files remain.
    Remove manually if no longer needed: <file list>".
-6. **Read tier definitions:** Read `$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json`
-   for file tier assignments.
-7. **Overwrite tier:** For each file in the "overwrite" list, replace it
+6. **Read tier definitions:** Read `upgrade-tiers.json` at the plugin
+   root for file tier assignments.
+7. **Plugin-cache tier:** Skip every scaffold-relative path beginning
+   with a plugin-cache prefix. These subtrees are authoritative in
+   the plugin and are never projected or reviewed; hosts read them
+   via `cpf_resolve_asset` and shadow them with `.cpf/overrides/`.
+   Migration messaging for the reorg lives in INFRA-029.
+8. **Overwrite tier:** For each file in the "overwrite" list, replace it
    with the latest version from the plugin without prompting.
-8. **Review tier:** For each file in the "review" list that differs from
+9. **Review tier:** For each file in the "review" list that differs from
    the plugin version, show `diff -u <existing> <plugin>` output and ask
    "Accept this change? [y/n]". Skip files that are identical.
-9. **Skip tier:** Do nothing for files in the "skip" list.
-10. **Customizable tier:** For each file in the "customizable" list, copy
+10. **Skip tier:** Do nothing for files in the "skip" list.
+11. **Customizable tier:** For each file in the "customizable" list, copy
     the bundled default from the scaffold only if the file is missing in the
     host project. If present, leave it untouched.
-11. **New files:** Files present in the scaffold but not listed in any tier
-    in `upgrade-tiers.json` are treated as overwrite (copied without
-    prompting).
-12. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
+12. **New files:** Files present in the scaffold but not listed in any tier
+    in `upgrade-tiers.json` (and not under a plugin-cache prefix) are
+    treated as overwrite (copied without prompting).
+13. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
     longer present in the scaffold are logged as: "Deprecated: <file>
     (no longer in plugin, can be manually removed)". They are NOT deleted
     from the host project.
-13. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-14. **Re-run install-hooks.sh:** Execute `.cpf/scripts/install-hooks.sh` to
+14. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+15. **Re-run install-hooks.sh:** Execute `.cpf/scripts/install-hooks.sh` to
     update git hooks.
-15. **Update version tracking:** Write the new plugin version to
+16. **Update version tracking:** Write the new plugin version to
     `.specforge-version`. Update `.specforge-ci-platform` if the user
     switched platforms.
-16. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
+17. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
     skipped, new, and deprecated files.
 
 **Notes:**

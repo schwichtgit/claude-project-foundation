@@ -1744,7 +1744,7 @@
         "Source `cpf-resolve-asset.sh` and call `cpf_resolve_asset .specify/templates/plan-template.md` on a fixture with no overrides; verify the returned path is under `$CLAUDE_PLUGIN_ROOT`",
         "Drop an override at `.cpf/overrides/.specify/templates/plan-template.md` and verify `cpf_resolve_asset` returns the host override path instead",
         "Call `cpf_resolve_asset non/existent/file.md` and verify nonzero exit with a readable error",
-        "Run the resolver-usage lint script (`scripts/lint-resolver-usage.sh`) against the plugin source and verify it flags any direct `$CLAUDE_PLUGIN_ROOT/` or `$CLAUDE_PROJECT_DIR/.specify/templates/` reads outside the resolver itself",
+        "Run the resolver-usage lint script (`.claude-plugin/lib/lint-resolver-usage.sh`) against the plugin source and verify it flags any direct `$CLAUDE_PLUGIN_ROOT/` or `$CLAUDE_PROJECT_DIR/.specify/templates/` reads outside the resolver itself",
         "Invoke `/cpf:specforge plan` with an override template in place on a fixture and verify the command reads the override rather than the bundled default (e.g., by adding a unique marker string to the override and grepping it in plan output)",
         "Run `/cpf:specforge upgrade` on the cpf source repo (name=cpf in plugin.json) and verify `.specify/templates/*` remains in-tree (self-detection suppresses the reorg for the source)",
         "Run `shellcheck .claude-plugin/lib/cpf-resolve-asset.sh` and verify exit 0"

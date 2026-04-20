@@ -82,17 +82,25 @@ else
   FAILED=$((FAILED + 1))
 fi
 
-# Collect all tier entries (non-glob entries only for exact matching)
-ALL_TIER_ENTRIES=$(jq -r '.tiers | (.overwrite + .review + .skip)[]' "$TIERS_FILE" 2>/dev/null)
+# Collect all tier entries (non-glob entries only for exact matching).
+# plugin-cache entries are prefixes (trailing-slash dirs or bare files) and
+# also count as "tiered" for coverage purposes -- those assets live in the
+# plugin and are read via cpf_resolve_asset rather than projected.
+ALL_TIER_ENTRIES=$(jq -r '.tiers | (.overwrite + .review + .skip + (.customizable // []) + (.["plugin-cache"] // []))[]' "$TIERS_FILE" 2>/dev/null)
 
 # Helper: check if a scaffold-relative path matches any tier entry.
-# Supports glob patterns in skip tier (e.g., ".specify/memory/*").
+# Supports glob patterns in skip tier (e.g., ".specify/memory/*") and
+# trailing-slash prefixes in the plugin-cache tier (e.g., "prompts/").
 file_in_tiers() {
   local relpath="$1"
   local entry
   while IFS= read -r entry; do
     # Exact match
     if [[ "$relpath" == "$entry" ]]; then
+      return 0
+    fi
+    # Trailing-slash prefix match (plugin-cache style)
+    if [[ "$entry" == */ && "$relpath" == "$entry"* ]]; then
       return 0
     fi
     # Glob match (for patterns like ".specify/memory/*")
@@ -192,6 +200,7 @@ TOTAL=$((TOTAL + 1))
 OVERWRITE_ENTRIES=$(jq -r '.tiers.overwrite[]' "$TIERS_FILE" 2>/dev/null)
 REVIEW_ENTRIES=$(jq -r '.tiers.review[]' "$TIERS_FILE" 2>/dev/null)
 SKIP_ENTRIES=$(jq -r '.tiers.skip[]' "$TIERS_FILE" 2>/dev/null)
+PLUGIN_CACHE_ENTRIES=$(jq -r '.tiers["plugin-cache"] // [] | .[]' "$TIERS_FILE" 2>/dev/null)
 
 DUPLICATES=0
 while IFS= read -r entry; do
@@ -199,6 +208,7 @@ while IFS= read -r entry; do
   echo "$OVERWRITE_ENTRIES" | grep -qFx "$entry" && COUNT=$((COUNT + 1))
   echo "$REVIEW_ENTRIES" | grep -qFx "$entry" && COUNT=$((COUNT + 1))
   echo "$SKIP_ENTRIES" | grep -qFx "$entry" && COUNT=$((COUNT + 1))
+  echo "$PLUGIN_CACHE_ENTRIES" | grep -qFx "$entry" && COUNT=$((COUNT + 1))
   if [[ "$COUNT" -gt 1 ]]; then
     echo "  DUPLICATE: $entry appears in $COUNT tiers"
     DUPLICATES=$((DUPLICATES + 1))
@@ -213,23 +223,16 @@ else
   FAILED=$((FAILED + 1))
 fi
 
-# --- 8: Overwrite tier includes ci/principles/*.md ---
+# --- 8: plugin-cache tier includes ci/principles/ ---
 echo ""
 echo "=== Tier content validation ==="
 
 TOTAL=$((TOTAL + 1))
-OW_HAS_PRINCIPLES=true
-for f in "ci/principles/commit-gate.md" "ci/principles/pr-gate.md" "ci/principles/release-gate.md"; do
-  if ! echo "$OVERWRITE_ENTRIES" | grep -qFx "$f"; then
-    echo "  MISSING from overwrite: $f"
-    OW_HAS_PRINCIPLES=false
-  fi
-done
-if [[ "$OW_HAS_PRINCIPLES" == "true" ]]; then
-  echo "PASS: overwrite tier includes ci/principles/*.md"
+if echo "$PLUGIN_CACHE_ENTRIES" | grep -qFx "ci/principles/"; then
+  echo "PASS: plugin-cache tier includes ci/principles/"
   PASSED=$((PASSED + 1))
 else
-  echo "FAIL: overwrite tier missing ci/principles/ files"
+  echo "FAIL: plugin-cache tier missing ci/principles/"
   FAILED=$((FAILED + 1))
 fi
 
