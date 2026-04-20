@@ -268,6 +268,63 @@ features step.
   policy-shape changes (new fields, new enum values) should
   extend that script rather than create parallel test files.
 
+### INFRA-025 (per-service-resolver-verify-quality) -- 2026-04-20
+
+- Refactored only the Python branch of `run_legacy_walk_and_detect()` in
+  `verify-quality.sh`. The Node, Rust, and Go branches stay verbatim. Two
+  new hook-local helpers (`cpf_pyproject_skip_list`,
+  `cpf_pyproject_has_section`, `resolve_python_runner`) live inside the
+  hook rather than in `.claude-plugin/lib/`; they are single-call-site
+  helpers and do not carry a `# REMOVE AT v0.2.0` marker because the
+  per-service runner contract is permanent. Only the surrounding walker
+  scaffolding is slated for removal at v0.2.0.
+- Resolution order per service dir with `pyproject.toml`:
+  1. `$dir/.venv/bin/<tool>` if executable.
+  2. `uv run --project $dir <tool>` if `uv` is on PATH.
+  3. Otherwise neither — hook emits WARN/SKIP per
+     `verify-quality.on_missing_runner` (default `warn`). Bare
+     invocation from `$PATH` is forbidden by contract; a CI test in
+     `scripts/test-per-service-resolver.sh` step 6 greps to assert
+     zero bare matches.
+- Tools attempted per service: `ruff` and `pytest` always (baseline
+  lint+test pair); `mypy` only if `[tool.mypy]` section present;
+  `black` only if `[tool.black]` section present. This avoids spurious
+  WARN noise for tools the user has not opted into.
+- Per-service opt-out via `[tool.cpf.hooks] skip = ["pytest", ...]`
+  inside the service's `pyproject.toml`. Pure-bash awk parsing — no
+  Python or jq-via-conversion dependency. Opt-out runs BEFORE resolver
+  attempts, so opted-out tools never look for runners.
+- The `WARN/SKIP: no resolver` line is emitted at most once per
+  service: only when at least one tool failed to resolve AND no tool
+  was successfully resolved. If even one tool resolved (e.g., ruff
+  found in `.venv` while mypy did not), the per-service condition is
+  treated as "partially resolved" and no aggregate warning fires.
+- ADR-006 fallback path (`POLICY_LOADED == 0`) defaults
+  `on_missing_runner` to `"warn"` at the top of the walker function so
+  both code paths agree. Tested by the bonus assertion in
+  `test-per-service-resolver.sh`.
+- Pure `requirements.txt` projects (no `pyproject.toml`) emit the
+  WARN/SKIP line and skip — they cannot be resolved per-service since
+  the opt-out and section-detection helpers both key on
+  `pyproject.toml`. This is a deliberate scoping decision: hosts that
+  want pure-`requirements.txt` support should add a minimal
+  `pyproject.toml` with `[project]` to opt into per-service
+  resolution.
+- INFRA-026 hand-off: pytest is invoked as
+  `<resolver-prefix> "$svc_dir" --tb=no -q` via `run_check`, which
+  collapses any nonzero exit code into a single FAIL increment.
+  INFRA-026 (pytest-exit-code-classification) needs to:
+  - Replace the `run_check "Pytest ..." ... pytest "$svc_dir" --tb=no -q`
+    call site with explicit exit-code capture (not `run_check`) so it
+    can distinguish 0 / 1 / 2-4 / 5.
+  - Read `verify-quality.on_missing_tests` from policy (already
+    schema-validated as `enum: ["warn", "skip"]`) and route exit 5
+    accordingly (default `skip`).
+  - Use the `INTERNAL:` prefix for pytest exit codes 2-4 to
+    distinguish usage errors from genuine test failures.
+  - The resolver itself stays untouched; INFRA-026 wraps the pytest
+    invocation only.
+
 ### INFRA-019 (native-tool-config-for-hooks) -- 2026-04-20
 
 - ADR-006 fallback notice wording in format-changed.sh and
@@ -343,3 +400,8 @@ pattern ]]` semantics with shellcheck disables for SC2053 and
   fragment helper, formatter dispatch exclude filtering, severity
   contract for format-changed and post-edit, schema relaxation of
   the orchestrator requirement, ci-base inline loop rationale.
+- 2026-04-20: INFRA-025 notes appended -- per-service Python runner
+  resolver in the legacy walker, pyproject opt-out via
+  `[tool.cpf.hooks] skip`, WARN/SKIP semantics for missing runners,
+  pure-requirements.txt scoping decision, INFRA-026 pytest exit-code
+  classification hand-off contract.

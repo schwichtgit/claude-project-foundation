@@ -1707,7 +1707,7 @@
         "Add `[tool.cpf.hooks] skip = [\"pytest\"]` to a service's pyproject.toml and verify verify-quality.sh logs `SKIP: opted out` for that service without invoking pytest",
         "Run `shellcheck .claude-plugin/hooks/verify-quality.sh` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["per-hook-orchestrator-dispatch"]
     },
     {

@@ -79,6 +79,8 @@ jobs:
         run: bash scripts/test-shellcheck-fragment.sh
       - name: Native tool config hook test
         run: bash scripts/test-native-tool-config.sh
+      - name: Per-service resolver hook test
+        run: bash scripts/test-per-service-resolver.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)
