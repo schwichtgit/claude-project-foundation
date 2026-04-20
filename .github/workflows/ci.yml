@@ -50,6 +50,8 @@ jobs:
           find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
       - name: Resolver-usage lint
         run: bash .claude-plugin/lib/lint-resolver-usage.sh
+      - name: Jenkinsfile upstream-cache flow test
+        run: bash scripts/test-jenkinsfile-review.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)
