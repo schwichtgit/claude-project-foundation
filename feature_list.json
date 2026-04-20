@@ -1689,7 +1689,7 @@
         "Run upgrade on a fixture with an existing `orchestrator` choice; verify the choice is preserved (no overwrite)",
         "Run `shellcheck .claude-plugin/hooks/verify-quality.sh` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["policy-json-schema-loader"]
     },
     {
