@@ -1767,7 +1767,7 @@
         "On a fixture with no `.cpf/upstream-cache/Jenkinsfile` present, run upgrade and verify the baseline falls back to the host-repo `Jenkinsfile` and the cache is seeded after the user decides",
         "Run `npx prettier --check` and `npx markdownlint-cli2` on modified scaffold docs and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
