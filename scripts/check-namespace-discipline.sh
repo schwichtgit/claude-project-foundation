@@ -21,6 +21,15 @@ set -euo pipefail
 # plugin-cache entries never project to the host at all. ADR-002
 # governs *projection*, so only the projecting tiers are in scope.
 #
+# Top-level sibling keys of `tiers` (e.g., `_comment`,
+# `_third_party_tool_config`, `migrations`) are metadata, not
+# projected paths. This lint reads only `.tiers[$t][]` and
+# `._third_party_tool_config[]`; every other top-level key is
+# ignored by construction. INFRA-029 introduced `migrations` as
+# a peer of `tiers` (target-version-keyed migration metadata for
+# `/cpf:specforge upgrade`); it never projects path strings into
+# host files, so it falls under the same "not scanned" contract.
+#
 # Exit 0 on full classification, 1 on any unclassified entry, 2
 # on usage error.
 

@@ -59,5 +59,18 @@
       "ci/jenkins/",
       "CLAUDE.md.template"
     ]
+  },
+  "migrations": {
+    "0.1.0-alpha.12": {
+      "policy_seed": true,
+      "reorg_paths": [
+        "prompts/",
+        ".specify/templates/",
+        ".specify/WORKFLOW.md",
+        "ci/principles/"
+      ],
+      "jenkinsfile_tier_change": true,
+      "v02_countdown": true
+    }
   }
 }
