@@ -62,6 +62,27 @@ changepoint items allocate from INFRA-030 upward.
   resolves from `.cpf/scripts/hooks/`.
 - **Update any CI workflows that reference `scripts/`** to
   the new path.
+- **Resolver has a transitional scaffold/common/ fallback.**
+  `cpf_resolve_asset` looks up `$CLAUDE_PLUGIN_ROOT/<relpath>`
+  first (future layout where plugin-cache assets sit at the
+  plugin root), then falls back to
+  `$CLAUDE_PLUGIN_ROOT/scaffold/common/<relpath>` (current
+  layout). The plan's project-structure diagram shows
+  plugin-cache assets living at the plugin root, which would
+  let the fallback be removed once a later feature physically
+  relocates templates, prompts, principles, and the host
+  entry-point template out of `scaffold/common/`. Remove the
+  fallback branch at that time.
+- **Resolver-usage lint allow-list includes SKILL.md.**
+  SKILL.md necessarily references `$CLAUDE_PLUGIN_ROOT/lib/
+cpf-resolve-asset.sh` (the resolver entry point) and
+  `$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json` (plugin infra).
+  Neither is a plugin-cache asset read, so allow-listing is
+  the correct pragmatic choice. If a future contributor
+  wants a stricter lint, they can narrow the grep pattern
+  to match only plugin-cache prefixes under
+  `$CLAUDE_PLUGIN_ROOT/` and drop SKILL.md from the
+  allow-list.
 
 ## New Scope Items
 
@@ -105,3 +126,6 @@ features step.
 ## Changelog
 
 - 2026-04-19: stub created during INFRA-017 implementation.
+- 2026-04-19: INFRA-027 notes appended -- transitional scaffold
+  fallback in the resolver and SKILL.md allow-list rationale for
+  the resolver-usage lint.
