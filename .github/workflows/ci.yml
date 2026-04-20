@@ -56,6 +56,8 @@ jobs:
         run: bash scripts/test-namespace-discipline.sh
       - name: Policy loader and validator test
         run: bash scripts/test-policy.sh
+      - name: Orchestrator dispatch test
+        run: bash scripts/test-orchestrator-dispatch.sh
       - name: Jenkinsfile upstream-cache flow test
         run: bash scripts/test-jenkinsfile-review.sh
       - name: Config generation test

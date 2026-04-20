@@ -1,9 +1,23 @@
 #!/bin/bash
+# shellcheck shell=bash
 set -euo pipefail
 trap 'exit 0' ERR
 
-# Stop hook. Runs quality checks before allowing Claude Code to stop.
+# Stop hook. Runs quality checks before allowing the agent to stop.
 # Exit 0 = allow stop, Exit 2 = block stop, Exit 1 = hook error.
+#
+# INFRA-024 dispatch:
+#   .cpf/policy.json -> hooks.verify-quality.orchestrator
+#     "none"   -> legacy walk (run_legacy_walk_and_detect)
+#     "task"   -> `task lint` (ERROR class) and `task test` (WARNING class)
+#                  per ADR-005 fixed convention
+#     "custom" -> sh -c "$custom_command", exit code mapped via the hook's
+#                  severity field
+#
+# ADR-006: missing or unloadable policy falls back to the legacy walk and
+# emits a one-line stderr deprecation notice. Both the fallback path and
+# the legacy walker are tagged `# REMOVE AT v0.2.0` so the removal PR is
+# mechanical.
 
 if ! command -v jq >/dev/null 2>&1; then
     echo "cpf: jq not found, skipping hook" \
@@ -21,6 +35,14 @@ fi
 
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 
+# Locate the policy loader via BASH_SOURCE-relative path. Mirrors the
+# pattern used by cpf-generate-configs.sh; do NOT introduce a
+# $CLAUDE_PLUGIN_ROOT dependency here (a known semantic split exists
+# between hooks.json and the resolver -- see Spec A changepoints).
+CPF_HOOK_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
+POLICY_LIB="$CPF_HOOK_LIB_DIR/cpf-policy.sh"
+
+# Per-run state shared between dispatchers and the legacy walker.
 FAILED=0
 WARNINGS=0
 CHECKS_RUN=0
@@ -51,8 +73,13 @@ run_optional_check() {
     CHECKS_RUN=$((CHECKS_RUN + 1))
 }
 
-# Discover and check project types
-check_projects() {
+# ---------------------------------------------------------------------------
+# Legacy walker. Preserved from the alpha.11 hook body verbatim. Wrapped in
+# a function so the dispatcher can call it for `orchestrator = "none"` and
+# the ADR-006 missing-policy fallback can route through the same code path.
+# REMOVE AT v0.2.0
+# ---------------------------------------------------------------------------
+run_legacy_walk_and_detect() {
     local search_dirs=("$PROJECT_ROOT")
 
     # Also check one level of subdirectories for monorepo support
@@ -138,9 +165,140 @@ check_projects() {
         echo "No recognized project type found. Skipping quality checks."
     fi
 }
+# END run_legacy_walk_and_detect -- REMOVE AT v0.2.0
 
+# ---------------------------------------------------------------------------
+# Task orchestrator. ADR-005 fixed convention: lint failures count as ERROR,
+# test failures count as WARNING. Both targets are invoked unconditionally.
+# ---------------------------------------------------------------------------
+run_task_orchestrator() {
+    if ! command -v task >/dev/null 2>&1; then
+        echo "  WARN: task binary not on PATH; skipping task orchestrator" >&2
+        WARNINGS=$((WARNINGS + 1))
+        return 0
+    fi
+
+    echo ""
+    echo "Task orchestrator (cwd: $PROJECT_ROOT)"
+
+    echo "  [check] task lint"
+    if (cd "$PROJECT_ROOT" && task lint) >/dev/null 2>&1; then
+        echo "    PASS"
+    else
+        echo "    FAIL: task lint" >&2
+        FAILED=$((FAILED + 1))
+    fi
+    CHECKS_RUN=$((CHECKS_RUN + 1))
+
+    echo "  [optional] task test"
+    if (cd "$PROJECT_ROOT" && task test) >/dev/null 2>&1; then
+        echo "    PASS"
+    else
+        echo "    WARN: task test" >&2
+        WARNINGS=$((WARNINGS + 1))
+    fi
+    CHECKS_RUN=$((CHECKS_RUN + 1))
+}
+
+# ---------------------------------------------------------------------------
+# Custom orchestrator. Runs the user-supplied command via `sh -c`. Exit code
+# is mapped through the hook's severity field per ADR-005:
+#   severity=error   -> nonzero exit increments FAILED (blocks stop)
+#   severity=warning -> nonzero exit increments WARNINGS
+#   severity=info    -> nonzero exit logged but does not affect counters
+# ---------------------------------------------------------------------------
+run_custom_orchestrator() {
+    local custom_command="$1" severity="$2"
+
+    if [[ -z "$custom_command" ]]; then
+        echo "ERROR: orchestrator=custom but custom_command is empty" >&2
+        FAILED=$((FAILED + 1))
+        return 0
+    fi
+
+    echo ""
+    echo "Custom orchestrator (cwd: $PROJECT_ROOT, severity: $severity)"
+    echo "  [check] $custom_command"
+
+    local rc=0
+    (cd "$PROJECT_ROOT" && sh -c "$custom_command") >/dev/null 2>&1 || rc=$?
+    CHECKS_RUN=$((CHECKS_RUN + 1))
+
+    if [[ "$rc" -eq 0 ]]; then
+        echo "    PASS"
+        return 0
+    fi
+
+    case "$severity" in
+        error)
+            echo "    FAIL: custom_command (rc=$rc)" >&2
+            FAILED=$((FAILED + 1))
+            ;;
+        warning)
+            echo "    WARN: custom_command (rc=$rc)" >&2
+            WARNINGS=$((WARNINGS + 1))
+            ;;
+        info)
+            echo "    INFO: custom_command (rc=$rc)"
+            ;;
+        *)
+            echo "    FAIL: custom_command (rc=$rc, unknown severity \"$severity\")" >&2
+            FAILED=$((FAILED + 1))
+            ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------
+# Dispatch
+# ---------------------------------------------------------------------------
 echo "=== Quality Gate ==="
-check_projects
+
+ORCHESTRATOR=""
+SEVERITY=""
+CUSTOM_COMMAND=""
+
+# ADR-006 fallback: missing or unloadable policy lib -> legacy walk.
+# REMOVE AT v0.2.0 (along with the legacy walker above).
+if [[ ! -f "$POLICY_LIB" ]]; then
+    echo "cpf: policy loader not found, falling back to legacy walk" \
+        "(REMOVE AT v0.2.0)" >&2
+    run_legacy_walk_and_detect
+elif
+    # shellcheck source=../lib/cpf-policy.sh
+    # shellcheck disable=SC1091
+    ! source "$POLICY_LIB" 2>/dev/null
+then
+    echo "cpf: failed to source policy loader, falling back to legacy walk" \
+        "(REMOVE AT v0.2.0)" >&2
+    run_legacy_walk_and_detect
+else
+    POLICY_FILE="$(cpf_policy_file)"
+    if [[ ! -f "$POLICY_FILE" ]]; then
+        echo "cpf: .cpf/policy.json missing, falling back to legacy walk" \
+            "(REMOVE AT v0.2.0)" >&2
+        run_legacy_walk_and_detect
+    else
+        ORCHESTRATOR="$(cpf_policy_get verify-quality orchestrator)"
+        SEVERITY="$(cpf_policy_get verify-quality severity)"
+        CUSTOM_COMMAND="$(cpf_policy_get verify-quality custom_command)"
+        : "${SEVERITY:=error}"
+        case "${ORCHESTRATOR:-none}" in
+            none | "")
+                run_legacy_walk_and_detect
+                ;;
+            task)
+                run_task_orchestrator
+                ;;
+            custom)
+                run_custom_orchestrator "$CUSTOM_COMMAND" "$SEVERITY"
+                ;;
+            *)
+                echo "ERROR: unknown verify-quality.orchestrator \"$ORCHESTRATOR\"" >&2
+                FAILED=$((FAILED + 1))
+                ;;
+        esac
+    fi
+fi
 
 echo ""
 echo "--- Summary ---"
