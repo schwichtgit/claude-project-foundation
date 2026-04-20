@@ -48,6 +48,8 @@ jobs:
         run: |
           find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*' -print0 | xargs -0 shellcheck -x
           find .claude-plugin/scaffold/common/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+      - name: Resolver-usage lint
+        run: bash .claude-plugin/lib/lint-resolver-usage.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)
