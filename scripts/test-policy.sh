@@ -108,6 +108,87 @@ else
     fail "bogus severity not rejected: $ERR_OUT"
 fi
 
+# INFRA-025: on_missing_runner enum tightened to ["warn","skip"]
+BOGUS_RUN="$(write_policy bogus-runner '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error",
+      "on_missing_runner": "bogus"
+    }
+  }
+}')"
+ERR_OUT="$(cpf_validate_policy "$BOGUS_RUN" 2>&1 || true)"
+if echo "$ERR_OUT" | grep -q 'verify-quality: invalid on_missing_runner "bogus"'; then
+    pass "INFRA-025: bogus on_missing_runner rejected with hook name + value"
+else
+    fail "INFRA-025: bogus on_missing_runner not rejected: $ERR_OUT"
+fi
+
+# "fail" is no longer accepted (INFRA-025 narrowed the enum)
+FAIL_RUN="$(write_policy fail-runner '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error",
+      "on_missing_runner": "fail"
+    }
+  }
+}')"
+ERR_OUT="$(cpf_validate_policy "$FAIL_RUN" 2>&1 || true)"
+if echo "$ERR_OUT" | grep -q 'verify-quality: invalid on_missing_runner "fail"'; then
+    pass "INFRA-025: \"fail\" rejected (enum narrowed to warn|skip)"
+else
+    fail "INFRA-025: \"fail\" should be rejected: $ERR_OUT"
+fi
+
+WARN_RUN="$(write_policy warn-runner '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error",
+      "on_missing_runner": "warn"
+    }
+  }
+}')"
+if cpf_validate_policy "$WARN_RUN" >/dev/null 2>&1; then
+    pass "INFRA-025: on_missing_runner=\"warn\" accepted"
+else
+    fail "INFRA-025: on_missing_runner=\"warn\" rejected"
+    cpf_validate_policy "$WARN_RUN" || true
+fi
+
+SKIP_RUN="$(write_policy skip-runner '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error",
+      "on_missing_runner": "skip"
+    }
+  }
+}')"
+if cpf_validate_policy "$SKIP_RUN" >/dev/null 2>&1; then
+    pass "INFRA-025: on_missing_runner=\"skip\" accepted"
+else
+    fail "INFRA-025: on_missing_runner=\"skip\" rejected"
+    cpf_validate_policy "$SKIP_RUN" || true
+fi
+
+MISSING_RUN="$(write_policy missing-runner '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error"
+    }
+  }
+}')"
+if cpf_validate_policy "$MISSING_RUN" >/dev/null 2>&1; then
+    pass "INFRA-025: missing on_missing_runner accepted (default applies)"
+else
+    fail "INFRA-025: missing on_missing_runner should be accepted"
+    cpf_validate_policy "$MISSING_RUN" || true
+fi
+
 # --- 4: INFRA-024 custom requires custom_command ---
 echo ""
 echo "=== INFRA-024: custom orchestrator requires custom_command ==="

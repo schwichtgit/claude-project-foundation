@@ -81,7 +81,7 @@ cpf_validate_policy() {
         ];
         def orch_values:   ["none","task","custom"];
         def sev_values:    ["error","warning","info"];
-        def runner_values: ["warn","fail","skip"];
+        def runner_values: ["warn","skip"];
         def tests_values:  ["warn","skip"];
         .hooks
         | to_entries[]

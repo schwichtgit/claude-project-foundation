@@ -68,8 +68,9 @@
         },
         "on_missing_runner": {
           "type": "string",
-          "enum": ["warn", "fail", "skip"],
-          "description": "Behavior when the chosen orchestrator's runner (task, custom_command) is not found on the host."
+          "enum": ["warn", "skip"],
+          "default": "warn",
+          "description": "Behavior when no per-service runner can be resolved for a tool (neither $dir/.venv/bin/<tool> nor `uv run --project $dir <tool>` is available). Default is warn. INFRA-025: applies to the verify-quality legacy walker's Python branch; per-service opt-out via [tool.cpf.hooks] skip in pyproject.toml is logged as SKIP regardless of this field."
         },
         "on_missing_tests": {
           "type": "string",
