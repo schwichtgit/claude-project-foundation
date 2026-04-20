@@ -189,6 +189,70 @@ else
     cpf_validate_policy "$MISSING_RUN" || true
 fi
 
+# INFRA-026: on_missing_tests enum is ["warn","skip"], default skip.
+BOGUS_TESTS="$(write_policy bogus-tests '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error",
+      "on_missing_tests": "bogus"
+    }
+  }
+}')"
+ERR_OUT="$(cpf_validate_policy "$BOGUS_TESTS" 2>&1 || true)"
+if echo "$ERR_OUT" | grep -q 'verify-quality: invalid on_missing_tests "bogus"'; then
+    pass "INFRA-026: bogus on_missing_tests rejected with hook name + value"
+else
+    fail "INFRA-026: bogus on_missing_tests not rejected: $ERR_OUT"
+fi
+
+WARN_TESTS="$(write_policy warn-tests '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error",
+      "on_missing_tests": "warn"
+    }
+  }
+}')"
+if cpf_validate_policy "$WARN_TESTS" >/dev/null 2>&1; then
+    pass "INFRA-026: on_missing_tests=\"warn\" accepted"
+else
+    fail "INFRA-026: on_missing_tests=\"warn\" rejected"
+    cpf_validate_policy "$WARN_TESTS" || true
+fi
+
+SKIP_TESTS="$(write_policy skip-tests '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error",
+      "on_missing_tests": "skip"
+    }
+  }
+}')"
+if cpf_validate_policy "$SKIP_TESTS" >/dev/null 2>&1; then
+    pass "INFRA-026: on_missing_tests=\"skip\" accepted"
+else
+    fail "INFRA-026: on_missing_tests=\"skip\" rejected"
+    cpf_validate_policy "$SKIP_TESTS" || true
+fi
+
+MISSING_TESTS="$(write_policy missing-tests '{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "none",
+      "severity": "error"
+    }
+  }
+}')"
+if cpf_validate_policy "$MISSING_TESTS" >/dev/null 2>&1; then
+    pass "INFRA-026: missing on_missing_tests accepted (default applies)"
+else
+    fail "INFRA-026: missing on_missing_tests should be accepted"
+    cpf_validate_policy "$MISSING_TESTS" || true
+fi
+
 # --- 4: INFRA-024 custom requires custom_command ---
 echo ""
 echo "=== INFRA-024: custom orchestrator requires custom_command ==="

@@ -75,7 +75,8 @@
         "on_missing_tests": {
           "type": "string",
           "enum": ["warn", "skip"],
-          "description": "Behavior when a test runner reports no tests collected."
+          "default": "skip",
+          "description": "Behavior when the test runner reports no tests collected (pytest exit code 5). Default is skip (log SKIP, no WARNING/FAIL). INFRA-026: warn flips to logging WARN and incrementing the warnings counter; consumed by the verify-quality Python branch's pytest classifier."
         },
         "custom_command": {
           "type": "string",
