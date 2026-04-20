@@ -378,6 +378,43 @@ pattern ]]` semantics with shellcheck disables for SC2053 and
   ignores). Future polyglot conventions can extend the same
   helper.
 
+### INFRA-026 (pytest-exit-code-classification) -- 2026-04-20
+
+- The Python branch of the legacy walker no longer uses `run_check`
+  for pytest. A dedicated `run_pytest_classified` helper sits next
+  to `resolve_python_runner` and maps exit codes explicitly:
+  0 PASS, 1 FAIL, 2-4 INTERNAL FAIL (with a distinct stderr prefix
+  `INTERNAL: Pytest (<rel_dir>) rc=<N>`), 5 SKIP or WARN per
+  `on_missing_tests`, any other code bucketed with INTERNAL.
+  `run_check` was not reusable because it collapses any nonzero
+  exit into a FAIL increment, colliding with the 5-code SKIP/WARN
+  semantics.
+- `on_missing_tests` resolution mirrors `on_missing_runner`: read
+  once at the top of `run_legacy_walk_and_detect()` from the policy,
+  fall back to `skip` in the ADR-006 no-policy path, and pin to
+  `skip` if an unknown value somehow leaks through. The schema's
+  default is `skip`; the bundled scaffold policy already has the
+  field. The validator already rejected bogus values -- no lib
+  change was needed.
+- `--tb=no -q` flags are preserved verbatim from INFRA-025; the
+  classifier only wraps the exit-code handling. The resolver is
+  untouched. The `INTERNAL:` prefix is an intentional stderr
+  contract: downstream consumers (and the INFRA-026 tests) grep
+  for the literal string to distinguish pytest internal errors
+  from genuine test failures.
+- INFRA-029 (upgrade-migration-guide-alpha12) hand-off: the
+  alpha.12 upgrade path inherits a new semantic from this feature.
+  Any pre-alpha.12 `.cpf/policy.json` that predates INFRA-026 will
+  simply not have `on_missing_tests` on the verify-quality stanza;
+  the schema default of `skip` applies at runtime, and the migration
+  should either (a) advertise the field in the new-default table
+  without writing it (upgrade is idempotent) or (b) add it on
+  upgrade so the stanza is self-documenting. The bundled scaffold
+  already carries `"on_missing_tests": "skip"` so fresh inits via
+  `/cpf:specforge init` are already aligned. The migration guide
+  should also note the new `INTERNAL:` stderr prefix as a contract
+  downstream grep consumers may rely on.
+
 ## Changelog
 
 - 2026-04-19: stub created during INFRA-017 implementation.
@@ -405,3 +442,8 @@ pattern ]]` semantics with shellcheck disables for SC2053 and
   `[tool.cpf.hooks] skip`, WARN/SKIP semantics for missing runners,
   pure-requirements.txt scoping decision, INFRA-026 pytest exit-code
   classification hand-off contract.
+- 2026-04-20: INFRA-026 notes appended -- pytest exit-code
+  classifier in the legacy walker (0/1/2-4/5/other buckets),
+  `on_missing_tests` resolution with `skip` default in both policy-
+  loaded and ADR-006 fallback paths, `INTERNAL:` stderr prefix as a
+  downstream contract, INFRA-029 migration-guide hand-off notes.

@@ -1724,7 +1724,7 @@
         "Set `on_missing_tests = \"bogus\"` and verify schema validation exits nonzero with a readable error",
         "Run `shellcheck .claude-plugin/hooks/verify-quality.sh` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "per-hook-orchestrator-dispatch",
         "per-service-resolver-verify-quality"

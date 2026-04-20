@@ -81,6 +81,8 @@ jobs:
         run: bash scripts/test-native-tool-config.sh
       - name: Per-service resolver hook test
         run: bash scripts/test-per-service-resolver.sh
+      - name: Pytest exit-code classification test
+        run: bash scripts/test-pytest-classification.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)
