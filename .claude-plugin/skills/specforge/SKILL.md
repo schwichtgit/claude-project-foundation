@@ -118,6 +118,13 @@ principles needed for spec-driven development.
    `scaffold/common/` under the plugin root to the target project
    root, preserving directory structure. Skip any scaffold-relative
    path that begins with a plugin-cache prefix loaded in step 5.
+   Per ADR-002 (INFRA-031), `.prettierignore` and
+   `.markdownlint-cli2.yaml` are NOT shipped in the scaffold; they
+   are produced by the generator in step 8.
+   Also create `.specify/proposals/` on the host with
+   `mkdir -p "$CLAUDE_PROJECT_DIR/.specify/proposals"` (no
+   `.gitkeep` is projected; the directory is plugin-internal
+   structure, not content).
 7. **Scaffold projection (platform files):** Copy all files from
    `scaffold/<platform>/` under the plugin root to the target project
    root, where `<platform>` is the selected CI platform. Apply the
@@ -436,7 +443,12 @@ tools.
 
 **Standalone script:** `.cpf/scripts/doctor.sh`
 
-**Registry:** `.specify/doctor-registry.json`
+**Registry:** `.specify/doctor-registry.json`, resolved through
+`cpf-resolve-asset.sh` (INFRA-031). The bundled copy lives at the
+plugin install dir; hosts that need a custom registry drop a file
+at `.cpf/overrides/.specify/doctor-registry.json` and the resolver
+returns the override before the bundled default. doctor.sh does
+not require a host-projected copy.
 
 **Workflow:**
 
@@ -456,8 +468,10 @@ tools.
 - For machine-parseable output:
   `./.cpf/scripts/doctor.sh --output=json`
 - The registry at `.specify/doctor-registry.json` defines
-  all tool entries. Adding a tool requires editing only
-  this file.
+  all tool entries. Adding a tool requires editing the
+  bundled copy at the plugin install dir (or dropping a
+  host override at
+  `.cpf/overrides/.specify/doctor-registry.json`).
 - Doctor does not install tools automatically. It reports
   what is missing and how to install it.
 
@@ -483,6 +497,27 @@ categorization to preserve project-specific customizations.
   projected to hosts. Consumers read these via `cpf_resolve_asset`
   with `.cpf/overrides/<relpath>` shadowing. See ADR-003 in the
   plan document.
+
+**Namespace discipline (ADR-002):** Per ADR-002 (clarified by
+INFRA-031), every entry in the overwrite, review, and customizable
+tiers must classify into exactly one of:
+
+- **`.cpf/`-prefixed** -- plugin-internal artifacts on the host.
+- **Listed in `_third_party_tool_config`** at the top of
+  `upgrade-tiers.json` -- third-party tool config files
+  (`.prettierignore`, `.markdownlint-cli2.yaml`, `.prettierrc.json`,
+  `.gitignore`) that live at host root because the tools
+  default-discover from cwd.
+- **External-platform path** -- `.github/...`, `.gitlab/...`,
+  `.gitlab-ci.yml`, `Jenkinsfile`, `ci/{github,gitlab,jenkins,
+principles}/...` -- governed by the platform, not by the plugin.
+
+The `scripts/check-namespace-discipline.sh` lint enforces this in
+CI. Adding a new host-root projection requires either updating
+`_third_party_tool_config` (with rationale) and ADR-002, or
+extending the external-platform glob list inside the lint. Skip
+and plugin-cache tiers are not scanned (neither projects to the
+host).
 
 **Version tracking:** `.specforge-version`, `.specforge-ci-platform`
 

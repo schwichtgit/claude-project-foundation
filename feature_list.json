@@ -1771,6 +1771,27 @@
       "dependencies": []
     },
     {
+      "id": "namespace-discipline-and-projection-minimization",
+      "category": "infrastructure",
+      "title": "Namespace Discipline and Projection Minimization",
+      "description": "Make ADR-002 scope explicit (plugin-internal artifacts under .cpf/; third-party tool configs at host root; external-platform paths at platform-required locations). Delete vestigial bundled scaffold copies of .prettierignore and .markdownlint-cli2.yaml (generator is sole writer). Stop projecting .specify/doctor-registry.json and .specify/proposals/.gitkeep. Add CI lint scripts/check-namespace-discipline.sh asserting every upgrade-tiers entry classifies into one of three documented categories.",
+      "testing_steps": [
+        "Verify scripts/check-namespace-discipline.sh exists and is executable",
+        "Run scripts/check-namespace-discipline.sh against the source repo and verify exit 0",
+        "Run scripts/test-namespace-discipline.sh and verify both pass-path and fail-path fixtures behave as expected",
+        "Verify .claude-plugin/upgrade-tiers.json contains a top-level _third_party_tool_config array with .prettierignore, .markdownlint-cli2.yaml, .prettierrc.json, .gitignore",
+        "Verify .claude-plugin/scaffold/common/.prettierignore and .claude-plugin/scaffold/common/.markdownlint-cli2.yaml no longer exist",
+        "Verify scripts/check-config-determinism.sh and scripts/test-config-generation.sh still pass after the bundled-copy deletion",
+        "Verify .claude-plugin/scaffold/common/.specify/proposals/.gitkeep no longer exists and SKILL.md init step uses mkdir -p instead",
+        "Verify doctor.sh resolves the registry via cpf-resolve-asset.sh when no --registry override is supplied",
+        "Run shellcheck on scripts/check-namespace-discipline.sh and scripts/test-namespace-discipline.sh and verify exit 0",
+        "Run grep -E '_third_party_tool_config' .claude-plugin/upgrade-tiers.json and verify the entry exists",
+        "Inspect ADR-002 in .specify/specs/plan-hook-policy-orchestrator-scaffold.md and verify Decision/Consequences blocks document the in-scope/out-of-scope boundary"
+      ],
+      "passes": true,
+      "dependencies": ["platform-config-generation"]
+    },
+    {
       "id": "upgrade-migration-guide-alpha12",
       "category": "infrastructure",
       "title": "Upgrade Migration Guide for Alpha.12",

@@ -273,6 +273,34 @@ else
     shellcheck "$GEN" || true
 fi
 
+# --- 9: INFRA-031 ADR-002 compliance: third-party tool config registry ---
+echo ""
+echo "=== INFRA-031: _third_party_tool_config registry ==="
+
+THIRD_PARTY="$(jq -r '._third_party_tool_config[]?' "$TIERS_FILE")"
+for expected in .prettierignore .markdownlint-cli2.yaml .prettierrc.json .gitignore; do
+    if echo "$THIRD_PARTY" | grep -qx "$expected"; then
+        pass "$expected listed in _third_party_tool_config"
+    else
+        fail "$expected missing from _third_party_tool_config"
+    fi
+done
+
+# --- 10: INFRA-031 ADR-002 compliance: bundled scaffold copies retired ---
+echo ""
+echo "=== INFRA-031: bundled lint configs are deleted ==="
+
+if [[ ! -e "$REPO_ROOT/.claude-plugin/scaffold/common/.prettierignore" ]]; then
+    pass ".claude-plugin/scaffold/common/.prettierignore is absent"
+else
+    fail ".claude-plugin/scaffold/common/.prettierignore still present"
+fi
+if [[ ! -e "$REPO_ROOT/.claude-plugin/scaffold/common/.markdownlint-cli2.yaml" ]]; then
+    pass ".claude-plugin/scaffold/common/.markdownlint-cli2.yaml is absent"
+else
+    fail ".claude-plugin/scaffold/common/.markdownlint-cli2.yaml still present"
+fi
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 if [[ "$FAILED" -eq 0 ]]; then

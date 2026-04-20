@@ -50,6 +50,10 @@ jobs:
           find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
       - name: Resolver-usage lint
         run: bash .claude-plugin/lib/lint-resolver-usage.sh
+      - name: Namespace discipline check
+        run: bash scripts/check-namespace-discipline.sh
+      - name: Namespace discipline test
+        run: bash scripts/test-namespace-discipline.sh
       - name: Jenkinsfile upstream-cache flow test
         run: bash scripts/test-jenkinsfile-review.sh
       - name: Config generation test
