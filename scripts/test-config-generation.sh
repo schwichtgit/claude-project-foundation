@@ -9,8 +9,6 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GEN="$REPO_ROOT/.claude-plugin/lib/cpf-generate-configs.sh"
 BUNDLED_POLICY="$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/policy.json"
-BUNDLED_PRETTIERIGNORE="$REPO_ROOT/.claude-plugin/scaffold/common/.prettierignore"
-BUNDLED_MARKDOWNLINT="$REPO_ROOT/.claude-plugin/scaffold/common/.markdownlint-cli2.yaml"
 TIERS_FILE="$REPO_ROOT/.claude-plugin/upgrade-tiers.json"
 
 PASSED=0
@@ -86,17 +84,20 @@ else
     fail ".cpf/shellcheck-excludes.txt not generated"
 fi
 
-if cmp -s "$FIX/.prettierignore" "$BUNDLED_PRETTIERIGNORE"; then
-    pass ".prettierignore byte-equal to bundled scaffold copy"
+# INFRA-031: bundled scaffold copies of .prettierignore and
+# .markdownlint-cli2.yaml were retired (the generator is sole
+# writer). Determinism is enforced by check-config-determinism.sh.
+# Generated content is sanity-checked here against a stable marker
+# from the bundled policy's exclude list.
+if grep -qF 'claude-project-foundation-PLAN.md' "$FIX/.prettierignore"; then
+    pass ".prettierignore reflects bundled policy exclude list"
 else
-    fail ".prettierignore differs from bundled scaffold copy"
-    diff -u "$BUNDLED_PRETTIERIGNORE" "$FIX/.prettierignore" || true
+    fail ".prettierignore missing bundled-policy marker entry"
 fi
-if cmp -s "$FIX/.markdownlint-cli2.yaml" "$BUNDLED_MARKDOWNLINT"; then
-    pass ".markdownlint-cli2.yaml byte-equal to bundled scaffold copy"
+if grep -qF 'MD013' "$FIX/.markdownlint-cli2.yaml"; then
+    pass ".markdownlint-cli2.yaml contains expected config block"
 else
-    fail ".markdownlint-cli2.yaml differs from bundled scaffold copy"
-    diff -u "$BUNDLED_MARKDOWNLINT" "$FIX/.markdownlint-cli2.yaml" || true
+    fail ".markdownlint-cli2.yaml missing MD013 config block"
 fi
 
 EXPECTED_SHELL="./.git/*
@@ -203,27 +204,26 @@ else
     fail "half-generated outputs present after malformed policy"
 fi
 
-# --- 6: tier registry classifies both files as overwrite (testing_step 6) ---
+# --- 6: tier registry membership (INFRA-031: third-party tool config) ---
 echo ""
 echo "=== tier registry membership ==="
 
-OVERWRITE_HITS="$(jq -r '.tiers.overwrite[] | select(. == ".prettierignore" or . == ".markdownlint-cli2.yaml")' "$TIERS_FILE")"
-if echo "$OVERWRITE_HITS" | grep -qx '.prettierignore'; then
-    pass ".prettierignore listed under overwrite tier"
-else
-    fail ".prettierignore not under overwrite tier"
-fi
-if echo "$OVERWRITE_HITS" | grep -qx '.markdownlint-cli2.yaml'; then
-    pass ".markdownlint-cli2.yaml listed under overwrite tier"
-else
-    fail ".markdownlint-cli2.yaml not under overwrite tier"
-fi
+# INFRA-031 retired the overwrite-tier listings of .prettierignore
+# and .markdownlint-cli2.yaml; both files are now produced by the
+# generator and recorded in the top-level _third_party_tool_config
+# array (covered explicitly in Tests 9 and 10 below).
 
-REVIEW_PRETTIER="$(jq -r '.tiers.review[] | select(. == ".prettierignore")' "$TIERS_FILE")"
+REVIEW_PRETTIER="$(jq -r '.tiers.review[]? | select(. == ".prettierignore")' "$TIERS_FILE")"
 if [[ -z "$REVIEW_PRETTIER" ]]; then
-    pass ".prettierignore removed from review tier"
+    pass ".prettierignore not under review tier"
 else
     fail ".prettierignore still listed under review tier"
+fi
+OVERWRITE_HITS="$(jq -r '.tiers.overwrite[]? | select(. == ".prettierignore" or . == ".markdownlint-cli2.yaml")' "$TIERS_FILE")"
+if [[ -z "$OVERWRITE_HITS" ]]; then
+    pass ".prettierignore and .markdownlint-cli2.yaml removed from overwrite tier"
+else
+    fail "still listed under overwrite tier: $OVERWRITE_HITS"
 fi
 
 # --- 7: prettier --check honors generated .prettierignore (testing_step 7) ---
