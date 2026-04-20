@@ -27,13 +27,7 @@ fail() {
 }
 
 WORKDIR=""
-# shellcheck disable=SC2329  # invoked indirectly via trap
-cleanup() {
-    if [[ -n "$WORKDIR" && -d "$WORKDIR" ]]; then
-        rm -rf "$WORKDIR"
-    fi
-}
-trap cleanup EXIT
+trap '[[ -n "$WORKDIR" && -d "$WORKDIR" ]] && rm -rf "$WORKDIR"' EXIT
 
 WORKDIR="$(mktemp -d 2>/dev/null || mktemp -d -t 'cpf-nsd')"
 
