@@ -75,6 +75,10 @@ jobs:
         run: bash scripts/test-config-generation.sh
       - name: Config generation determinism check
         run: bash scripts/check-config-determinism.sh
+      - name: Shellcheck find-fragment helper test
+        run: bash scripts/test-shellcheck-fragment.sh
+      - name: Native tool config hook test
+        run: bash scripts/test-native-tool-config.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)

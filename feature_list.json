@@ -1664,7 +1664,7 @@
         "Run `grep -rn 'REMOVE AT v0.2.0' .claude-plugin/hooks/` and verify every missing-policy fallback branch is tagged",
         "Run `shellcheck .claude-plugin/hooks/format-changed.sh .claude-plugin/hooks/verify-quality.sh .claude-plugin/hooks/post-edit.sh` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": [
         "policy-json-schema-loader",
         "platform-config-generation"
