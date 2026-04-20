@@ -1605,6 +1605,198 @@
       ],
       "passes": false,
       "dependencies": []
+    },
+    {
+      "id": "policy-json-schema-loader",
+      "category": "infrastructure",
+      "title": "Policy JSON Schema and Loader",
+      "description": "Introduce .cpf/policy.json as the single declarative hook policy file. Ship a jq-based loader (cpf-policy.sh) exposing cpf_policy_get for scalars and cpf_policy_list for arrays, plus cpf-policy.schema.json consumed by init/upgrade for semantic validation. Doctor check warns (not fails) on missing policy. File sits in upgrade-tiers.json under the customizable tier.",
+      "testing_steps": [
+        "Verify `.claude-plugin/lib/cpf-policy.sh` exists and is executable (`test -x .claude-plugin/lib/cpf-policy.sh`)",
+        "Verify `.claude-plugin/lib/cpf-policy.schema.json` exists and is valid JSON (`jq . .claude-plugin/lib/cpf-policy.schema.json > /dev/null`)",
+        "Run `jq . .claude-plugin/scaffold/common/.cpf/policy.json` and verify exit 0 (bundled default is valid JSON)",
+        "Run the jq-based schema validator against the bundled default `.cpf/policy.json` and verify exit 0",
+        "Source `cpf-policy.sh` and call `cpf_policy_get prettier severity` against the bundled default; verify output equals `error`",
+        "Source `cpf-policy.sh` and call `cpf_policy_list prettier include` against the bundled default; verify output contains `**/*.md`",
+        "Call `cpf_policy_get nonexistent-hook severity` and verify empty output plus exit 0 (fail-open at the loader level)",
+        "Run init/upgrade against a policy with `orchestrator = \"bogus\"` and verify nonzero exit with an error message naming the offending hook and value",
+        "Run `.claude-plugin/hooks/doctor.sh` in a fixture host project without `.cpf/policy.json` and verify output contains `WARN: .cpf/policy.json missing`",
+        "Run `.claude-plugin/hooks/doctor.sh` in the cpf source repo (name=cpf in plugin.json) and verify no missing-policy warning is emitted",
+        "Run `grep -E '\"\\.cpf/policy\\.json\"' upgrade-tiers.json` and verify the entry appears under the customizable tier",
+        "Run `shellcheck .claude-plugin/lib/cpf-policy.sh` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "platform-config-generation",
+      "category": "infrastructure",
+      "title": "Platform Config Generation From Policy",
+      "description": "`/cpf:specforge init` and `upgrade` read `.cpf/policy.json` and emit `.prettierignore`, `.markdownlint-cli2.yaml`, and the shellcheck find-exclusion fragment via `cpf-generate-configs.sh`. Regeneration runs on every upgrade but writes to disk only when content differs (write-if-different) to preserve mtimes for CI caches. Malformed policy fails fast with a readable error.",
+      "testing_steps": [
+        "Verify `.claude-plugin/lib/cpf-generate-configs.sh` exists and is executable",
+        "Run init on a fresh fixture and verify `.prettierignore`, `.markdownlint-cli2.yaml`, and the shellcheck fragment exist with contents matching the bundled default policy",
+        "Modify the prettier `exclude` list in a fixture's `.cpf/policy.json`, run upgrade, and verify the resulting `.prettierignore` reflects the modified exclusions",
+        "Run upgrade twice without modifying policy; capture generated file mtimes before and after and verify they are identical (write-if-different preserved mtimes)",
+        "Introduce a trailing comma in `.cpf/policy.json` to make it invalid JSON, run upgrade, and verify nonzero exit with a readable error that does not leave half-generated files",
+        "Run `grep -E '\"\\.prettierignore\"|\"\\.markdownlint-cli2\\.yaml\"' upgrade-tiers.json` and verify both generated files appear under the overwrite tier",
+        "Run `npx prettier --check` on a fresh fixture's generated `.prettierignore` and verify exit 0",
+        "Run `shellcheck .claude-plugin/lib/cpf-generate-configs.sh` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["policy-json-schema-loader"]
+    },
+    {
+      "id": "native-tool-config-for-hooks",
+      "category": "infrastructure",
+      "title": "Native Tool Config for Hook Scope",
+      "description": "Hooks stop passing scope globs on the CLI. format-changed.sh, verify-quality.sh, and post-edit.sh source cpf-policy.sh, read severity from policy, and invoke each tool with no scope-related args; scope lives in the tool's native config (`.prettierignore`, `.markdownlintignore`, `eslint.config.js`, `pyproject.toml`, etc.). Shellcheck remains the explicit CLI-arg outlier via a generated find fragment. A missing-policy fallback preserves alpha.11 behavior and logs a stderr deprecation notice; each fallback branch carries a `# REMOVE AT v0.2.0` tag.",
+      "testing_steps": [
+        "Run `grep -l 'cpf-policy.sh' .claude-plugin/hooks/format-changed.sh .claude-plugin/hooks/verify-quality.sh .claude-plugin/hooks/post-edit.sh` and verify all three files reference the loader",
+        "On a fixture with `.cpf/policy.json` present, drop a shell script at `node_modules/tool/helper.sh`, run format-changed.sh, and verify the script is not processed",
+        "On a fixture with `.cpf/policy.json` absent, drop the same shell script and run format-changed.sh; verify the exit behavior matches the alpha.11 implementation on the same input",
+        "Run verify-quality.sh on a fixture without `.cpf/policy.json` and verify stderr contains a deprecation notice naming v0.2.0",
+        "Set `severity = \"warning\"` for a hook, trigger a tool failure on a test input, and verify the hook exits 0 and prints a WARNING log line",
+        "Set `severity = \"error\"` for a hook, trigger a tool failure on a test input, and verify the hook exits 2",
+        "Grep the three hooks for `--ignore-path`, `--config`, `--exclude`, or other scope-related CLI args invoked against prettier, markdownlint-cli2, ESLint, ruff, mypy, black, rustfmt, or clippy; verify zero matches (scope comes from native configs only)",
+        "Modify the shellcheck `exclude` list in `.cpf/policy.json`, run upgrade, and verify the regenerated find fragment appears identically in both the verify-quality hook and the ci-base files",
+        "Run `cpf-generate-configs.sh` twice on the same unchanged policy and verify byte-equal outputs (`diff` reports no differences)",
+        "Run `grep -rn 'REMOVE AT v0.2.0' .claude-plugin/hooks/` and verify every missing-policy fallback branch is tagged",
+        "Run `shellcheck .claude-plugin/hooks/format-changed.sh .claude-plugin/hooks/verify-quality.sh .claude-plugin/hooks/post-edit.sh` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": [
+        "policy-json-schema-loader",
+        "platform-config-generation"
+      ]
+    },
+    {
+      "id": "per-hook-orchestrator-dispatch",
+      "category": "infrastructure",
+      "title": "Per-Hook Orchestrator Dispatch With Custom Escape Hatch",
+      "description": "`.cpf/policy.json` declares an `orchestrator` per hook with day-one values `none`, `task`, and `custom`. `custom` pairs with a `custom_command` string and invokes `sh -c \"$custom_command\"` from the project root. `task` invokes `task lint` and `task test` (no aliases). Per-hook defaults on init: format-changed and post-edit default to `none`; verify-quality defaults to `task` when a Taskfile with lint+test targets is detected, else `none`. Severity contract is per-hook and orchestrator-agnostic.",
+      "testing_steps": [
+        "On a fixture with `orchestrator = \"task\"` for verify-quality and a root Taskfile declaring `lint` and `test`, run verify-quality.sh and verify it invokes `task lint` and `task test` (no `ci:lint` or `ci:test` aliases)",
+        "Switch the same fixture to `orchestrator = \"none\"` and verify verify-quality.sh walks first-level directories for `pyproject.toml` rather than calling task",
+        "Set `orchestrator = \"custom\"` with `custom_command = \"my-checker --fast\"` on a fixture and verify verify-quality.sh invokes `sh -c \"my-checker --fast\"` from the project root",
+        "Set `orchestrator = \"custom\"` without a `custom_command` field and verify init/upgrade schema validation exits nonzero with a readable error",
+        "Set `orchestrator = \"bogus\"` and verify schema validation exits nonzero with an error message naming the offending hook and value",
+        "Run init on a fixture containing `Taskfile.yml` with `lint` and `test` targets; verify the suggested default for verify-quality is `task`",
+        "Run init on a fixture without `Taskfile.yml`; verify the suggested default for verify-quality is `none`",
+        "Run init and confirm the suggested defaults for format-changed and post-edit are `none` regardless of Taskfile presence",
+        "Configure `task lint` to exit nonzero and verify verify-quality.sh exits 2 (ERROR)",
+        "Configure `task test` to exit nonzero (lint passing) and verify verify-quality.sh exits 0 and emits a WARNING log line",
+        "Run upgrade on a fixture with an existing `orchestrator` choice; verify the choice is preserved (no overwrite)",
+        "Run `shellcheck .claude-plugin/hooks/verify-quality.sh` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["policy-json-schema-loader"]
+    },
+    {
+      "id": "per-service-resolver-verify-quality",
+      "category": "infrastructure",
+      "title": "Per-Service Runner Resolver for Polyglot Monorepos",
+      "description": "Under `orchestrator = \"none\"`, verify-quality.sh iterates first-level directories with pyproject.toml and resolves per-service runners as $dir/.venv/bin/<tool> then `uv run --project $dir <tool>`, never falling back to $PATH. Applies to pytest, ruff, mypy, black. The `on_missing_runner` policy field controls whether a missing resolver logs WARN (default) or SKIP. Per-service opt-out via `[tool.cpf.hooks] skip = [\"pytest\"]`.",
+      "testing_steps": [
+        "On a polyglot fixture with two service directories each carrying `pyproject.toml` and `.venv/bin/pytest`, run verify-quality.sh under `orchestrator = \"none\"` and verify each service's own `.venv/bin/pytest` is invoked",
+        "Remove `.venv` from one service, install `uv`, run verify-quality.sh, and verify `uv run --project <dir> pytest` is invoked for that service",
+        "Remove both `.venv` and `uv` from a service, run verify-quality.sh with default policy, and verify stderr contains `WARN: no resolver for <dir>`",
+        "Set `on_missing_runner = \"skip\"` on the verify-quality stanza, repeat the preceding step, and verify the log message is `SKIP: no resolver for <dir>` with no effect on the hook exit code",
+        "Set `on_missing_runner = \"bogus\"` and verify schema validation exits nonzero with a readable error",
+        "Grep verify-quality.sh for any bare `pytest`, `ruff`, `mypy`, or `black` invocation without `$dir/.venv/bin/` or `uv run` prefix, and verify zero matches ($PATH is never used)",
+        "Add `[tool.cpf.hooks] skip = [\"pytest\"]` to a service's pyproject.toml and verify verify-quality.sh logs `SKIP: opted out` for that service without invoking pytest",
+        "Run `shellcheck .claude-plugin/hooks/verify-quality.sh` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": ["per-hook-orchestrator-dispatch"]
+    },
+    {
+      "id": "pytest-exit-code-classification",
+      "category": "infrastructure",
+      "title": "Pytest Exit-Code Classification in Default-Orchestrator Path",
+      "description": "Inside the `orchestrator = \"none\"` path, classify pytest exit codes explicitly: 0 -> PASS, 1 -> FAIL, 2-4 -> FAIL with INTERNAL prefix, 5 -> SKIP by default. The `on_missing_tests` policy field flips exit code 5 from SKIP to WARN.",
+      "testing_steps": [
+        "On a default-orchestrator fixture with tests that pass, run verify-quality.sh and verify the pytest-path result is PASS",
+        "On a fixture where pytest exits 1 (genuine test failure), run verify-quality.sh and verify the failure is counted in the FAIL aggregation",
+        "On a fixture where pytest exits 2 (pytest usage error), run verify-quality.sh and verify the log line uses the `INTERNAL:` prefix so users can tell it apart from a plain test failure",
+        "On a fixture with no tests (pytest exit 5) under default policy, run verify-quality.sh and verify the hook logs SKIP without counting the service toward failures",
+        "Set `on_missing_tests = \"warn\"` on the verify-quality stanza, repeat the preceding step, and verify the log line reports WARN instead of SKIP",
+        "Set `on_missing_tests = \"bogus\"` and verify schema validation exits nonzero with a readable error",
+        "Run `shellcheck .claude-plugin/hooks/verify-quality.sh` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": [
+        "per-hook-orchestrator-dispatch",
+        "per-service-resolver-verify-quality"
+      ]
+    },
+    {
+      "id": "scaffold-reorg-overrides-resolver",
+      "category": "infrastructure",
+      "title": "Scaffold Reorg With Plugin-Cache and Overrides Resolver",
+      "description": "Redraw the scaffold projection boundary. Plugin-cache (authoritative, zero projection): prompts/*.md, .specify/templates/*, .specify/WORKFLOW.md, ci/principles/*, ci/gitlab/*, ci/jenkins/*, CLAUDE.md.template. Customizable (always in host): .cpf/policy.json, .cpf/overrides/, .cpf/upstream-cache/, CLAUDE.md, .specify/memory/*, .specify/specs/*, feature_list.json, CI workflows, git hooks. A cpf_resolve_asset helper resolves .cpf/overrides/<plugin-relative-path> before $CLAUDE_PLUGIN_ROOT/<path>. A CI lint forbids direct $CLAUDE_PLUGIN_ROOT reads outside the resolver.",
+      "testing_steps": [
+        "Run `/cpf:specforge init` on a fresh fixture and verify no file exists at `prompts/`, `.specify/templates/`, `.specify/WORKFLOW.md`, or `ci/principles/` in the host repo",
+        "Verify `.cpf/overrides/` is created (empty) on init (`test -d .cpf/overrides`)",
+        "Verify `.cpf/upstream-cache/` is created (empty) on init (`test -d .cpf/upstream-cache`)",
+        "Run `jq '.skip | index(\".cpf/overrides/\"), .skip | index(\".cpf/upstream-cache/\")' upgrade-tiers.json` and verify both entries are present under the skip tier",
+        "Run `jq '.[\"plugin-cache\"]' upgrade-tiers.json` and verify the array includes `.specify/templates/`, `prompts/`, `ci/principles/`, and `CLAUDE.md.template`",
+        "Source `cpf-resolve-asset.sh` and call `cpf_resolve_asset .specify/templates/plan-template.md` on a fixture with no overrides; verify the returned path is under `$CLAUDE_PLUGIN_ROOT`",
+        "Drop an override at `.cpf/overrides/.specify/templates/plan-template.md` and verify `cpf_resolve_asset` returns the host override path instead",
+        "Call `cpf_resolve_asset non/existent/file.md` and verify nonzero exit with a readable error",
+        "Run the resolver-usage lint script (`scripts/lint-resolver-usage.sh`) against the plugin source and verify it flags any direct `$CLAUDE_PLUGIN_ROOT/` or `$CLAUDE_PROJECT_DIR/.specify/templates/` reads outside the resolver itself",
+        "Invoke `/cpf:specforge plan` with an override template in place on a fixture and verify the command reads the override rather than the bundled default (e.g., by adding a unique marker string to the override and grepping it in plan output)",
+        "Run `/cpf:specforge upgrade` on the cpf source repo (name=cpf in plugin.json) and verify `.specify/templates/*` remains in-tree (self-detection suppresses the reorg for the source)",
+        "Run `shellcheck .claude-plugin/lib/cpf-resolve-asset.sh` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "jenkinsfile-review-tier",
+      "category": "infrastructure",
+      "title": "Jenkinsfile Review Tier With Upstream-Cache Diff Baseline",
+      "description": "Move Jenkinsfile from overwrite to review tier in upgrade-tiers.json. Diff baseline is `.cpf/upstream-cache/Jenkinsfile` (the previously shipped scaffold version), cached per-install. Diff shows upstream-vs-upstream so host uncommenting stays invisible. Cache refreshes after every upgrade decision (accept or decline) so repeats do not re-show the same diff. First-run fallback: diff against the host copy, then seed the cache.",
+      "testing_steps": [
+        "Run `jq '.review | index(\"Jenkinsfile\")' upgrade-tiers.json` and verify the entry is present under the review tier",
+        "Run `jq '.[\"skip\"] | index(\".cpf/upstream-cache/\")' upgrade-tiers.json` and verify the entry is present under the skip tier",
+        "On a fixture with `.cpf/upstream-cache/Jenkinsfile` seeded to an older plugin version and a newer Jenkinsfile in the plugin cache, run upgrade and verify a `diff -u` is displayed between the upstream-cache and the new plugin copy",
+        "Accept the diff prompt and verify both the host-repo `Jenkinsfile` and `.cpf/upstream-cache/Jenkinsfile` are updated to the new upstream version",
+        "Decline the diff prompt and verify the host-repo `Jenkinsfile` is unchanged while `.cpf/upstream-cache/Jenkinsfile` is still refreshed to the new upstream",
+        "Run upgrade twice: first accept, then run upgrade again without plugin changes and verify no diff is re-shown (cache is current)",
+        "On a fixture with no `.cpf/upstream-cache/Jenkinsfile` present, run upgrade and verify the baseline falls back to the host-repo `Jenkinsfile` and the cache is seeded after the user decides",
+        "Run `npx prettier --check` and `npx markdownlint-cli2` on modified scaffold docs and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": []
+    },
+    {
+      "id": "upgrade-migration-guide-alpha12",
+      "category": "infrastructure",
+      "title": "Upgrade Migration Guide for Alpha.12",
+      "description": "`/cpf:specforge upgrade` gains a migration-guide phase driven by a new `migrations` map in upgrade-tiers.json, keyed by target version. The alpha.12 guide prompts for `.cpf/policy.json` creation (defaults/infer/skip), emits a reorg notice naming `.cpf/overrides/<path>` replacement targets for customized host copies, introduces the override mechanism, announces the Jenkinsfile tier change, and prints the v0.2.0 fallback-removal countdown. Runs once per target version with a `--rerun-migration <version>` escape hatch. Suppressed on the cpf source repo.",
+      "testing_steps": [
+        "Verify `.claude-plugin/lib/cpf-migrate-alpha12.sh` exists and is executable",
+        "Verify `.claude-plugin/lib/cpf-policy-infer.sh` exists and is executable",
+        "Run `jq '.migrations[\"0.1.0-alpha.12\"]' upgrade-tiers.json` and verify the entry is present",
+        "On a fixture simulating alpha.11 state without `.cpf/policy.json`, run upgrade and verify the prompt offers `[defaults/infer/skip]`",
+        "Choose `defaults` and verify the bundled default `.cpf/policy.json` is written to the host",
+        "Reset the fixture, place a customized `.prettierignore`, choose `infer`, and verify the resulting `.cpf/policy.json` regenerates a `.prettierignore` byte-equal to the pre-upgrade file for patterns covered by policy",
+        "Reset the fixture, choose `skip`, and verify no policy file is written and that a subsequent hook run emits the INFRA-019 deprecation notice on stderr",
+        "Run upgrade twice in a row to the same target version and verify the migration guide does not re-prompt on the second run",
+        "Run `/cpf:specforge upgrade --rerun-migration 0.1.0-alpha.12` and verify the guide displays again without mutating previously accepted files",
+        "Verify the reorg notice enumerates each moved repo-root path (`prompts/`, `.specify/templates/`, `.specify/WORKFLOW.md`, `ci/principles/`) exactly once in the output",
+        "On a fixture with a customized host copy of `prompts/coding-prompt.md` (differs from the last-shipped scaffold version), run upgrade and verify the reorg notice names `.cpf/overrides/prompts/coding-prompt.md` as the replacement target",
+        "Run upgrade on the cpf source repo (name=cpf in plugin.json) and verify the migration guide is suppressed entirely",
+        "Run `shellcheck .claude-plugin/lib/cpf-migrate-alpha12.sh .claude-plugin/lib/cpf-policy-infer.sh` and verify exit 0"
+      ],
+      "passes": false,
+      "dependencies": [
+        "policy-json-schema-loader",
+        "native-tool-config-for-hooks",
+        "scaffold-reorg-overrides-resolver",
+        "jenkinsfile-review-tier"
+      ]
     }
   ]
 }
