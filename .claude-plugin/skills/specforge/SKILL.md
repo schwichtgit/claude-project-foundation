@@ -581,88 +581,106 @@ host).
    from `plugin.json`. If they match, print "Already at version X.Y.Z.
    Nothing to upgrade." and exit.
 4. **Print version transition:** Print "Upgrading from <old> to <new>."
-5. **CI platform re-selection:** Read `.specforge-ci-platform`. Ask the user
+5. **Migration guide (INFRA-029):** Iterate the `migrations` map in
+   `upgrade-tiers.json`. For each target-version key that is
+   less-than-or-equal-to the plugin version (semver compare) AND is not
+   already listed in the host's `.specforge-migrations-applied` file,
+   invoke the matching script from the plugin's `lib/` directory. The
+   alpha.12 guide is `cpf-migrate-alpha12.sh`; future versions get
+   their own scripts (naming convention
+   `cpf-migrate-<version-suffix>.sh`). Run as
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-migrate-alpha12.sh"`. The
+   migration script handles its own idempotence (appends to
+   `.specforge-migrations-applied` on success) and belt-and-suspenders
+   suppresses itself on the cpf source repo (complementing step 1). A
+   user can re-display a guide without mutating already-accepted files
+   via direct lib invocation with the `--rerun-migration <ver>` flag;
+   the upgrade skill itself does not surface that flag.
+6. **CI platform re-selection:** Read `.specforge-ci-platform`. Ask the user
    if they want to change platforms: "Current CI: <platform>. Change?
    [Y to keep/gitlab/jenkins]". If the user selects a different platform,
    project the new platform's scaffold files. Do NOT delete old platform
    files; instead, list them with: "Previous <platform> CI files remain.
    Remove manually if no longer needed: <file list>".
-6. **Read tier definitions:** Read `upgrade-tiers.json` at the plugin
+7. **Read tier definitions:** Read `upgrade-tiers.json` at the plugin
    root for file tier assignments.
-7. **Plugin-cache tier:** Skip every scaffold-relative path beginning
+8. **Plugin-cache tier:** Skip every scaffold-relative path beginning
    with a plugin-cache prefix. These subtrees are authoritative in
    the plugin and are never projected or reviewed; hosts read them
    via `cpf_resolve_asset` and shadow them with `.cpf/overrides/`.
-   Migration messaging for the reorg lives in INFRA-029.
-8. **Overwrite tier:** For each file in the "overwrite" list, replace it
+   Migration messaging for the reorg lives in INFRA-029 (step 5).
+9. **Overwrite tier:** For each file in the "overwrite" list, replace it
    with the latest version from the plugin without prompting.
-9. **Review tier:** For each file in the "review" list, handle upgrade
-   review. The `Jenkinsfile` entry has a dedicated flow (step 9a); every
-   other review-tier entry uses the generic flow (step 9b).
+10. **Review tier:** For each file in the "review" list, handle upgrade
+    review. The `Jenkinsfile` entry has a dedicated flow (step 10a);
+    every other review-tier entry uses the generic flow (step 10b).
 
-   9a. **Jenkinsfile upstream-cache flow (ADR-008).** The baseline is the
-   previously shipped plugin copy cached at
-   `.cpf/upstream-cache/Jenkinsfile`, so the diff shows upstream-vs-upstream
-   and host-local edits (for example, uncommented optional stages) stay
-   invisible. Use the helper rather than inline `diff`:
-   1. Resolve paths:
+    10a. **Jenkinsfile upstream-cache flow (ADR-008).** The baseline is
+    the previously shipped plugin copy cached at
+    `.cpf/upstream-cache/Jenkinsfile`, so the diff shows
+    upstream-vs-upstream and host-local edits (for example, uncommented
+    optional stages) stay invisible. Use the helper rather than inline
+    `diff`:
+    1. Resolve paths:
 
-      ```bash
-      HOST="$CLAUDE_PROJECT_DIR/Jenkinsfile"
-      CACHE="$CLAUDE_PROJECT_DIR/.cpf/upstream-cache/Jenkinsfile"
-      NEW="$CLAUDE_PLUGIN_ROOT/scaffold/jenkins/Jenkinsfile"
-      HELPER="$CLAUDE_PLUGIN_ROOT/lib/cpf-jenkinsfile-upgrade.sh"
-      ```
+       ```bash
+       HOST="$CLAUDE_PROJECT_DIR/Jenkinsfile"
+       CACHE="$CLAUDE_PROJECT_DIR/.cpf/upstream-cache/Jenkinsfile"
+       NEW="$CLAUDE_PLUGIN_ROOT/scaffold/jenkins/Jenkinsfile"
+       HELPER="$CLAUDE_PLUGIN_ROOT/lib/cpf-jenkinsfile-upgrade.sh"
+       ```
 
-   2. Run `bash "$HELPER" diff "$HOST" "$CACHE" "$NEW"` and capture the
-      exit code and stdout.
-   3. Exit 0 (baseline and new are identical): skip silently.
-   4. Exit 1 (differences): show the captured diff and ask "Accept upstream
-      Jenkinsfile changes? [y/n]". On accept, run
-      `bash "$HELPER" accept "$HOST" "$CACHE" "$NEW"`. On decline, run
-      `bash "$HELPER" decline "$HOST" "$CACHE" "$NEW"`. Both paths refresh
-      the cache so the same diff will not reappear next run.
-   5. Exit 2 (fresh install -- neither cache nor host exists): run
-      `bash "$HELPER" first-run "$HOST" "$CACHE" "$NEW"` without prompting,
-      seeding both the host copy and the cache.
-   6. Any other exit code: stop the review tier with an error and surface
-      stderr from the helper.
+    2. Run `bash "$HELPER" diff "$HOST" "$CACHE" "$NEW"` and capture the
+       exit code and stdout.
+    3. Exit 0 (baseline and new are identical): skip silently.
+    4. Exit 1 (differences): show the captured diff and ask "Accept
+       upstream Jenkinsfile changes? [y/n]". On accept, run
+       `bash "$HELPER" accept "$HOST" "$CACHE" "$NEW"`. On decline, run
+       `bash "$HELPER" decline "$HOST" "$CACHE" "$NEW"`. Both paths
+       refresh the cache so the same diff will not reappear next run.
+    5. Exit 2 (fresh install -- neither cache nor host exists): run
+       `bash "$HELPER" first-run "$HOST" "$CACHE" "$NEW"` without
+       prompting, seeding both the host copy and the cache.
+    6. Any other exit code: stop the review tier with an error and
+       surface stderr from the helper.
 
-   9b. **Generic review flow.** For every other review-tier entry that
-   differs from the plugin version, show `diff -u <existing> <plugin>`
-   output and ask "Accept this change? [y/n]". Skip files that are identical.
+    10b. **Generic review flow.** For every other review-tier entry that
+    differs from the plugin version, show `diff -u <existing> <plugin>`
+    output and ask "Accept this change? [y/n]". Skip files that are
+    identical.
 
-10. **Skip tier:** Do nothing for files in the "skip" list.
-11. **Customizable tier:** For each file in the "customizable" list, copy
-    the bundled default from the scaffold only if the file is missing in the
-    host project. If present, leave it untouched.
-12. **Generate platform configs from policy:** After the customizable tier
-    has guaranteed `.cpf/policy.json` is present on the host, regenerate
-    the policy-derived lint configs. Resolve the generator with
+11. **Skip tier:** Do nothing for files in the "skip" list.
+12. **Customizable tier:** For each file in the "customizable" list, copy
+    the bundled default from the scaffold only if the file is missing in
+    the host project. If present, leave it untouched.
+13. **Generate platform configs from policy:** After the customizable
+    tier has guaranteed `.cpf/policy.json` is present on the host,
+    regenerate the policy-derived lint configs. Resolve the generator
+    with
     `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" lib/cpf-generate-configs.sh`
-    and run it as
-    `bash "$GEN" --project-dir "$CLAUDE_PROJECT_DIR"`. The generator
-    writes `.prettierignore`, `.markdownlint-cli2.yaml`, and
+    and run it as `bash "$GEN" --project-dir "$CLAUDE_PROJECT_DIR"`. The
+    generator writes `.prettierignore`, `.markdownlint-cli2.yaml`, and
     `.cpf/shellcheck-excludes.txt` with write-if-different semantics, so
-    the bundled scaffold copies the overwrite tier seeded in step 8 are
+    the bundled scaffold copies the overwrite tier seeded in step 9 are
     left untouched when the host's policy still matches the bundled
     defaults. A nonzero exit aborts upgrade with the generator's stderr
     message; do not proceed to "new files" if generation failed.
-13. **New files:** Files present in the scaffold but not listed in any tier
-    in `upgrade-tiers.json` (and not under a plugin-cache prefix) are
-    treated as overwrite (copied without prompting).
-14. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
+14. **New files:** Files present in the scaffold but not listed in any
+    tier in `upgrade-tiers.json` (and not under a plugin-cache prefix)
+    are treated as overwrite (copied without prompting).
+15. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
     longer present in the scaffold are logged as: "Deprecated: <file>
-    (no longer in plugin, can be manually removed)". They are NOT deleted
-    from the host project.
-15. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-16. **Re-run install-hooks.sh:** Execute `.cpf/scripts/install-hooks.sh` to
-    update git hooks.
-17. **Update version tracking:** Write the new plugin version to
+    (no longer in plugin, can be manually removed)". They are NOT
+    deleted from the host project.
+16. **Make .sh files executable:** Run `chmod +x` on all copied `.sh`
+    files.
+17. **Re-run install-hooks.sh:** Execute `.cpf/scripts/install-hooks.sh`
+    to update git hooks.
+18. **Update version tracking:** Write the new plugin version to
     `.specforge-version`. Update `.specforge-ci-platform` if the user
     switched platforms.
-18. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
-    skipped, new, and deprecated files.
+19. **Summary:** Print counts of overwritten, reviewed
+    (accepted/rejected), skipped, new, and deprecated files.
 
 **Notes:**
 
@@ -676,7 +694,7 @@ host).
 - **Orchestrator preservation (INFRA-024):** Upgrade does NOT
   re-prompt for the `verify-quality.orchestrator` choice or any
   other policy field. The host's existing `.cpf/policy.json` is in
-  the customizable tier and stays untouched (step 11 only seeds
+  the customizable tier and stays untouched (step 12 only seeds
   the bundled default when the file is missing). To switch
   orchestrator post-init, the user edits `.cpf/policy.json`
   directly, or re-runs the init flow's discovery step. (Future
