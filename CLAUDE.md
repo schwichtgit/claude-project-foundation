@@ -101,7 +101,7 @@ paths.
 
 ```bash
 # Install git hooks
-scripts/install-hooks.sh
+.cpf/scripts/install-hooks.sh
 
 # Make Claude Code hooks executable (done by install-hooks.sh)
 chmod +x .claude/hooks/*.sh

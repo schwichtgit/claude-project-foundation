@@ -128,9 +128,9 @@ principles needed for spec-driven development.
    - `{{CI_PLATFORM}}` -- the selected CI platform
 9. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
 10. **Auto-run install-hooks.sh:** Execute
-    `scripts/install-hooks.sh` to install git hooks into
+    `.cpf/scripts/install-hooks.sh` to install git hooks into
     `.git/hooks/`.
-11. **Doctor check:** Run `scripts/doctor.sh` to validate
+11. **Doctor check:** Run `.cpf/scripts/doctor.sh` to validate
     prerequisites. Display the compliance report. Doctor
     failures do not block init -- the report is
     informational. Visually separate doctor output from
@@ -143,7 +143,7 @@ principles needed for spec-driven development.
     selected CI platform, and next steps including:
     "Run `/cpf:specforge constitution` to define your
     project principles."
-    "Run `/cpf:specforge doctor` or `scripts/doctor.sh`
+    "Run `/cpf:specforge doctor` or `.cpf/scripts/doctor.sh`
     to recheck prerequisites at any time."
 
 **Notes:**
@@ -406,13 +406,13 @@ required, recommended, and optional tools are installed,
 with platform-specific install instructions for missing
 tools.
 
-**Standalone script:** `scripts/doctor.sh`
+**Standalone script:** `.cpf/scripts/doctor.sh`
 
 **Registry:** `.specify/doctor-registry.json`
 
 **Workflow:**
 
-1. Run `scripts/doctor.sh` from the project root via the
+1. Run `.cpf/scripts/doctor.sh` from the project root via the
    Bash tool. Use `--output=text` for display.
 2. Display the script's stdout output to the user.
 3. If the script exits with code 1 (missing required
@@ -424,9 +424,9 @@ tools.
 **Notes:**
 
 - Doctor can also be run directly from the terminal:
-  `./scripts/doctor.sh`
+  `./.cpf/scripts/doctor.sh`
 - For machine-parseable output:
-  `./scripts/doctor.sh --output=json`
+  `./.cpf/scripts/doctor.sh --output=json`
 - The registry at `.specify/doctor-registry.json` defines
   all tool entries. Adding a tool requires editing only
   this file.
@@ -491,7 +491,7 @@ categorization to preserve project-specific customizations.
     (no longer in plugin, can be manually removed)". They are NOT deleted
     from the host project.
 13. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-14. **Re-run install-hooks.sh:** Execute `scripts/install-hooks.sh` to
+14. **Re-run install-hooks.sh:** Execute `.cpf/scripts/install-hooks.sh` to
     update git hooks.
 15. **Update version tracking:** Write the new plugin version to
     `.specforge-version`. Update `.specforge-ci-platform` if the user

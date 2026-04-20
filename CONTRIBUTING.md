@@ -14,7 +14,7 @@ Node.js 22+ (for Prettier formatting only).
 
 ```bash
 # Fork and clone the repo, then:
-scripts/install-hooks.sh
+.cpf/scripts/install-hooks.sh
 npm install
 npm run format:check
 ```
