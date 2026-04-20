@@ -110,7 +110,16 @@ cpf_validate_policy() {
               | . as $k
               | if (allowed_keys | index($k)) == null
                   then "\($e.key): unknown field \"\($k)\""
-                else empty end )
+                else empty end ),
+            ( if $e.value.orchestrator == "custom" then
+                if ($e.value | has("custom_command")) | not
+                  then "\($e.key): orchestrator \"custom\" requires non-empty \"custom_command\""
+                elif ($e.value.custom_command | type) != "string"
+                  then "\($e.key): \"custom_command\" must be a string"
+                elif ($e.value.custom_command | length) == 0
+                  then "\($e.key): orchestrator \"custom\" requires non-empty \"custom_command\""
+                else empty end
+              else empty end )
           ]
         | .[]
     ' "$file" 2>/dev/null)"

@@ -54,6 +54,8 @@ jobs:
         run: bash scripts/check-namespace-discipline.sh
       - name: Namespace discipline test
         run: bash scripts/test-namespace-discipline.sh
+      - name: Policy loader and validator test
+        run: bash scripts/test-policy.sh
       - name: Jenkinsfile upstream-cache flow test
         run: bash scripts/test-jenkinsfile-review.sh
       - name: Config generation test
