@@ -123,9 +123,50 @@ Acceptance for the generalization:
 Allocate new ID (INFRA-030+) during this document's
 features step.
 
+## Notes Captured Post-Implementation
+
+### INFRA-018 (platform-config-generation) -- shipped 2026-04-20
+
+- The generated `.prettierignore` MUST stay byte-equal to
+  `.claude-plugin/scaffold/common/.prettierignore`. This is
+  non-negotiable: if they diverge (because either the generator's
+  hardcoded preamble/group split changed, or the bundled policy's
+  prettier exclude list moved), regenerate the bundled scaffold
+  copy from the bundled policy via
+  `bash .claude-plugin/lib/cpf-generate-configs.sh
+--project-dir .claude-plugin/scaffold/common`.
+- The generated `.markdownlint-cli2.yaml` MUST stay byte-equal to
+  `.claude-plugin/scaffold/common/.markdownlint-cli2.yaml` for the
+  same reason. The `config:` block is hardcoded in the generator
+  (Option A); changing MD013/MD033/MD041/MD024 settings requires
+  editing both the generator and the bundled scaffold copy in
+  lockstep.
+- `.cpf/shellcheck-excludes.txt` has no consumer yet -- INFRA-019
+  (`native-tool-config-for-hooks`) wires it into verify-quality.sh
+  and the ci-base files via a generated find fragment. Until
+  then, the file is generated for completeness but not read by
+  any hook.
+- Tier change: `.prettierignore` moved from `review` to
+  `overwrite` in `upgrade-tiers.json`. Rationale: the file is now
+  generated from `.cpf/policy.json` rather than hand-edited, so
+  the upgrade flow can replace it without prompting; user
+  customization happens upstream by editing
+  `.cpf/policy.json.hooks.prettier.exclude`.
+- Skill integration: init runs the generator after scaffold
+  projection and before conflict resolution; upgrade runs it
+  after the customizable tier has guaranteed `.cpf/policy.json`
+  is on disk and before "new files" handling. Both call sites
+  resolve the generator via `cpf_resolve_asset` so a host that
+  drops a shadow at `.cpf/overrides/lib/cpf-generate-configs.sh`
+  takes precedence.
+
 ## Changelog
 
 - 2026-04-19: stub created during INFRA-017 implementation.
 - 2026-04-19: INFRA-027 notes appended -- transitional scaffold
   fallback in the resolver and SKILL.md allow-list rationale for
   the resolver-usage lint.
+- 2026-04-20: INFRA-018 post-implementation notes appended --
+  byte-equality contracts for the two generated lint configs,
+  shellcheck-excludes.txt consumer pending in INFRA-019, and the
+  `.prettierignore` review -> overwrite tier move.

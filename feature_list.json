@@ -1643,7 +1643,7 @@
         "Run `npx prettier --check` on a fresh fixture's generated `.prettierignore` and verify exit 0",
         "Run `shellcheck .claude-plugin/lib/cpf-generate-configs.sh` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": ["policy-json-schema-loader"]
     },
     {
