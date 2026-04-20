@@ -1,24 +1,18 @@
 {
+  "_comment": "plugin-cache lists subtrees authoritative in the plugin; never projected to hosts. Consumers read via cpf_resolve_asset. See ADR-003.",
+  "_third_party_tool_config": [
+    ".prettierignore",
+    ".markdownlint-cli2.yaml",
+    ".prettierrc.json",
+    ".gitignore"
+  ],
   "tiers": {
+    "customizable": [".cpf/policy.json"],
     "overwrite": [
-      "ci/principles/commit-gate.md",
-      "ci/principles/pr-gate.md",
-      "ci/principles/release-gate.md",
-      "scripts/hooks/pre-commit",
-      "scripts/hooks/commit-msg",
-      "scripts/install-hooks.sh",
-      ".specify/templates/constitution-template.md",
-      ".specify/templates/spec-template.md",
-      ".specify/templates/plan-template.md",
-      ".specify/templates/tasks-template.md",
-      ".specify/templates/feature-list-schema.json",
-      ".specify/WORKFLOW.md",
-      "prompts/initializer-prompt.md",
-      "prompts/coding-prompt.md",
-      ".markdownlint-cli2.yaml",
-      ".specify/doctor-registry.json",
-      "scripts/doctor.sh",
-      ".specify/proposals/.gitkeep",
+      ".cpf/scripts/hooks/pre-commit",
+      ".cpf/scripts/hooks/commit-msg",
+      ".cpf/scripts/install-hooks.sh",
+      ".cpf/scripts/doctor.sh",
       ".github/workflows/ci-base.yml",
       "ci/gitlab/gitlab-ci-base.yml"
     ],
@@ -33,16 +27,12 @@
       ".github/ISSUE_TEMPLATE/feature_request.yml",
       "Jenkinsfile",
       ".prettierrc.json",
-      ".prettierignore",
-      "CLAUDE.md.template",
       "ci/github/repo-settings.md",
       "ci/github/CODEOWNERS.template",
       "ci/github/dependabot.yml",
       "ci/github/PULL_REQUEST_TEMPLATE.md",
       "ci/github/workflows/commit-standards.yml",
-      "ci/gitlab/gitlab-ci-guide.md",
-      ".gitlab/merge_request_templates/Default.md",
-      "ci/jenkins/jenkinsfile-guide.md"
+      ".gitlab/merge_request_templates/Default.md"
     ],
     "skip": [
       ".github/workflows/ci.yml",
@@ -55,7 +45,32 @@
       "claude-progress.txt",
       "README.md",
       ".gitignore",
-      "init.sh"
+      "init.sh",
+      ".cpf/overrides/",
+      ".cpf/upstream-cache/"
+    ],
+    "plugin-cache": [
+      ".specify/templates/",
+      ".specify/WORKFLOW.md",
+      ".specify/doctor-registry.json",
+      "prompts/",
+      "ci/principles/",
+      "ci/gitlab/",
+      "ci/jenkins/",
+      "CLAUDE.md.template"
     ]
+  },
+  "migrations": {
+    "0.1.0-alpha.12": {
+      "policy_seed": true,
+      "reorg_paths": [
+        "prompts/",
+        ".specify/templates/",
+        ".specify/WORKFLOW.md",
+        "ci/principles/"
+      ],
+      "jenkinsfile_tier_change": true,
+      "v02_countdown": true
+    }
   }
 }

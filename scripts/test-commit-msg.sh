@@ -4,7 +4,7 @@ set -euo pipefail
 # Test the commit-msg hook against valid, invalid, and warning-only messages.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HOOK="$REPO_ROOT/.claude-plugin/scaffold/common/scripts/hooks/commit-msg"
+HOOK="$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/scripts/hooks/commit-msg"
 PASS=0
 FAIL=0
 TOTAL=0

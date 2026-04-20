@@ -50,7 +50,9 @@ activity, including autonomous Claude Code sessions.
 
 1. Check if `.specify/memory/constitution.md` already exists. If so, ask the
    user whether to start fresh or revise the existing constitution.
-2. Read the template from `.specify/templates/constitution-template.md`.
+2. Resolve the template path via
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" .specify/templates/constitution-template.md`
+   first, then Read the returned path.
 3. Present each section to the user one at a time, in order:
    - **Project Identity** -- name, description, languages, platforms
    - **Non-Negotiable Principles** -- 3-7 principles that must never be violated
@@ -81,7 +83,7 @@ activity, including autonomous Claude Code sessions.
 the directory structure, CI workflows, git hooks, templates, and quality
 principles needed for spec-driven development.
 
-**Scaffold source:** `$CLAUDE_PLUGIN_ROOT/scaffold/`
+**Scaffold source:** `scaffold/` under the plugin root.
 
 **Version tracking:** `.specforge-version`, `.specforge-ci-platform`
 
@@ -106,44 +108,118 @@ principles needed for spec-driven development.
    as: "Detected GitHub. Use GitHub? [Y/n/gitlab/jenkins]". When no default,
    prompt as: "Which CI platform? [github/gitlab/jenkins]". Re-prompt on
    invalid input.
-5. **Scaffold projection (common files):** Copy all files from
-   `$CLAUDE_PLUGIN_ROOT/scaffold/common/` to the target project root,
-   preserving directory structure.
-6. **Scaffold projection (platform files):** Copy all files from
-   `$CLAUDE_PLUGIN_ROOT/scaffold/<platform>/` to the target project root,
-   where `<platform>` is the selected CI platform.
-7. **Conflict resolution via diffs:** For each file that already exists in
-   the target project:
-   - If the existing file is identical to the scaffold version, skip it
-     silently.
-   - If the existing file differs, show `diff -u <existing> <scaffold>` and
-     ask "Overwrite <file>? [y/n/d(iff)]". On `y`, overwrite. On `n`, skip.
-     On `d`, show the diff again.
-8. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
-   from `CLAUDE.md.template` with these placeholders replaced:
-   - `{{PROJECT_NAME}}` -- from `basename $PWD` or git remote name
-   - `{{LANGUAGE}}` -- auto-detected from config files (package.json,
-     Cargo.toml, pyproject.toml, go.mod, etc.); comma-separated if multiple
-     (e.g., "JavaScript, Go"); "Unknown" if none detected
-   - `{{CI_PLATFORM}}` -- the selected CI platform
-9. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-10. **Auto-run install-hooks.sh:** Execute
-    `scripts/install-hooks.sh` to install git hooks into
+5. **Load plugin-cache prefixes:** Read the plugin-cache tier from
+   `upgrade-tiers.json` at the plugin root via
+   `jq -r '.tiers["plugin-cache"][]' "$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json"`.
+   Any path in the scaffold that begins with one of these prefixes is
+   authoritative in the plugin and must NOT be projected. Hosts read
+   these via `cpf_resolve_asset`, shadowable via `.cpf/overrides/`.
+6. **Scaffold projection (common files):** Copy all files from
+   `scaffold/common/` under the plugin root to the target project
+   root, preserving directory structure. Skip any scaffold-relative
+   path that begins with a plugin-cache prefix loaded in step 5.
+   Per ADR-002 (INFRA-031), `.prettierignore` and
+   `.markdownlint-cli2.yaml` are NOT shipped in the scaffold; they
+   are produced by the generator in step 9.
+   Also create `.specify/proposals/` on the host with
+   `mkdir -p "$CLAUDE_PROJECT_DIR/.specify/proposals"` (no
+   `.gitkeep` is projected; the directory is plugin-internal
+   structure, not content).
+7. **Scaffold projection (platform files):** Copy all files from
+   `scaffold/<platform>/` under the plugin root to the target project
+   root, where `<platform>` is the selected CI platform. Apply the
+   same plugin-cache-prefix skip filter.
+8. **Discover orchestrators and confirm policy:** The bundled
+   `.cpf/policy.json` from step 6 ships sane defaults. Before the
+   generator step runs, confirm the orchestrator choice for
+   `verify-quality` against signals discovered in the host project,
+   and present a numbered summary the user can accept with one
+   keystroke.
+   1. **Discover signals.** Source the detect helper resolved via
+      `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" lib/cpf-taskfile-detect.sh`
+      and call `has_taskfile_lint_test "$CLAUDE_PROJECT_DIR"`. A
+      zero exit means the host has both `lint:` and `test:`
+      top-level Taskfile targets and is a `task` candidate for
+      `verify-quality`. (TODO: add Makefile and Justfile detection
+      here as a future extension; out of scope today.)
+   2. **Build the numbered summary** of the recommended strategy
+      and present it. With a Taskfile match the rendering is:
+
+      ```text
+      Discovered orchestrators:
+        1. Taskfile.yml (lint, test targets) -> verify-quality.orchestrator = "task"
+        2. Inline file hooks (prettier, markdownlint, shellcheck) -> "none"
+      Accept all? [Y / drill in / n]
+      ```
+
+      Without a Taskfile match line 1 becomes
+      `verify-quality.orchestrator = "none"` and the prompt is
+      still presented (for visibility) with the same options.
+
+   3. **Default path (Y).** All recommended values are written
+      to `.cpf/policy.json` via a `jq` mutation against
+      `.hooks["verify-quality"].orchestrator` with a temp-file
+      swap. Single keystroke is enough.
+   4. **Drill-in path.** Walk each tool one at a time. For
+      `verify-quality` offer `none | task | custom`. If the user
+      picks `custom`, prompt for the `custom_command` string and
+      validate it is non-empty before writing. Format and lint
+      hooks (prettier, markdownlint, shellcheck) are NOT
+      drilled into; they stay on `none` by design (they operate on
+      individual changed files, not the whole project).
+   5. **Manual edit path (n).** Leave the bundled defaults in
+      place and inform the user they can edit
+      `.cpf/policy.json` directly later (or re-run init's
+      discovery step).
+   6. **Validate.** After any write, call the validator
+      (`cpf-policy.sh validate <path>`) on the resulting
+      `.cpf/policy.json`. A nonzero exit aborts init with the
+      validator's stderr message; do not proceed to the generator
+      step if validation failed.
+
+9. **Generate platform configs from policy:** Resolve the generator with
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" lib/cpf-generate-configs.sh`
+   and run it as
+   `bash "$GEN" --project-dir "$CLAUDE_PROJECT_DIR"`. The script reads
+   `.cpf/policy.json` (now present from step 6) and writes
+   `.prettierignore`, `.markdownlint-cli2.yaml`, and
+   `.cpf/shellcheck-excludes.txt` with write-if-different semantics, so
+   the bundled scaffold copies seeded in step 6 are left untouched when
+   the policy defaults are unchanged. A nonzero exit aborts init with
+   the generator's stderr message; do not proceed to conflict
+   resolution if generation failed.
+10. **Conflict resolution via diffs:** For each file that already exists in
+    the target project:
+    - If the existing file is identical to the scaffold version, skip it
+      silently.
+    - If the existing file differs, show `diff -u <existing> <scaffold>` and
+      ask "Overwrite <file>? [y/n/d(iff)]". On `y`, overwrite. On `n`, skip.
+      On `d`, show the diff again.
+11. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
+    from `CLAUDE.md.template` with these placeholders replaced:
+    - `{{PROJECT_NAME}}` -- from `basename $PWD` or git remote name
+    - `{{LANGUAGE}}` -- auto-detected from config files (package.json,
+      Cargo.toml, pyproject.toml, go.mod, etc.); comma-separated if multiple
+      (e.g., "JavaScript, Go"); "Unknown" if none detected
+    - `{{CI_PLATFORM}}` -- the selected CI platform
+12. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+13. **Auto-run install-hooks.sh:** Execute
+    `.cpf/scripts/install-hooks.sh` to install git hooks into
     `.git/hooks/`.
-11. **Doctor check:** Run `scripts/doctor.sh` to validate
+14. **Doctor check:** Run `.cpf/scripts/doctor.sh` to validate
     prerequisites. Display the compliance report. Doctor
     failures do not block init -- the report is
     informational. Visually separate doctor output from
     file counts with a blank line and header.
-12. **Version tracking:** Write the plugin version (from
+15. **Version tracking:** Write the plugin version (from
     `plugin.json`) to `.specforge-version` at the project
     root. Write the selected CI platform to
     `.specforge-ci-platform`.
-13. **Summary:** Print file counts (copied, skipped), the
+16. **Summary:** Print file counts (copied, skipped), the
     selected CI platform, and next steps including:
     "Run `/cpf:specforge constitution` to define your
     project principles."
-    "Run `/cpf:specforge doctor` or `scripts/doctor.sh`
+    "Run `/cpf:specforge doctor` or `.cpf/scripts/doctor.sh`
     to recheck prerequisites at any time."
 
 **Notes:**
@@ -176,7 +252,9 @@ conversation, producing a structured specification.
 
 1. Read the constitution from `.specify/memory/constitution.md`. Verify it
    exists; if not, prompt the user to run `/cpf:specforge constitution` first.
-2. Read the spec template from `.specify/templates/spec-template.md`.
+2. Resolve the spec template via
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" .specify/templates/spec-template.md`
+   first, then Read the returned path.
 3. Ask the user to describe the project features at a high level.
 4. For each feature described, collaborate with the user to define:
    - A title and description
@@ -271,7 +349,10 @@ structured implementation plan.
 5. Record each decision as an Architecture Decision Record (ADR) with:
    status, context, decision, alternatives considered, consequences.
 6. Define implementation phases with dependency ordering.
-7. Write the plan to `.specify/specs/plan.md` using the template.
+7. Resolve the plan template via
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" .specify/templates/plan-template.md`
+   first, Read the returned path, then write the plan to
+   `.specify/specs/plan.md` using that template.
 
 **Notes:**
 
@@ -313,7 +394,9 @@ machine-readable feature definitions for autonomous execution.
    - `testing_steps`: array of concrete, executable test commands
    - `passes`: `false` (all features start as not passing)
    - `dependencies`: array of feature IDs this feature depends on
-5. Validate the output against `.specify/templates/feature-list-schema.json`.
+5. Resolve the schema via
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" .specify/templates/feature-list-schema.json`
+   first, then validate the output against the returned path.
 6. Run dependency cycle detection to ensure no circular references.
 7. Verify constraints:
    - All `passes` fields are `false` initially
@@ -406,13 +489,18 @@ required, recommended, and optional tools are installed,
 with platform-specific install instructions for missing
 tools.
 
-**Standalone script:** `scripts/doctor.sh`
+**Standalone script:** `.cpf/scripts/doctor.sh`
 
-**Registry:** `.specify/doctor-registry.json`
+**Registry:** `.specify/doctor-registry.json`, resolved through
+`cpf-resolve-asset.sh` (INFRA-031). The bundled copy lives at the
+plugin install dir; hosts that need a custom registry drop a file
+at `.cpf/overrides/.specify/doctor-registry.json` and the resolver
+returns the override before the bundled default. doctor.sh does
+not require a host-projected copy.
 
 **Workflow:**
 
-1. Run `scripts/doctor.sh` from the project root via the
+1. Run `.cpf/scripts/doctor.sh` from the project root via the
    Bash tool. Use `--output=text` for display.
 2. Display the script's stdout output to the user.
 3. If the script exits with code 1 (missing required
@@ -424,12 +512,14 @@ tools.
 **Notes:**
 
 - Doctor can also be run directly from the terminal:
-  `./scripts/doctor.sh`
+  `./.cpf/scripts/doctor.sh`
 - For machine-parseable output:
-  `./scripts/doctor.sh --output=json`
+  `./.cpf/scripts/doctor.sh --output=json`
 - The registry at `.specify/doctor-registry.json` defines
-  all tool entries. Adding a tool requires editing only
-  this file.
+  all tool entries. Adding a tool requires editing the
+  bundled copy at the plugin install dir (or dropping a
+  host override at
+  `.cpf/overrides/.specify/doctor-registry.json`).
 - Doctor does not install tools automatically. It reports
   what is missing and how to install it.
 
@@ -438,7 +528,7 @@ tools.
 **Purpose:** Update scaffold files in a host project using three-tier file
 categorization to preserve project-specific customizations.
 
-**Tier definitions:** `$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json`
+**Tier definitions:** `upgrade-tiers.json` at the plugin root.
 
 **Tiers:**
 
@@ -446,7 +536,36 @@ categorization to preserve project-specific customizations.
   latest version without prompting. These files should not be customized.
 - **review** -- Commonly customized files. Changes are shown as `diff -u`
   output for the user to review and selectively accept or reject.
+- **customizable** -- User-owned configuration files (e.g., `.cpf/policy.json`)
+  that `init` seeds from the bundled default and `upgrade` never overwrites.
+  If the file is missing during upgrade, copy the bundled default; otherwise
+  leave the user's copy untouched.
 - **skip** -- Project-specific files that are never modified by upgrade.
+- **plugin-cache** -- Subtrees authoritative in the plugin and never
+  projected to hosts. Consumers read these via `cpf_resolve_asset`
+  with `.cpf/overrides/<relpath>` shadowing. See ADR-003 in the
+  plan document.
+
+**Namespace discipline (ADR-002):** Per ADR-002 (clarified by
+INFRA-031), every entry in the overwrite, review, and customizable
+tiers must classify into exactly one of:
+
+- **`.cpf/`-prefixed** -- plugin-internal artifacts on the host.
+- **Listed in `_third_party_tool_config`** at the top of
+  `upgrade-tiers.json` -- third-party tool config files
+  (`.prettierignore`, `.markdownlint-cli2.yaml`, `.prettierrc.json`,
+  `.gitignore`) that live at host root because the tools
+  default-discover from cwd.
+- **External-platform path** -- `.github/...`, `.gitlab/...`,
+  `.gitlab-ci.yml`, `Jenkinsfile`, `ci/{github,gitlab,jenkins,
+principles}/...` -- governed by the platform, not by the plugin.
+
+The `scripts/check-namespace-discipline.sh` lint enforces this in
+CI. Adding a new host-root projection requires either updating
+`_third_party_tool_config` (with rationale) and ADR-002, or
+extending the external-platform glob list inside the lint. Skip
+and plugin-cache tiers are not scanned (neither projects to the
+host).
 
 **Version tracking:** `.specforge-version`, `.specforge-ci-platform`
 
@@ -462,45 +581,126 @@ categorization to preserve project-specific customizations.
    from `plugin.json`. If they match, print "Already at version X.Y.Z.
    Nothing to upgrade." and exit.
 4. **Print version transition:** Print "Upgrading from <old> to <new>."
-5. **CI platform re-selection:** Read `.specforge-ci-platform`. Ask the user
+5. **Migration guide (INFRA-029):** Iterate the `migrations` map in
+   `upgrade-tiers.json`. For each target-version key that is
+   less-than-or-equal-to the plugin version (semver compare) AND is not
+   already listed in the host's `.specforge-migrations-applied` file,
+   invoke the matching script from the plugin's `lib/` directory. The
+   alpha.12 guide is `cpf-migrate-alpha12.sh`; future versions get
+   their own scripts (naming convention
+   `cpf-migrate-<version-suffix>.sh`). Run as
+   `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-migrate-alpha12.sh"`. The
+   migration script handles its own idempotence (appends to
+   `.specforge-migrations-applied` on success) and belt-and-suspenders
+   suppresses itself on the cpf source repo (complementing step 1). A
+   user can re-display a guide without mutating already-accepted files
+   via direct lib invocation with the `--rerun-migration <ver>` flag;
+   the upgrade skill itself does not surface that flag.
+6. **CI platform re-selection:** Read `.specforge-ci-platform`. Ask the user
    if they want to change platforms: "Current CI: <platform>. Change?
    [Y to keep/gitlab/jenkins]". If the user selects a different platform,
    project the new platform's scaffold files. Do NOT delete old platform
    files; instead, list them with: "Previous <platform> CI files remain.
    Remove manually if no longer needed: <file list>".
-6. **Read tier definitions:** Read `$CLAUDE_PLUGIN_ROOT/upgrade-tiers.json`
-   for file tier assignments.
-7. **Overwrite tier:** For each file in the "overwrite" list, replace it
+7. **Read tier definitions:** Read `upgrade-tiers.json` at the plugin
+   root for file tier assignments.
+8. **Plugin-cache tier:** Skip every scaffold-relative path beginning
+   with a plugin-cache prefix. These subtrees are authoritative in
+   the plugin and are never projected or reviewed; hosts read them
+   via `cpf_resolve_asset` and shadow them with `.cpf/overrides/`.
+   Migration messaging for the reorg lives in INFRA-029 (step 5).
+9. **Overwrite tier:** For each file in the "overwrite" list, replace it
    with the latest version from the plugin without prompting.
-8. **Review tier:** For each file in the "review" list that differs from
-   the plugin version, show `diff -u <existing> <plugin>` output and ask
-   "Accept this change? [y/n]". Skip files that are identical.
-9. **Skip tier:** Do nothing for files in the "skip" list.
-10. **New files:** Files present in the scaffold but not listed in any tier
-    in `upgrade-tiers.json` are treated as overwrite (copied without
-    prompting).
-11. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
+10. **Review tier:** For each file in the "review" list, handle upgrade
+    review. The `Jenkinsfile` entry has a dedicated flow (step 10a);
+    every other review-tier entry uses the generic flow (step 10b).
+
+    10a. **Jenkinsfile upstream-cache flow (ADR-008).** The baseline is
+    the previously shipped plugin copy cached at
+    `.cpf/upstream-cache/Jenkinsfile`, so the diff shows
+    upstream-vs-upstream and host-local edits (for example, uncommented
+    optional stages) stay invisible. Use the helper rather than inline
+    `diff`:
+    1. Resolve paths:
+
+       ```bash
+       HOST="$CLAUDE_PROJECT_DIR/Jenkinsfile"
+       CACHE="$CLAUDE_PROJECT_DIR/.cpf/upstream-cache/Jenkinsfile"
+       NEW="$CLAUDE_PLUGIN_ROOT/scaffold/jenkins/Jenkinsfile"
+       HELPER="$CLAUDE_PLUGIN_ROOT/lib/cpf-jenkinsfile-upgrade.sh"
+       ```
+
+    2. Run `bash "$HELPER" diff "$HOST" "$CACHE" "$NEW"` and capture the
+       exit code and stdout.
+    3. Exit 0 (baseline and new are identical): skip silently.
+    4. Exit 1 (differences): show the captured diff and ask "Accept
+       upstream Jenkinsfile changes? [y/n]". On accept, run
+       `bash "$HELPER" accept "$HOST" "$CACHE" "$NEW"`. On decline, run
+       `bash "$HELPER" decline "$HOST" "$CACHE" "$NEW"`. Both paths
+       refresh the cache so the same diff will not reappear next run.
+    5. Exit 2 (fresh install -- neither cache nor host exists): run
+       `bash "$HELPER" first-run "$HOST" "$CACHE" "$NEW"` without
+       prompting, seeding both the host copy and the cache.
+    6. Any other exit code: stop the review tier with an error and
+       surface stderr from the helper.
+
+    10b. **Generic review flow.** For every other review-tier entry that
+    differs from the plugin version, show `diff -u <existing> <plugin>`
+    output and ask "Accept this change? [y/n]". Skip files that are
+    identical.
+
+11. **Skip tier:** Do nothing for files in the "skip" list.
+12. **Customizable tier:** For each file in the "customizable" list, copy
+    the bundled default from the scaffold only if the file is missing in
+    the host project. If present, leave it untouched.
+13. **Generate platform configs from policy:** After the customizable
+    tier has guaranteed `.cpf/policy.json` is present on the host,
+    regenerate the policy-derived lint configs. Resolve the generator
+    with
+    `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" lib/cpf-generate-configs.sh`
+    and run it as `bash "$GEN" --project-dir "$CLAUDE_PROJECT_DIR"`. The
+    generator writes `.prettierignore`, `.markdownlint-cli2.yaml`, and
+    `.cpf/shellcheck-excludes.txt` with write-if-different semantics, so
+    the bundled scaffold copies the overwrite tier seeded in step 9 are
+    left untouched when the host's policy still matches the bundled
+    defaults. A nonzero exit aborts upgrade with the generator's stderr
+    message; do not proceed to "new files" if generation failed.
+14. **New files:** Files present in the scaffold but not listed in any
+    tier in `upgrade-tiers.json` (and not under a plugin-cache prefix)
+    are treated as overwrite (copied without prompting).
+15. **Deprecated files:** Files listed in `upgrade-tiers.json` but no
     longer present in the scaffold are logged as: "Deprecated: <file>
-    (no longer in plugin, can be manually removed)". They are NOT deleted
-    from the host project.
-12. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-13. **Re-run install-hooks.sh:** Execute `scripts/install-hooks.sh` to
-    update git hooks.
-14. **Update version tracking:** Write the new plugin version to
+    (no longer in plugin, can be manually removed)". They are NOT
+    deleted from the host project.
+16. **Make .sh files executable:** Run `chmod +x` on all copied `.sh`
+    files.
+17. **Re-run install-hooks.sh:** Execute `.cpf/scripts/install-hooks.sh`
+    to update git hooks.
+18. **Update version tracking:** Write the new plugin version to
     `.specforge-version`. Update `.specforge-ci-platform` if the user
     switched platforms.
-15. **Summary:** Print counts of overwritten, reviewed (accepted/rejected),
-    skipped, new, and deprecated files.
+19. **Summary:** Print counts of overwritten, reviewed
+    (accepted/rejected), skipped, new, and deprecated files.
 
 **Notes:**
 
 - Upgrade is a skill sub-command executed by the LLM, not a standalone bash
-  script. Claude Code reads these instructions and uses Read/Write/Edit/Bash
+  script. The agent reads these instructions and uses Read/Write/Edit/Bash
   tools. User interaction happens via the conversation.
 - The tier classification is defined in `upgrade-tiers.json`, not hardcoded.
 - Running upgrade is safe to abort mid-way; already-overwritten files are at
   the new version, unapplied files remain at the old version.
 - The diff display uses `diff -u` (unified format) for readability.
+- **Orchestrator preservation (INFRA-024):** Upgrade does NOT
+  re-prompt for the `verify-quality.orchestrator` choice or any
+  other policy field. The host's existing `.cpf/policy.json` is in
+  the customizable tier and stays untouched (step 12 only seeds
+  the bundled default when the file is missing). To switch
+  orchestrator post-init, the user edits `.cpf/policy.json`
+  directly, or re-runs the init flow's discovery step. (Future
+  work: a `doctor` check that re-runs Taskfile detection without
+  writing, so the user can audit drift between the host's signals
+  and the recorded policy choice.)
 
 ### /cpf:specforge help
 

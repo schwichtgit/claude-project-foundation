@@ -49,7 +49,7 @@ jobs:
       - name: Run shellcheck
         run: |
           find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*' -print0 | xargs -0 shellcheck -x
-          find .claude-plugin/scaffold/common/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
 
   markdownlint:
     runs-on: ubuntu-latest

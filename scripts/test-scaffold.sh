@@ -96,9 +96,9 @@ COMMON_FILES=(
   "ci/principles/release-gate.md"
   "prompts/initializer-prompt.md"
   "prompts/coding-prompt.md"
-  "scripts/hooks/pre-commit"
-  "scripts/hooks/commit-msg"
-  "scripts/install-hooks.sh"
+  ".cpf/scripts/hooks/pre-commit"
+  ".cpf/scripts/hooks/commit-msg"
+  ".cpf/scripts/install-hooks.sh"
   ".prettierrc.json"
   ".prettierignore"
   ".markdownlint.json"
@@ -154,7 +154,7 @@ echo ""
 echo "=== install-hooks.sh properties ==="
 
 TOTAL=$((TOTAL + 1))
-HOOKS_SCRIPT="$SCAFFOLD/common/scripts/install-hooks.sh"
+HOOKS_SCRIPT="$SCAFFOLD/common/.cpf/scripts/install-hooks.sh"
 if [[ -x "$HOOKS_SCRIPT" ]] || grep -q 'BASH_SOURCE' "$HOOKS_SCRIPT" 2>/dev/null; then
   echo "PASS: install-hooks.sh is executable or uses BASH_SOURCE"
   PASSED=$((PASSED + 1))

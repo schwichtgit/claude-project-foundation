@@ -44,10 +44,47 @@ jobs:
       - uses: actions/checkout@v6
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
+      - name: Seed shellcheck-excludes from bundled policy
+        run: |
+          # The cpf source repo has a hand-edited .markdownlint-cli2.yaml and
+          # .prettierignore that the generator would overwrite. Stage the
+          # generator output in a temp dir and copy just the excludes file.
+          STAGE="$(mktemp -d)"
+          CPF_POLICY_FILE=.claude-plugin/scaffold/common/.cpf/policy.json \
+            bash .claude-plugin/lib/cpf-generate-configs.sh --project-dir "$STAGE"
+          mkdir -p .cpf
+          cp "$STAGE/.cpf/shellcheck-excludes.txt" .cpf/shellcheck-excludes.txt
       - name: Run shellcheck
         run: |
-          find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*' -print0 | xargs -0 shellcheck -x
-          find .claude-plugin/scaffold/common/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+          FRAGMENT="$(bash .claude-plugin/lib/cpf-shellcheck-fragment.sh emit-find-fragment .)"
+          eval "find . -name '*.sh' $FRAGMENT -print0" | xargs -0 shellcheck -x
+          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+      - name: Resolver-usage lint
+        run: bash .claude-plugin/lib/lint-resolver-usage.sh
+      - name: Namespace discipline check
+        run: bash scripts/check-namespace-discipline.sh
+      - name: Namespace discipline test
+        run: bash scripts/test-namespace-discipline.sh
+      - name: Policy loader and validator test
+        run: bash scripts/test-policy.sh
+      - name: Orchestrator dispatch test
+        run: bash scripts/test-orchestrator-dispatch.sh
+      - name: Jenkinsfile upstream-cache flow test
+        run: bash scripts/test-jenkinsfile-review.sh
+      - name: Config generation test
+        run: bash scripts/test-config-generation.sh
+      - name: Config generation determinism check
+        run: bash scripts/check-config-determinism.sh
+      - name: Shellcheck find-fragment helper test
+        run: bash scripts/test-shellcheck-fragment.sh
+      - name: Native tool config hook test
+        run: bash scripts/test-native-tool-config.sh
+      - name: Per-service resolver hook test
+        run: bash scripts/test-per-service-resolver.sh
+      - name: Pytest exit-code classification test
+        run: bash scripts/test-pytest-classification.sh
+      - name: Upgrade migration guide test
+        run: bash scripts/test-upgrade-migration.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)

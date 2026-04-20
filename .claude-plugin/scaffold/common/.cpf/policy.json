@@ -1,0 +1,55 @@
+{
+  "_comment": "cpf hook policy. Schema: .claude-plugin/lib/cpf-policy.schema.json. Loader: .claude-plugin/lib/cpf-policy.sh. Edit include/exclude globs, orchestrator, and severity to customize quality-gate behavior. init seeds this file; upgrade never overwrites.",
+  "hooks": {
+    "prettier": {
+      "include": ["**/*.md", "**/*.yml", "**/*.yaml", "**/*.json"],
+      "exclude": [
+        "claude-project-foundation-PLAN.md",
+        ".claude/PLAN.md",
+        ".claude/mind.*",
+        "LICENSE",
+        "scripts/hooks/pre-commit",
+        "scripts/hooks/commit-msg"
+      ],
+      "orchestrator": "none",
+      "severity": "error"
+    },
+    "markdownlint": {
+      "include": ["**/*.md"],
+      "exclude": [
+        ".claude/PLAN.md",
+        "node_modules/**",
+        "**/node_modules/**",
+        ".venv/**",
+        "**/.venv/**",
+        "**/target/**"
+      ],
+      "orchestrator": "none",
+      "severity": "error"
+    },
+    "shellcheck": {
+      "include": ["**/*.sh"],
+      "exclude": [
+        "./.git/*",
+        "*/.venv/*",
+        "*/node_modules/*",
+        "*/target/*",
+        "*/dist/*"
+      ],
+      "orchestrator": "none",
+      "severity": "error"
+    },
+    "verify-quality": {
+      "orchestrator": "task",
+      "severity": "error",
+      "on_missing_runner": "warn",
+      "on_missing_tests": "skip"
+    },
+    "format-changed": {
+      "severity": "warning"
+    },
+    "post-edit": {
+      "severity": "warning"
+    }
+  }
+}
