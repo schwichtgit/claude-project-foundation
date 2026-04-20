@@ -217,6 +217,57 @@ features step.
   Filed as a separate ticket per the plan's "Out of scope"
   section; do not entangle with INFRA-031.
 
+### INFRA-024 (per-hook-orchestrator-dispatch) -- 2026-04-20
+
+- The init flow's orchestrator discovery is project-wide, not
+  per-hook. SKILL.md step 8 emits a single numbered summary the
+  user accepts with one keystroke ("Y / drill in / n"). Only the
+  `verify-quality` hook participates in the prompt; format and
+  lint hooks (prettier, markdownlint, shellcheck) are
+  informational lines in the summary and never offer drill-in.
+  The original restart sketch suggested per-hook prompting; the
+  shipped UX deliberately collapses that to a single confirmation
+  to keep init keystroke-light.
+- ADR-006 missing-policy fallback path in `verify-quality.sh`
+  emits its stderr notice with the literal string
+  `REMOVE AT v0.2.0`, matching the in-source comment markers. A
+  future grep `grep -rn 'REMOVE AT v0.2.0' .` enumerates every
+  branch that must come out at the v0.2.0 cut.
+- INFRA-025 (per-service-resolver-verify-quality) and INFRA-019
+  (native-tool-config-for-hooks) extend the
+  `orchestrator = "none"` legacy walker. The walker is wrapped in
+  `run_legacy_walk_and_detect()` (with its own
+  `# REMOVE AT v0.2.0` end marker) so those features can refactor
+  the function body in place without re-introducing the dispatch
+  scaffolding. The dispatcher itself stays untouched.
+- The `task` orchestrator hardcodes `task lint` (ERROR) and
+  `task test` (WARNING) per ADR-005 fixed convention. No alias
+  lookup, no Taskfile parsing beyond detect-presence. Hosts that
+  want different target names can either alias them in their
+  Taskfile or switch to `orchestrator = "custom"` with a
+  `custom_command` like `task ci:lint && task ci:test`.
+- Custom orchestrator runs its `custom_command` via
+  `(cd "$PROJECT_ROOT" && sh -c "$custom_command")` -- a
+  subshell, so directory side-effects do not leak. The hook's
+  `severity` field maps the exit code: `error` increments
+  FAILED (blocks stop with exit 2), `warning` increments
+  WARNINGS (does not block), `info` is logged but does not
+  affect counters. Forward-extensible to future severity values.
+- New helper `cpf-taskfile-detect.sh` lives in
+  `.claude-plugin/lib/`. INFRA-029 (init `infer` path) can reuse
+  `has_taskfile_lint_test` for its own auto-detection; the
+  helper is intentionally a single function with no side effects
+  so embedders can source it freely.
+- The validator now rejects `orchestrator = "custom"` without a
+  non-empty `custom_command`. INFRA-026 (host setup script) and
+  INFRA-019 (native tool config) inherit that contract: any new
+  hook stanza they introduce that wants the custom orchestrator
+  must include the field.
+- `scripts/test-policy.sh` (16 fixtures) is the canonical home
+  for any future loader/validator regression test. Subsequent
+  policy-shape changes (new fields, new enum values) should
+  extend that script rather than create parallel test files.
+
 ## Changelog
 
 - 2026-04-19: stub created during INFRA-017 implementation.
@@ -231,3 +282,7 @@ features step.
   tool-config boundary clarified, bundled lint configs deleted,
   doctor-registry resolver migration, namespace-discipline lint
   added to CI.
+- 2026-04-20: INFRA-024 notes appended -- per-hook orchestrator
+  dispatch landed in verify-quality.sh, project-wide
+  numbered-summary init UX, ADR-006 fallback markers wired into
+  source and stderr, taskfile-detect helper for INFRA-029 reuse.

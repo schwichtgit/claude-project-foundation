@@ -120,7 +120,7 @@ principles needed for spec-driven development.
    path that begins with a plugin-cache prefix loaded in step 5.
    Per ADR-002 (INFRA-031), `.prettierignore` and
    `.markdownlint-cli2.yaml` are NOT shipped in the scaffold; they
-   are produced by the generator in step 8.
+   are produced by the generator in step 9.
    Also create `.specify/proposals/` on the host with
    `mkdir -p "$CLAUDE_PROJECT_DIR/.specify/proposals"` (no
    `.gitkeep` is projected; the directory is plugin-internal
@@ -129,7 +129,55 @@ principles needed for spec-driven development.
    `scaffold/<platform>/` under the plugin root to the target project
    root, where `<platform>` is the selected CI platform. Apply the
    same plugin-cache-prefix skip filter.
-8. **Generate platform configs from policy:** Resolve the generator with
+8. **Discover orchestrators and confirm policy:** The bundled
+   `.cpf/policy.json` from step 6 ships sane defaults. Before the
+   generator step runs, confirm the orchestrator choice for
+   `verify-quality` against signals discovered in the host project,
+   and present a numbered summary the user can accept with one
+   keystroke.
+   1. **Discover signals.** Source the detect helper resolved via
+      `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" lib/cpf-taskfile-detect.sh`
+      and call `has_taskfile_lint_test "$CLAUDE_PROJECT_DIR"`. A
+      zero exit means the host has both `lint:` and `test:`
+      top-level Taskfile targets and is a `task` candidate for
+      `verify-quality`. (TODO: add Makefile and Justfile detection
+      here as a future extension; out of scope today.)
+   2. **Build the numbered summary** of the recommended strategy
+      and present it. With a Taskfile match the rendering is:
+
+      ```text
+      Discovered orchestrators:
+        1. Taskfile.yml (lint, test targets) -> verify-quality.orchestrator = "task"
+        2. Inline file hooks (prettier, markdownlint, shellcheck) -> "none"
+      Accept all? [Y / drill in / n]
+      ```
+
+      Without a Taskfile match line 1 becomes
+      `verify-quality.orchestrator = "none"` and the prompt is
+      still presented (for visibility) with the same options.
+
+   3. **Default path (Y).** All recommended values are written
+      to `.cpf/policy.json` via a `jq` mutation against
+      `.hooks["verify-quality"].orchestrator` with a temp-file
+      swap. Single keystroke is enough.
+   4. **Drill-in path.** Walk each tool one at a time. For
+      `verify-quality` offer `none | task | custom`. If the user
+      picks `custom`, prompt for the `custom_command` string and
+      validate it is non-empty before writing. Format and lint
+      hooks (prettier, markdownlint, shellcheck) are NOT
+      drilled into; they stay on `none` by design (they operate on
+      individual changed files, not the whole project).
+   5. **Manual edit path (n).** Leave the bundled defaults in
+      place and inform the user they can edit
+      `.cpf/policy.json` directly later (or re-run init's
+      discovery step).
+   6. **Validate.** After any write, call the validator
+      (`cpf-policy.sh validate <path>`) on the resulting
+      `.cpf/policy.json`. A nonzero exit aborts init with the
+      validator's stderr message; do not proceed to the generator
+      step if validation failed.
+
+9. **Generate platform configs from policy:** Resolve the generator with
    `bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-resolve-asset.sh" lib/cpf-generate-configs.sh`
    and run it as
    `bash "$GEN" --project-dir "$CLAUDE_PROJECT_DIR"`. The script reads
@@ -140,34 +188,34 @@ principles needed for spec-driven development.
    the policy defaults are unchanged. A nonzero exit aborts init with
    the generator's stderr message; do not proceed to conflict
    resolution if generation failed.
-9. **Conflict resolution via diffs:** For each file that already exists in
-   the target project:
-   - If the existing file is identical to the scaffold version, skip it
-     silently.
-   - If the existing file differs, show `diff -u <existing> <scaffold>` and
-     ask "Overwrite <file>? [y/n/d(iff)]". On `y`, overwrite. On `n`, skip.
-     On `d`, show the diff again.
-10. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
+10. **Conflict resolution via diffs:** For each file that already exists in
+    the target project:
+    - If the existing file is identical to the scaffold version, skip it
+      silently.
+    - If the existing file differs, show `diff -u <existing> <scaffold>` and
+      ask "Overwrite <file>? [y/n/d(iff)]". On `y`, overwrite. On `n`, skip.
+      On `d`, show the diff again.
+11. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
     from `CLAUDE.md.template` with these placeholders replaced:
     - `{{PROJECT_NAME}}` -- from `basename $PWD` or git remote name
     - `{{LANGUAGE}}` -- auto-detected from config files (package.json,
       Cargo.toml, pyproject.toml, go.mod, etc.); comma-separated if multiple
       (e.g., "JavaScript, Go"); "Unknown" if none detected
     - `{{CI_PLATFORM}}` -- the selected CI platform
-11. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
-12. **Auto-run install-hooks.sh:** Execute
+12. **Make .sh files executable:** Run `chmod +x` on all copied `.sh` files.
+13. **Auto-run install-hooks.sh:** Execute
     `.cpf/scripts/install-hooks.sh` to install git hooks into
     `.git/hooks/`.
-13. **Doctor check:** Run `.cpf/scripts/doctor.sh` to validate
+14. **Doctor check:** Run `.cpf/scripts/doctor.sh` to validate
     prerequisites. Display the compliance report. Doctor
     failures do not block init -- the report is
     informational. Visually separate doctor output from
     file counts with a blank line and header.
-14. **Version tracking:** Write the plugin version (from
+15. **Version tracking:** Write the plugin version (from
     `plugin.json`) to `.specforge-version` at the project
     root. Write the selected CI platform to
     `.specforge-ci-platform`.
-15. **Summary:** Print file counts (copied, skipped), the
+16. **Summary:** Print file counts (copied, skipped), the
     selected CI platform, and next steps including:
     "Run `/cpf:specforge constitution` to define your
     project principles."
@@ -619,12 +667,22 @@ host).
 **Notes:**
 
 - Upgrade is a skill sub-command executed by the LLM, not a standalone bash
-  script. Claude Code reads these instructions and uses Read/Write/Edit/Bash
+  script. The agent reads these instructions and uses Read/Write/Edit/Bash
   tools. User interaction happens via the conversation.
 - The tier classification is defined in `upgrade-tiers.json`, not hardcoded.
 - Running upgrade is safe to abort mid-way; already-overwritten files are at
   the new version, unapplied files remain at the old version.
 - The diff display uses `diff -u` (unified format) for readability.
+- **Orchestrator preservation (INFRA-024):** Upgrade does NOT
+  re-prompt for the `verify-quality.orchestrator` choice or any
+  other policy field. The host's existing `.cpf/policy.json` is in
+  the customizable tier and stays untouched (step 11 only seeds
+  the bundled default when the file is missing). To switch
+  orchestrator post-init, the user edits `.cpf/policy.json`
+  directly, or re-runs the init flow's discovery step. (Future
+  work: a `doctor` check that re-runs Taskfile detection without
+  writing, so the user can audit drift between the host's signals
+  and the recorded policy choice.)
 
 ### /cpf:specforge help
 
