@@ -1749,7 +1749,7 @@
         "Run `/cpf:specforge upgrade` on the cpf source repo (name=cpf in plugin.json) and verify `.specify/templates/*` remains in-tree (self-detection suppresses the reorg for the source)",
         "Run `shellcheck .claude-plugin/lib/cpf-resolve-asset.sh` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
