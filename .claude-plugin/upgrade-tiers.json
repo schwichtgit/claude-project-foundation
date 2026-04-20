@@ -1,16 +1,18 @@
 {
   "_comment": "plugin-cache lists subtrees authoritative in the plugin; never projected to hosts. Consumers read via cpf_resolve_asset. See ADR-003.",
+  "_third_party_tool_config": [
+    ".prettierignore",
+    ".markdownlint-cli2.yaml",
+    ".prettierrc.json",
+    ".gitignore"
+  ],
   "tiers": {
     "customizable": [".cpf/policy.json"],
     "overwrite": [
       ".cpf/scripts/hooks/pre-commit",
       ".cpf/scripts/hooks/commit-msg",
       ".cpf/scripts/install-hooks.sh",
-      ".markdownlint-cli2.yaml",
-      ".prettierignore",
-      ".specify/doctor-registry.json",
       ".cpf/scripts/doctor.sh",
-      ".specify/proposals/.gitkeep",
       ".github/workflows/ci-base.yml",
       "ci/gitlab/gitlab-ci-base.yml"
     ],
