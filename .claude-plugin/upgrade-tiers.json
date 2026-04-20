@@ -52,6 +52,7 @@
     "plugin-cache": [
       ".specify/templates/",
       ".specify/WORKFLOW.md",
+      ".specify/doctor-registry.json",
       "prompts/",
       "ci/principles/",
       "ci/gitlab/",

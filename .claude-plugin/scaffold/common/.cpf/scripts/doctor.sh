@@ -25,10 +25,33 @@ parse_args() {
   fi
   [[ -z "$PROJECT_DIR" ]] && PROJECT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
   if [[ -z "$REGISTRY_PATH" ]]; then
-    REGISTRY_PATH="$PROJECT_DIR/.specify/doctor-registry.json"
+    # INFRA-031: registry is no longer projected to the host; resolve
+    # via cpf-resolve-asset.sh, which checks
+    # .cpf/overrides/.specify/doctor-registry.json first and then
+    # falls back to the bundled copy in the plugin install dir.
+    REGISTRY_PATH="$(resolve_registry_path "$PROJECT_DIR")" \
+      || { echo "ERROR: cannot locate doctor-registry.json (set CLAUDE_PLUGIN_ROOT or pass --registry <path>)" >&2; exit 1; }
   elif [[ "$REGISTRY_PATH" != /* ]]; then
     REGISTRY_PATH="$PROJECT_DIR/$REGISTRY_PATH"
   fi
+}
+
+# Resolve the doctor-registry path via cpf-resolve-asset.sh.
+# Echoes the absolute path on success; returns nonzero on failure.
+# Honors CLAUDE_PROJECT_DIR for the override lookup (set explicitly
+# so the resolver looks under the host's .cpf/overrides/, not under
+# the script's invocation cwd).
+resolve_registry_path() {
+  local project_dir="$1"
+  local plugin_root="${CLAUDE_PLUGIN_ROOT:-}"
+  if [[ -z "$plugin_root" ]]; then
+    return 1
+  fi
+  local resolver="$plugin_root/lib/cpf-resolve-asset.sh"
+  if [[ ! -f "$resolver" ]]; then
+    return 1
+  fi
+  CLAUDE_PROJECT_DIR="$project_dir" bash "$resolver" .specify/doctor-registry.json 2>/dev/null
 }
 
 detect_platform() { uname -s | tr '[:upper:]' '[:lower:]'; }
