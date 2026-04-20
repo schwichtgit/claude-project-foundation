@@ -143,6 +143,57 @@ resolve_python_runner() {
     return 1
 }
 
+# INFRA-026: classify pytest exit codes in the Python branch of the legacy
+# walker. Cannot reuse run_check because run_check collapses every nonzero
+# exit into a FAIL increment, which collides with exit-code-5 SKIP/WARN
+# semantics.
+#
+#   0         -> PASS        (CHECKS_RUN++)
+#   1         -> FAIL        (stderr: "FAIL: Pytest (<rel_dir>)", FAILED++)
+#   2|3|4|*   -> INTERNAL    (stderr: "INTERNAL: Pytest (<rel_dir>) rc=<N>",
+#                            FAILED++; "any other" exit code also funnels
+#                            here)
+#   5         -> depends on $on_missing_tests:
+#                 skip -> stderr "SKIP: no tests (<rel_dir>)", no counters
+#                         other than CHECKS_RUN
+#                 warn -> stderr "WARN: no tests (<rel_dir>)", WARNINGS++
+#
+# Usage:
+#   run_pytest_classified <rel_dir> <on_missing_tests> <cmd...>
+# where <cmd...> is the full argv (resolver prefix + svc_dir + --tb=no -q).
+run_pytest_classified() {
+    local rel_dir="$1" on_missing_tests="$2"
+    shift 2
+    echo "  [check] Pytest ($rel_dir)"
+    local rc=0
+    "$@" >/dev/null 2>&1 || rc=$?
+    CHECKS_RUN=$((CHECKS_RUN + 1))
+    case "$rc" in
+        0)
+            echo "    PASS"
+            ;;
+        1)
+            echo "    FAIL: Pytest ($rel_dir)" >&2
+            FAILED=$((FAILED + 1))
+            ;;
+        5)
+            case "$on_missing_tests" in
+                warn)
+                    echo "    WARN: no tests ($rel_dir)" >&2
+                    WARNINGS=$((WARNINGS + 1))
+                    ;;
+                skip | *)
+                    echo "    SKIP: no tests ($rel_dir)" >&2
+                    ;;
+            esac
+            ;;
+        *)
+            echo "    INTERNAL: Pytest ($rel_dir) rc=$rc" >&2
+            FAILED=$((FAILED + 1))
+            ;;
+    esac
+}
+
 # ---------------------------------------------------------------------------
 # Legacy walker. Preserved from the alpha.11 hook body verbatim except for
 # the Python branch, which INFRA-025 refactored in place to use per-service
@@ -164,6 +215,20 @@ run_legacy_walk_and_detect() {
     case "$on_missing_runner" in
         warn | skip) ;;
         *) on_missing_runner="warn" ;;
+    esac
+
+    # INFRA-026: resolve on_missing_tests once for the whole walk. The
+    # fallback path (no policy loaded) defaults to skip so exit code 5
+    # behaves the same as the documented schema default.
+    local on_missing_tests="${ON_MISSING_TESTS:-skip}"
+    if [[ "$POLICY_LOADED" -eq 1 ]]; then
+        local policy_tests
+        policy_tests="$(cpf_policy_get verify-quality on_missing_tests)"
+        [[ -n "$policy_tests" ]] && on_missing_tests="$policy_tests"
+    fi
+    case "$on_missing_tests" in
+        warn | skip) ;;
+        *) on_missing_tests="skip" ;;
     esac
 
     local search_dirs=("$PROJECT_ROOT")
@@ -251,12 +316,11 @@ run_legacy_walk_and_detect() {
                             "${_CPF_RUNNER_CMD[@]}" format --check "$svc_dir"
                         ;;
                     pytest)
-                        # INFRA-026 hand-off: pytest is invoked here with
-                        # `--tb=no -q`. INFRA-026 will replace this run_check
-                        # call with explicit exit-code classification (0 PASS,
-                        # 1 FAIL, 2-4 INTERNAL FAIL, 5 SKIP/WARN per
-                        # on_missing_tests).
-                        run_check "Pytest ($rel_dir)" \
+                        # INFRA-026: classifier below maps pytest exit codes
+                        # explicitly (0 PASS, 1 FAIL, 2-4 INTERNAL FAIL, 5
+                        # SKIP/WARN per on_missing_tests). Preserves the
+                        # `--tb=no -q` flags INFRA-025 established.
+                        run_pytest_classified "$rel_dir" "$on_missing_tests" \
                             "${_CPF_RUNNER_CMD[@]}" "$svc_dir" --tb=no -q
                         ;;
                     mypy)
