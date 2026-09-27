@@ -1,13 +1,14 @@
+# CODEOWNERS -- Replace @OWNER with your GitHub username or team.
+
 # Quality gate infrastructure
-.claude-plugin/             @schwichtgit
-.claude/                    @schwichtgit
-.github/                    @schwichtgit
-scripts/hooks/              @schwichtgit
-ci/                         @schwichtgit
-.specify/memory/            @schwichtgit
+.cpf/                       @OWNER
+.claude/                    @OWNER
+.github/                    @OWNER
+ci/                         @OWNER
+.specify/memory/            @OWNER
 
 # Security-critical files
-*.pem                       @schwichtgit
-*.key                       @schwichtgit
-.env*                       @schwichtgit
-**/security*                @schwichtgit
+*.pem                       @OWNER
+*.key                       @OWNER
+.env*                       @OWNER
+**/security*                @OWNER

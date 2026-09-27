@@ -116,11 +116,14 @@ write_policy() {
 # 1. All three hooks reference cpf-policy.sh
 # ===========================================================================
 echo "=== 1. hooks reference cpf-policy.sh ==="
-HITS="$(grep -l 'cpf-policy.sh' "$FORMAT_HOOK" "$VERIFY_HOOK" "$POSTEDIT_HOOK" 2>/dev/null | wc -l | tr -d ' ')"
-if [[ "$HITS" == "3" ]]; then
-    pass "all three hooks source the policy loader"
+# verify-quality is a shim onto the checks runtime; the runtime loads the
+# policy.
+RUNTIME_VERIFY="$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/runtime/verify.sh"
+HITS="$(grep -l 'cpf-policy.sh' "$FORMAT_HOOK" "$POSTEDIT_HOOK" "$RUNTIME_VERIFY" 2>/dev/null | wc -l | tr -d ' ')"
+if [[ "$HITS" == "3" ]] && grep -q '.cpf/runtime' "$VERIFY_HOOK"; then
+    pass "format hooks and the checks runtime load the policy; Stop hook runs the runtime"
 else
-    fail "expected 3 hooks to reference cpf-policy.sh, got $HITS"
+    fail "expected policy loading in 3 places and the Stop hook to call the runtime (got $HITS)"
 fi
 
 # ===========================================================================
@@ -318,13 +321,13 @@ else
 hook:    [$HOOK_FRAGMENT]
 inline:  [$INLINE_FRAGMENT]"
 fi
-# The ci-base.yml file embeds the same loop verbatim. Verify the YAML
-# contains the loop body so a refactor cannot silently drift the two.
-if grep -qF 'while IFS= read -r glob' "$CI_BASE" \
-    && grep -qF "FRAGMENT=\"\$FRAGMENT -not -path '\$glob'\"" "$CI_BASE"; then
-    pass "ci-base.yml embeds the same exclude-loop body"
+# ci-base.yml no longer embeds its own copy of the exclude logic: it runs
+# the checks runtime, which reads the same policy the hooks read.
+if grep -qF 'bash .cpf/runtime/verify.sh --boundary ci' "$CI_BASE" \
+    && ! grep -qF 'while IFS= read -r glob' "$CI_BASE"; then
+    pass "ci-base.yml runs the checks runtime instead of an inline copy"
 else
-    fail "ci-base.yml does not embed the expected loop body"
+    fail "ci-base.yml still carries its own exclude logic"
 fi
 
 # ===========================================================================
@@ -366,7 +369,7 @@ fi
 # ===========================================================================
 # 12. Shellcheck excludes are root-relative. A project that itself lives in
 # <repo>/.claude/worktrees/<name> must not be excluded wholesale by an
-# exclude such as `*/.claude/*` (reported by accelno-cortex on alpha.12).
+# exclude such as `*/.claude/*` (reported by a CPF downstream project).
 # ===========================================================================
 echo ""
 echo "=== 12. worktree-rooted project: excludes match root-relative paths ==="
@@ -424,6 +427,39 @@ else
     fail "zero-file shellcheck pass was silent"
     printf '    %s\n' "${LAST_OUT//$'\n'/$'\n    '}"
 fi
+
+# ===========================================================================
+# 14. Python formatting uses the project's pinned ruff, never $PATH
+# ===========================================================================
+echo ""
+echo "=== 14. format-changed resolves pinned ruff ==="
+cat >"$WORKDIR/bin/ruff" <<'MOCK'
+#!/bin/bash
+echo "PATH-ruff $*" >>"${CPF_TEST_RUFF_LOG:-/dev/null}"
+exit 0
+MOCK
+chmod +x "$WORKDIR/bin/ruff"
+FIX="$(new_fixture ruffpin)"
+write_policy "$FIX" '{ "hooks": { "format-changed": { "severity": "warning" } } }'
+mkdir -p "$FIX/svc/.venv/bin"
+printf '[project]\nname = "svc"\n' >"$FIX/svc/pyproject.toml"
+cat >"$FIX/svc/.venv/bin/ruff" <<'MOCK'
+#!/bin/bash
+echo "venv-ruff $*" >>"${CPF_TEST_RUFF_LOG:-/dev/null}"
+exit 0
+MOCK
+chmod +x "$FIX/svc/.venv/bin/ruff"
+printf 'x = 1\n' >"$FIX/svc/app.py"
+(cd "$FIX" && git add svc/pyproject.toml svc/app.py && git commit -q -m init)
+echo 'y = 2' >>"$FIX/svc/app.py"
+: >"$FIX/ruff.log"
+run_hook "$FORMAT_HOOK" "$FIX" CPF_TEST_RUFF_LOG="$FIX/ruff.log"
+if grep -q '^venv-ruff format' "$FIX/ruff.log" && ! grep -q 'PATH-ruff' "$FIX/ruff.log"; then
+    pass "format-changed used svc/.venv/bin/ruff, not PATH ruff"
+else
+    fail "ruff resolution in format-changed: $(tr '\n' ';' <"$FIX/ruff.log")"
+fi
+rm -f "$WORKDIR/bin/ruff"
 
 echo ""
 echo "$PASSED of $TOTAL tests passed"

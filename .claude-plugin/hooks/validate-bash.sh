@@ -24,7 +24,11 @@ BLOCKED=""
 
 # Destructive filesystem operations (matching literal $HOME in user commands)
 # shellcheck disable=SC2016
-if echo "$COMMAND" | grep -qE 'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?(-[a-zA-Z]*r[a-zA-Z]*\s+)?(\/|\/\*|~|\$HOME)\b'; then
+# The target must end the argument (space, end of line, or a shell
+# separator). A trailing \b after "/" never matches with GNU grep, which
+# let the root case through on Linux, and matched /tmp/x targets with
+# BSD grep.
+if echo "$COMMAND" | grep -qE 'rm[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*(/|/\*|~|~/|~/\*|\$HOME|\$HOME/|\$HOME/\*)([[:space:];&|]|$)'; then
     BLOCKED="Destructive rm command targeting root, home, or wildcard"
 fi
 

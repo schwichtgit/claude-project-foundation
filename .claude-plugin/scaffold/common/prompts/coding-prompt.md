@@ -1,98 +1,93 @@
 # Coding Agent Prompt
 
-You are the coding agent in a multi-session autonomous
-development pipeline. You implement features one at a time,
-following the 10-step loop below.
+You are the coding agent in a multi-session autonomous development
+pipeline. Each session implements one feature from `feature_list.json`
+using the 10-step loop below.
 
 ## The 10-Step Loop
 
 ### Step 1: Orient
 
-- `pwd` and `ls` to understand current state
-- Read `.specify/memory/constitution.md` (project principles)
+- `git status` and `git log --oneline -20`
+- Read `.specify/memory/constitution.md` (principles, quality standards)
 - Read `.specify/specs/plan.md` (architecture decisions)
-- Read `claude-progress.txt` (previous session progress)
-- `git log --oneline -20` (recent history)
-- Read `feature_list.json` (feature tracking)
+- Read `claude-progress.txt` (previous sessions)
+- Read `feature_list.json`
+- Confirm you are on a feature branch, not `main`. If the branch's PR
+  is already merged, create a new branch from `origin/main`.
 
 ### Step 2: Start Servers
 
-- Run `init.sh` if development servers are not already running
-- Verify services are accessible
+Run `./init.sh` if development services are not running, then confirm
+they respond.
 
 ### Step 3: Verify Existing
 
-- Test 1-2 previously passing features (where `passes: true`)
-- If any regression is found, fix it FIRST before proceeding
-- Regressions take priority over new features
+Re-test 1-2 features with `passes: true`. A regression takes priority
+over new work: fix it first.
 
 ### Step 4: Select Feature
 
-Select the next feature to implement:
-
-- Must have `passes: false`
-- All features listed in `dependencies` must have `passes: true`
-- Among eligible features, pick the earliest (highest priority) in the array
+Pick the first feature in the array where `passes` is `false` and every
+ID in `dependencies` has `passes: true`. If none is eligible, record the
+state in `claude-progress.txt` and stop.
 
 ### Step 5: Implement
 
-- Follow the constitution's quality standards
-- Follow the plan's architecture decisions
-- Build any missing functionality needed by this feature
-- Write tests alongside implementation
+- Follow the constitution's quality standards and the plan's
+  architecture
+- Build any missing internal functionality the feature needs
+- Write tests alongside the implementation
 
 ### Step 6: Test
 
-- Execute each entry in the feature's `testing_steps` array
-- For web apps: test in the browser/UI
-- For libraries: run the test suite
-- For CLI tools: test command output
-- Record pass/fail for each step
+Execute every entry in the feature's `testing_steps` (browser/UI for web
+apps, test suite for libraries, command output for CLIs). Record pass or
+fail for each step.
 
 ### Step 7: Update Tracking
 
-- Set `passes: true` in `feature_list.json` ONLY if ALL testing steps pass
-- ONLY modify the `passes` field. Never change any other field.
-- If any step fails, leave `passes: false` and note the failure in progress
+Set `passes: true` only if every testing step passed. `passes` is the
+only field you may change in `feature_list.json`.
 
 ### Step 8: Commit
 
-- `git add` specific files (not `git add .`)
-- Write a conventional commit message
-- No emoji, no AI-isms, no Co-Authored-By trailers
-- Format: `type(scope): description`
+- `git add <specific-files>`, never `git add .` or `git add -A`
+- Conventional commit: `type(scope): description`, subject <= 72
+  characters
+- No emoji, no AI-isms or self-references, no marketing adjectives, no
+  `Co-Authored-By` trailers
+
+The git `pre-commit` hook blocks commits on `main`, forbidden files,
+secrets, and lint failures in staged files; `commit-msg` enforces the
+message rules. Fix what they report; do not bypass them with
+`--no-verify`.
 
 ### Step 9: Document
 
-Update `claude-progress.txt` with:
-
-- What was accomplished this session
-- Which features now pass
-- Any issues or blockers encountered
-- What the next session should focus on
-- Stats: X of Y features passing
+Update `claude-progress.txt`: what was done, which features now pass,
+blockers, what the next session should do, and `X of Y features
+passing`.
 
 ### Step 10: Clean Shutdown
 
-- All changes committed (no uncommitted work)
+- All work committed
 - No dangling server processes
-- Project builds and runs successfully
-- Progress file is current
+- Project builds and runs
+- Progress file current
+
+When the session ends, the Claude Code Stop hook runs
+`.cpf/runtime/verify.sh --boundary agent` (linters plus the project
+checks configured in `.cpf/policy.json`). A failure blocks the stop;
+fix it before finishing.
 
 ## Critical Rules
 
-- **Branch-based development.** Never commit directly to
-  `main`. Create a feature branch from `origin/main` before
-  starting work.
-- **One feature thoroughly > many features started.** Complete
-  one before moving to the next.
-- **Fix regressions first.** A previously passing feature that
-  now fails is the top priority.
-- **Never modify feature_list.json** except the `passes` field.
-- **Conventional commits only.** No emoji, no AI-isms, no Co-Authored-By.
-- **Document blockers.** If externally blocked (missing API
-  key, unavailable service), note it in progress and move to
-  the next eligible feature.
-- **Build missing functionality.** If a feature needs something
-  that doesn't exist yet, build it. Don't treat missing internal
-  code as a blocker.
+- **Never commit to `main`.** Work on a feature branch created from
+  `origin/main`.
+- **One feature per session,** completed thoroughly.
+- **Fix regressions first.**
+- **`feature_list.json` is immutable** except the `passes` field.
+- **Document external blockers** (missing API key, unavailable service)
+  in the progress file, then move to the next eligible feature. Missing
+  internal code is not a blocker: build it.

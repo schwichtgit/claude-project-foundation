@@ -15,9 +15,10 @@ permissions:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Markdown lint
+  # Lint: pin/config drift checks, then the cpf checks runtime at the ci
+  # boundary (prettier, markdownlint, shellcheck; scope from .cpf/policy.json)
   # ---------------------------------------------------------------------------
-  markdownlint:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -26,33 +27,24 @@ jobs:
           node-version: '22'
       - name: Install pinned linters (package-lock.json)
         run: npm ci
-      - name: markdownlint (pinned version, scope from .cpf/policy.json)
-        run: bash scripts/lint.sh markdownlint
+      - name: cpf checks runtime (ci boundary)
+        run: bash scripts/lint.sh
 
   # ---------------------------------------------------------------------------
-  # Prettier format check
+  # Tests
   # ---------------------------------------------------------------------------
-  prettier:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Release tags are needed by gen-known-upstream.sh --check.
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Install pinned linters (package-lock.json)
         run: npm ci
-      - name: prettier (pinned version, scope from .cpf/policy.json)
-        run: bash scripts/lint.sh prettier
-
-  # ---------------------------------------------------------------------------
-  # Shell script lint
-  # ---------------------------------------------------------------------------
-  shellcheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: shellcheck (pinned in .tool-versions, scope from .cpf/policy.json)
-        run: bash scripts/lint.sh shellcheck
       - name: Resolver-usage lint
         run: bash .claude-plugin/lib/lint-resolver-usage.sh
       - name: Namespace discipline check
@@ -87,6 +79,26 @@ jobs:
         run: bash scripts/test-upgrade.sh
       - name: Managed overwrite-tier file test
         run: bash scripts/test-managed-file.sh
+      - name: Asset resolver test
+        run: bash scripts/test-resolve-asset.sh
+      - name: Scaffold pre-commit behavior test
+        run: bash scripts/test-pre-commit.sh
+      - name: Known-upstream hashes up to date
+        run: bash scripts/gen-known-upstream.sh --check
+      - name: End-to-end upgrade from alpha.10
+        run: bash scripts/test-upgrade-e2e.sh
+      - name: Boundary parity (agent, git, ci give one verdict)
+        run: bash scripts/test-boundary-parity.sh
+      - name: Commit-rule parity (commit-msg, PR hook, CI)
+        run: bash scripts/test-commit-rules.sh
+      - name: Commit-msg hook test
+        run: bash scripts/test-commit-msg.sh
+      - name: Hook contract test
+        run: bash scripts/test-hooks.sh
+      - name: Hook JSON key test
+        run: bash scripts/test-json-keys.sh
+      - name: Scaffold quality test
+        run: bash scripts/test-scaffold-quality.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)
@@ -98,98 +110,18 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Validate commits
-        run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-
-          ERRORS=0
-          while IFS= read -r sha; do
-            MSG=$(git log --format='%s' -n 1 "$sha")
-
-            # Skip merge commits (e.g. from branch updates, Dependabot)
-            if echo "$MSG" | grep -qE '^Merge '; then
-              continue
-            fi
-
-            # Conventional commit format
-            if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
-              echo "FAIL [$sha]: Not conventional commit format: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-            # Subject length
-            if [ ${#MSG} -gt 72 ]; then
-              echo "WARN [$sha]: Subject exceeds 72 chars: $MSG"
-            fi
-
-            # Emoji
-            if echo "$MSG" | python3 -c "
-          import sys, re
-          text = sys.stdin.read()
-          pattern = re.compile('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', re.UNICODE)
-          sys.exit(0 if pattern.search(text) else 1)
-          " 2>/dev/null; then
-              echo "FAIL [$sha]: Emoji in commit message: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-            # AI-isms
-            if echo "$MSG" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
-              echo "FAIL [$sha]: AI-ism detected: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-          done < <(git rev-list "$BASE".."$HEAD")
-
-          if [ $ERRORS -gt 0 ]; then
-            echo ""
-            echo "Commit standards check failed: $ERRORS error(s)."
-            exit 1
-          fi
-      - name: Validate PR title (squash-merge subject)
-        # A squash merge uses the PR title as the commit subject on main and
-        # appends " (#N)". Hold the title to the same rules as commits, with
-        # the length budget reduced by that suffix.
+      - name: Validate commits and PR title (cpf checks runtime)
         env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
           TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          ERRORS=0
-          SUFFIX=" (#${PR_NUMBER})"
-          MAX=$((72 - ${#SUFFIX}))
-
-          if ! echo "$TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
-            echo "FAIL: PR title is not conventional commit format: $TITLE"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if [ ${#TITLE} -gt "$MAX" ]; then
-            echo "FAIL: PR title is ${#TITLE} chars; max $MAX so the squash subject (title + \"$SUFFIX\") stays within 72: $TITLE"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if echo "$TITLE" | python3 -c "
-          import sys, re
-          text = sys.stdin.read()
-          pattern = re.compile('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', re.UNICODE)
-          sys.exit(0 if pattern.search(text) else 1)
-          " 2>/dev/null; then
-            echo "FAIL: Emoji in PR title: $TITLE"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if echo "$TITLE" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
-            echo "FAIL: AI-ism in PR title: $TITLE"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if [ $ERRORS -gt 0 ]; then
-            echo ""
-            echo "PR title check failed: $ERRORS error(s). Edit the PR title to re-run."
-            exit 1
-          fi
-          echo "PASS: PR title ($TITLE)"
+          # Run both checks so every problem is reported, then fail.
+          rc=0
+          bash .cpf/runtime/commit-check.sh --range "$BASE..$HEAD" || rc=1
+          bash .cpf/runtime/commit-check.sh --title "$TITLE" --pr "$PR_NUMBER" || rc=1
+          exit "$rc"
 
   # ---------------------------------------------------------------------------
   # Plugin validation
@@ -253,19 +185,17 @@ jobs:
   # ---------------------------------------------------------------------------
   summary:
     if: always()
-    needs:
-      [markdownlint, prettier, shellcheck, commit-standards, plugin-validation]
+    needs: [lint, tests, commit-standards, plugin-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check results
         run: |
-          echo "Markdown:  ${{ needs.markdownlint.result }}"
-          echo "Prettier:  ${{ needs.prettier.result }}"
-          echo "Shell:     ${{ needs.shellcheck.result }}"
-          echo "Commits:   ${{ needs.commit-standards.result }}"
-          echo "Plugin:    ${{ needs.plugin-validation.result }}"
+          echo "Lint:     ${{ needs.lint.result }}"
+          echo "Tests:    ${{ needs.tests.result }}"
+          echo "Commits:  ${{ needs.commit-standards.result }}"
+          echo "Plugin:   ${{ needs.plugin-validation.result }}"
 
-          for result in "${{ needs.markdownlint.result }}" "${{ needs.prettier.result }}" "${{ needs.shellcheck.result }}" "${{ needs.commit-standards.result }}" "${{ needs.plugin-validation.result }}"; do
+          for result in "${{ needs.lint.result }}" "${{ needs.tests.result }}" "${{ needs.commit-standards.result }}" "${{ needs.plugin-validation.result }}"; do
             if [[ "$result" == "failure" ]]; then
               echo "One or more checks failed."
               exit 1

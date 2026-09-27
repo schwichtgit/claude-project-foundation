@@ -1,10 +1,12 @@
-# Quality gate infrastructure
+# Plugin, runtime, and quality gate infrastructure
 .claude-plugin/             @schwichtgit
 .claude/                    @schwichtgit
+.cpf/                       @schwichtgit
 .github/                    @schwichtgit
-scripts/hooks/              @schwichtgit
-ci/                         @schwichtgit
-.specify/memory/            @schwichtgit
+scripts/                    @schwichtgit
+.tool-versions              @schwichtgit
+package.json                @schwichtgit
+package-lock.json           @schwichtgit
 
 # Security-critical files
 *.pem                       @schwichtgit

@@ -1,9 +1,9 @@
 # CODEOWNERS -- Replace @OWNER with your GitHub username or team.
 
 # Quality gate infrastructure
+.cpf/                       @OWNER
 .claude/                    @OWNER
 .github/                    @OWNER
-scripts/hooks/              @OWNER
 ci/                         @OWNER
 .specify/memory/            @OWNER
 

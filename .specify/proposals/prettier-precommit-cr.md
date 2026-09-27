@@ -1,6 +1,6 @@
 # CPF Change Request: Add prettier auto-format to pre-commit hook
 
-**Source project:** Accelno/accelno-approval-portal
+**Source project:** a CPF downstream project
 **Date:** 2026-04-14
 **Author:** Frank Schwichtenberg
 
@@ -57,5 +57,4 @@ need prettier, while only `yml`/`yaml` need the YAML syntax
 check. The YAML check is guarded by an extension conditional
 inside the merged case.
 
-**Workaround applied:** accelno-approval-portal commit 11d2496
-on branch `fix/cicd-orchestrator-alignment`.
+**Workaround applied:** locally in the downstream project.

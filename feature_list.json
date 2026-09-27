@@ -640,9 +640,9 @@
       "title": "install-hooks.sh Script",
       "description": "Shell script that copies git hooks from scripts/hooks/ to .git/hooks/ and makes all Claude Code hooks (.claude/hooks/*.sh) executable. Idempotent and safe to run multiple times.",
       "testing_steps": [
-        "Verify `test -f scripts/install-hooks.sh` exits 0",
-        "Verify `test -x scripts/install-hooks.sh` exits 0 (script is executable)",
-        "Run `bash -n scripts/install-hooks.sh` and verify exit code is 0",
+        "Verify `test -f .claude-plugin/scaffold/common/.cpf/scripts/install-hooks.sh` exits 0",
+        "Verify `test -x .claude-plugin/scaffold/common/.cpf/scripts/install-hooks.sh` exits 0 (script is executable)",
+        "Run `bash -n .claude-plugin/scaffold/common/.cpf/scripts/install-hooks.sh` and verify exit code is 0",
         "Run the script in a git repository and verify `.git/hooks/pre-commit` exists and is executable",
         "Run the script in a git repository and verify `.git/hooks/commit-msg` exists and is executable",
         "Verify stdout contains 'Installed: pre-commit' and 'Installed: commit-msg'",

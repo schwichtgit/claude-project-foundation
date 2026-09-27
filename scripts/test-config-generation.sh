@@ -85,7 +85,7 @@ fi
 # writer). Determinism is enforced by check-config-determinism.sh.
 # Generated content is sanity-checked here against a stable marker
 # from the bundled policy's exclude list.
-if grep -qF 'claude-project-foundation-PLAN.md' "$FIX/.prettierignore"; then
+if grep -qxF 'PLAN.md' "$FIX/.prettierignore"; then
     pass ".prettierignore reflects bundled policy exclude list"
 else
     fail ".prettierignore missing bundled-policy marker entry"
@@ -237,9 +237,9 @@ cp "$REPO_ROOT/.claude-plugin/scaffold/common/.prettierrc.json" "$FIX/.prettierr
 
 # Drop a parser-applicable file matching one of the generated ignores so
 # we exercise the file as an ignore-list, not as a parser input. The
-# bundled prettier exclude list contains "claude-project-foundation-PLAN.md";
+# bundled prettier exclude list contains "PLAN.md";
 # prettier --check should silently skip it and exit 0.
-printf '# placeholder\n' >"$FIX/claude-project-foundation-PLAN.md"
+printf '# placeholder\n' >"$FIX/PLAN.md"
 
 set +e
 PRETTIER_OUT="$(cd "$FIX" && npx --no-install prettier@3 --check . 2>&1)"

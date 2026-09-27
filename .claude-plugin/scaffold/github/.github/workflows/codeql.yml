@@ -11,6 +11,8 @@ on:
 permissions:
   security-events: write
   contents: read
+  # Needed by the analyze step in private repositories.
+  actions: read
 
 jobs:
   analyze:

@@ -1,59 +1,48 @@
 # Initializer Agent
 
-First-session agent for the two-agent autonomous execution pattern. Sets up
-the project structure and validates spec artifacts. Does NOT implement features.
+First-session agent for the two-agent execution pattern. Validates the
+spec artifacts and creates the project foundation. Does NOT implement
+features. The full task list is the initializer prompt provided by the
+cpf plugin (override at `.cpf/overrides/prompts/initializer-prompt.md`);
+this file is its summary.
 
 ## Prerequisites
 
-Before starting, verify that all spec artifacts exist:
+- `.specify/memory/constitution.md`
+- `.specify/specs/spec.md`
+- `.specify/specs/plan.md`
+- `feature_list.json`
 
-- `.specify/memory/constitution.md` -- project principles
-- `.specify/specs/spec.md` -- feature specification
-- `.specify/specs/plan.md` -- technical plan with ADRs
-- `feature_list.json` -- machine-readable feature list
+If any is missing, stop and name the `/cpf:specforge` sub-command to run
+(`constitution`, `spec`, `plan`, or `features`).
 
-If any artifact is missing, stop and instruct the user to run the appropriate
-`/cpf:specforge` sub-command first.
+## Tasks
 
-## Workflow
+1. **Read** the constitution, spec, plan, and `feature_list.json`.
+2. **Validate `feature_list.json`:** unique kebab-case IDs; category in
+   `infrastructure|functional|style|testing`; at least 3
+   `testing_steps` each; dependencies resolve and form no cycle; every
+   `passes` is `false`. Report problems; do not rewrite features.
+3. **Create `init.sh`:** idempotent; installs dependencies, runs
+   migrations, starts services; works on macOS and Linux.
+4. **Create the project structure** per the plan, with `README.md` and
+   a stack-appropriate `.gitignore`. No feature logic.
+5. **Run `./init.sh`** and confirm it succeeds.
+6. **Update `claude-progress.txt`:** session type, files created,
+   issues, readiness for the coder agent.
+7. **Commit** on a branch (for example `chore/init`) with
+   `chore: initialize project structure`, leaving no uncommitted
+   changes.
 
-1. **Read all spec artifacts.** Load constitution.md, spec.md, plan.md, and
-   feature_list.json. Understand the project scope, architecture, and
-   feature set.
+## Rules
 
-2. **Validate feature_list.json.** Check that:
-   - All features have valid kebab-case IDs
-   - Categories are one of: infrastructure, functional, style, testing
-   - Every feature has at least 3 testing steps
-   - Dependencies reference existing feature IDs
-   - No dependency cycles exist
-   - All `passes` fields are `false` (no features should be pre-passed)
-
-3. **Create init.sh.** Generate a setup script that:
-   - Installs project dependencies (npm install, pip install, cargo build, etc.)
-   - Creates required directories
-   - Runs any one-time setup commands from plan.md
-   - Is idempotent (safe to run multiple times)
-
-4. **Initialize project structure.** Create directories and configuration
-   files as specified in plan.md. Do not implement any feature logic.
-
-5. **Run init.sh.** Execute the setup script and verify it completes without
-   errors.
-
-6. **Commit scaffolding.** Use `git add <specific-files>` (not `git add .`)
-   and commit with message: `chore: initialize project structure`
-
-7. **Write session summary.** Create or update `claude-progress.txt` with:
-   - Date and session type (initializer)
-   - List of files created
-   - Any issues encountered
-   - Confirmation that the project is ready for the coding agent
-
-## Constraints
-
-- Do NOT implement features. Only create scaffolding and configuration.
-- Do NOT use `git add .` or `git add -A`. Always add specific files.
-- Do NOT use emoji in commit messages.
-- Do NOT include Co-Authored-By trailers.
-- Follow conventional commit format.
+- Never commit to `main`; the git `pre-commit` hook blocks it.
+  `CPF_ALLOW_MAIN_COMMIT=1` is acceptable only when the repository has
+  no commits yet.
+- `feature_list.json` is immutable except `passes`.
+- `git add <specific-files>`; never `git add .` or `git add -A`.
+- Conventional commit format, no emoji, no AI-isms, no
+  `Co-Authored-By` trailers. `commit-msg` enforces this.
+- Do not bypass hooks with `--no-verify`. The Stop hook runs
+  `.cpf/runtime/verify.sh --boundary agent` and blocks the stop on
+  failure; fix what it reports.

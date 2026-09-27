@@ -1,55 +1,57 @@
 # PR Gate
 
-All commit gate checks apply to every commit in the PR, plus the following.
+Every commit in the PR passes the commit gate, plus the following.
 
-## 1. Type Checking
+## Enforced by cpf
 
-Full type checker per language:
+### 1. Commit Standards
 
-| Language   | Command             |
-| ---------- | ------------------- |
-| TypeScript | `tsc --noEmit`      |
-| Python     | `mypy` or `pyright` |
-| Rust       | `cargo check`       |
-| Go         | `go build ./...`    |
+CI runs `.cpf/runtime/commit-check.sh --range <base>..<head>` over every
+non-merge commit in the PR.
 
-## 2. Test Suite
+### 2. PR Title and Description
 
-Full test suite passes with zero failures.
+The PR title becomes the squash-merge subject, so it must:
 
-## 3. Code Coverage
+- Match the conventional commit format
+- Fit in 72 characters including the " (#N)" suffix GitHub appends
+  (a title over the limit is an error, not a warning)
+- Pass the commit gate's prose rules
 
-Coverage >= configurable threshold (default 85%). Report
-coverage delta from base branch.
+The description must pass the prose rules too. In Claude Code sessions
+the `validate-pr` hook checks title and description on `gh pr create`;
+CI re-checks the title.
 
-## 4. Static Analysis
+### 3. Static Linters
 
-| Language   | Commands                                        |
-| ---------- | ----------------------------------------------- |
-| TypeScript | ESLint                                          |
-| Python     | Ruff lint + Ruff format check                   |
-| Rust       | `cargo clippy -D warnings`, `cargo fmt --check` |
-| Shell      | ShellCheck                                      |
-| Go         | `go vet`                                        |
+`.cpf/runtime/verify.sh --boundary ci` runs Prettier, markdownlint, and
+ShellCheck over the file sets in `.cpf/policy.json`.
 
-## 5. Format Check
+### 4. Project Checks (Claude Code sessions)
 
-| Language                    | Formatter   |
-| --------------------------- | ----------- |
-| JS/TS/JSON/CSS/HTML/YAML/MD | Prettier    |
-| Python                      | Ruff format |
-| Rust                        | `cargo fmt` |
-| Shell                       | shfmt       |
-| Go                          | gofmt       |
+The Stop hook runs `.cpf/runtime/verify.sh --boundary agent`, which adds
+the `verify-quality` orchestrator set in `.cpf/policy.json`:
 
-## 6. Build Verification
+| `orchestrator` | Runs                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `none`         | Built-in walk: ESLint, `tsc --noEmit`, `npm test`; Ruff, mypy, pytest; `cargo check`, Clippy; `go vet`, `go test` |
+| `task`         | `task lint` (failure blocks) and `task test` (failure warns)                                                      |
+| `custom`       | `custom_command` via `sh -c`; `severity` decides block or warn                                                    |
 
-Project builds successfully in a clean environment.
+A failure blocks the session from stopping until it is fixed. These
+checks do not run in CI unless the project's CI workflow adds them.
 
-## 7. No Merge Conflicts
+## Project Responsibility
 
-No unresolved merge conflict markers in any file.
+cpf does not enforce the following. Add them to the project's CI
+workflow:
 
-## 8. Commit Standards
-
-Every commit in the PR passes all commit gate checks.
+- **Type checking:** `tsc --noEmit`, `mypy` or `pyright`, `cargo check`,
+  `go build ./...`
+- **Full test suite** with zero failures
+- **Code coverage** against the threshold in the constitution
+- **Format checks** across the whole tree: `cargo fmt --check`,
+  `shfmt`, and Ruff format / `gofmt` (cpf checks those two on staged
+  files only)
+- **Build** in a clean environment
+- **No merge conflict markers** in any file

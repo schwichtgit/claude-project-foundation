@@ -8,7 +8,7 @@
   },
   "scripts": {
     "format": "bash scripts/lint.sh --fix prettier markdownlint",
-    "format:check": "bash scripts/lint.sh prettier markdownlint",
+    "format:check": "bash scripts/lint.sh",
     "lint": "bash scripts/lint.sh"
   }
 }

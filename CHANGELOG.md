@@ -5,6 +5,142 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-alpha.14] - 2026-09-27
+
+One checks runtime for every boundary, and a safe upgrade path from
+alpha.10. Upgrade to this release rather than alpha.12 or alpha.13.
+
+cpf's checks used to be implemented separately in the Claude Code hooks,
+the git hooks, and each CI template (shellcheck in six places, prettier
+in five, the commit rules in four), and the copies had drifted. They
+now live once, in a runtime projected into each project at
+`.cpf/runtime/`:
+
+- `verify.sh --boundary agent|git|ci [--staged]` runs every check.
+- `commit-check.sh` holds the commit and PR rules.
+
+The Claude Code Stop and PR hooks, the git `pre-commit` and
+`commit-msg` hooks, and the GitHub, GitLab, and Jenkins templates only
+call these, so a change that passes at one boundary passes at the next
+(tested per boundary).
+
+### Behavior changes (read before upgrading)
+
+- **Each project runs the runtime it committed.** The plugin hooks use
+  the project's `.cpf/runtime/`. A plugin update changes nothing in a
+  project until that project runs `/cpf:specforge upgrade` and merges
+  the result; the Stop hook prints a one-line note when the plugin
+  ships a newer runtime. Projects without `.cpf/runtime/` use the copy
+  bundled with the plugin.
+- **The Stop hook and `pre-commit` also run prettier and markdownlint**
+  when `.cpf/policy.json` has a section for them, as CI always did.
+  Without a section, the tool is not run. A project with existing
+  markdown or formatting debt will have Stop blocked until it is fixed;
+  set `"severity": "warning"` on that tool's policy section to report
+  instead of block while the debt is paid down. The Stop hook checks
+  tracked and untracked (not ignored) files, so a stray scratch file
+  can block too; `pre-commit` checks only staged content.
+- **CI fails when a linter the policy needs is not installed** instead of
+  passing by skipping it. Locally (Stop, `pre-commit`) a missing tool is
+  a warning.
+- **CI templates** have one `checks` job instead of separate
+  markdownlint, prettier, and shellcheck jobs; `summary` is still the
+  only job to require. Node linters come from `package-lock.json` when
+  present. Put project-specific jobs in the host `ci.yml` /
+  `.gitlab-ci.yml` / Jenkinsfile stage marker, not in the managed base
+  file.
+- **Release templates** check the tag against `.claude-plugin/plugin.json`
+  and attach a plugin tarball only when that manifest exists; other
+  projects no longer fail every tag build.
+- **Scaffold CODEOWNERS and issue templates** are project-neutral
+  (`@OWNER` placeholder) instead of copies of this repository's own.
+- The runtime never lints its own files under `.cpf/runtime/`.
+
+### Upgrading from 0.1.0-alpha.10, alpha.12, or alpha.13
+
+1. Update the plugin: `claude plugin update cpf@specforge`, then
+   `/reload-plugins` in open sessions.
+2. On a clean branch, run `/cpf:specforge upgrade`.
+   - The runtime arrives as new files under `.cpf/runtime/`.
+   - Git hooks from alpha.10 at `scripts/hooks/`,
+     `scripts/install-hooks.sh`, and `scripts/doctor.sh` are adopted
+     to their `.cpf/scripts/` paths, local edits included. The old
+     files are listed as no longer used.
+   - Managed files that match any released cpf version are upgraded
+     without a prompt. Files with local edits show the diff and
+     `[keep/replace]`, defaulting to keep. The new version goes to
+     `.cpf/pending/<path>`.
+   - Answer the CI platform prompt, and accept or reject each
+     review-tier diff.
+3. Merge what you want from `.cpf/pending/` by hand, then delete it.
+   A kept `pre-commit`, `commit-msg`, or CI base file does not call the
+   runtime until you merge the new version; for alpha.10 projects the
+   new `pre-commit` already includes the `.env` template and ruff
+   fixes. Re-run `.cpf/scripts/install-hooks.sh` after changing a hook.
+4. Review `git diff`, run lint and tests, commit, and open a PR.
+
+### Fixed
+
+- Upgrade adopts files that moved between releases
+  (`upgrade-tiers.json` `relocations`). A project's edited
+  `scripts/hooks/pre-commit` is no longer silently replaced by a fresh
+  `.cpf/scripts/hooks/pre-commit`.
+- Without a cached baseline, a managed file that matches a released cpf
+  version is treated as untouched and upgraded without prompting
+  (`lib/cpf-known-upstream.json`, generated from the release tags by
+  `scripts/gen-known-upstream.sh`; CI fails when it is stale).
+- Scaffold `pre-commit`:
+  - `.env.sample`, `.env.example`, `.env.template`, and `.env.dist`
+    can be committed.
+  - The YAML check prefers the project's `.venv` python and skips when
+    PyYAML is unavailable instead of failing every YAML file.
+  - ruff resolves the project's pinned copy (`.venv`, else
+    `uv run --frozen`), never `$PATH`, and runs `format --check` as CI
+    does.
+
+  Reported by a CPF downstream project.
+
+- The per-edit formatter resolves ruff, black, and autopep8 the same
+  way instead of using `$PATH`.
+- `ci/gitlab/gitlab-ci-base.yml` is upgraded again. It was also
+  covered by the plugin-cache prefix `ci/gitlab/`, which upgrade skips.
+- The `commit-msg` emoji check never ran: its argument was parsed as a
+  separate command after the heredoc. Identifiers and paths that
+  contain the product name (`CLAUDE_PROJECT_DIR`, `.claude/`) no
+  longer count as a standalone mention.
+- The Bash guard (`validate-bash.sh`) did not block `rm -rf /` on Linux:
+  its pattern ended in `\b` right after `/`, which GNU grep never
+  matches, while other greps also blocked ordinary paths such as
+  `/tmp/build`. Targets must now end the argument.
+- The scaffold GitHub CI never started in repositories with GitHub's
+  restricted default token: `ci-base.yml` asked for `pull-requests:
+read`, more than the calling `ci.yml` granted, so every run ended in
+  `startup_failure`. The base now asks only for `contents: read`, and
+  the host `ci.yml` grants it explicitly. Projects that keep a local
+  `ci-base.yml` should drop that line too.
+- Scaffold `codeql.yml` grants `actions: read`; without it the analyze
+  step failed in private repositories.
+- Scaffold `dependabot.yml` enables only GitHub Actions by default; npm,
+  pip, cargo, and gomod are opt-in (an ecosystem without its manifest
+  failed every Dependabot run).
+- The scaffold host `ci.yml` re-runs on PR title edits, so a corrected
+  title clears commit-standards.
+- At the ci boundary the runtime lints committed files only; installed
+  dependencies (`node_modules/`) and build output are never in scope.
+- Commit-standards jobs run both the commit and the PR-title check and
+  report every problem before failing.
+- The upgrade migration no longer reports untouched copies of
+  `prompts/`, `.specify/WORKFLOW.md`, or `ci/principles/` as customized
+  when they match a released version.
+- `install-hooks.sh` works in git worktrees and honors `core.hooksPath`
+  (it assumed `.git/` is a directory).
+- `.cpf/pending/` ignores itself (`.cpf/pending/.gitignore`), so merge
+  aids never reach commits or lint scope.
+- The asset resolver, `doctor.sh`, and the skill's commands resolve
+  plugin files from the install root that Claude Code sets.
+  `cpf_resolve_asset` previously failed for every template when the
+  variable was set.
+
 ## [0.1.0-alpha.13] - 2026-09-27
 
 Upgrade safety: `/cpf:specforge upgrade` no longer discards local

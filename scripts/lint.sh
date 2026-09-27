@@ -1,52 +1,35 @@
 #!/bin/bash
 # Static lint for the cpf source repo: one entry point for CI, the release
-# workflow, and local runs (`npm run lint`).
+# workflow, and local runs (`npm run lint`, `npm run format`).
 #
-#   scripts/lint.sh [--fix] [prettier|markdownlint|shellcheck ...]
+#   scripts/lint.sh           drift checks, then the cpf checks runtime
+#                             (`.cpf/runtime/verify.sh --boundary ci`)
+#   scripts/lint.sh --fix     prettier --write and markdownlint-cli2 --fix
+#                             over the runtime's policy file sets
 #
-# Default: all three tools, check only. --fix runs prettier --write and
-# markdownlint-cli2 --fix over the same file sets (shellcheck has no fix).
-#
-# Three rules make local and CI results identical:
-#   1. Pins. prettier and markdownlint-cli2 run from node_modules and must
-#      match the exact versions in package-lock.json; shellcheck runs via
-#      scripts/shellcheck.sh at the version in .tool-versions. A drifted or
-#      missing install fails by name before any file is linted.
-#   2. Policy. Each tool's file set is `git ls-files` (tracked plus
-#      untracked-not-ignored) filtered by that tool's include/exclude globs
-#      in .cpf/policy.json. No path rules live in workflow YAML.
-#   3. Generated configs. .prettierignore, .markdownlint-cli2.yaml, and
+# The checks themselves are the runtime's -- the same code downstream
+# projects run in their hooks and CI. This wrapper adds what only this
+# repo needs, failing by name before anything is linted:
+#   1. Pins. prettier and markdownlint-cli2 in node_modules must match the
+#      exact versions in package.json and package-lock.json; shellcheck
+#      must match .tool-versions.
+#   2. Generated configs. .prettierignore, .markdownlint-cli2.yaml, and
 #      .cpf/shellcheck-excludes.txt must equal what cpf-generate-configs.sh
-#      produces from .cpf/policy.json, so editors and hooks that read the
-#      native configs see the same scope.
+#      produces from .cpf/policy.json.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
-
-export CPF_POLICY_FILE="$REPO_ROOT/.cpf/policy.json"
-# shellcheck source=../.claude-plugin/lib/cpf-policy.sh
-# shellcheck disable=SC1091
-source "$REPO_ROOT/.claude-plugin/lib/cpf-policy.sh"
-# Shared glob semantics with the hooks (_cpf_glob_match).
-# shellcheck source=../.claude-plugin/hooks/_formatter-dispatch.sh
-# shellcheck disable=SC1091
-source "$REPO_ROOT/.claude-plugin/hooks/_formatter-dispatch.sh"
+RUNTIME="$REPO_ROOT/.cpf/runtime"
 
 FAILED=0
-
 fail() {
     echo "FAIL: $*" >&2
     FAILED=$((FAILED + 1))
 }
 
-# --- Pins ------------------------------------------------------------------
-
-# Compare node_modules/<pkg> against package.json (must be an exact version)
-# and package-lock.json.
 check_node_pin() {
-    local pkg="$1"
-    local declared locked installed
+    local pkg="$1" declared locked installed
     declared="$(jq -r --arg p "$pkg" '.devDependencies[$p] // empty' package.json)"
     locked="$(jq -r --arg p "node_modules/$pkg" '.packages[$p].version // empty' package-lock.json)"
     installed="$(jq -r '.version // empty' "node_modules/$pkg/package.json" 2>/dev/null || true)"
@@ -76,12 +59,11 @@ check_shellcheck_pin() {
     echo "pin: shellcheck $installed"
 }
 
-# --- Generated configs --------------------------------------------------------
-
 check_generated_configs() {
     local tmp f rc=0
     tmp="$(mktemp -d)"
-    bash .claude-plugin/lib/cpf-generate-configs.sh --project-dir "$tmp" >/dev/null
+    CPF_POLICY_FILE="$REPO_ROOT/.cpf/policy.json" \
+        bash .claude-plugin/lib/cpf-generate-configs.sh --project-dir "$tmp" >/dev/null
     for f in .prettierignore .markdownlint-cli2.yaml .cpf/shellcheck-excludes.txt; do
         if ! cmp -s "$tmp/$f" "$f"; then
             fail "$f is out of sync with .cpf/policy.json (regenerate:" \
@@ -94,130 +76,44 @@ check_generated_configs() {
     return "$rc"
 }
 
-# --- Policy file sets --------------------------------------------------------
-
-# Print (NUL-separated) the repo files selected by <tool>'s include/exclude.
-policy_files() {
-    local tool="$1"
-    local includes=() excludes=() glob f matched
-    while IFS= read -r glob; do
-        [[ -n "$glob" ]] && includes+=("$glob")
-    done < <(cpf_policy_list "$tool" include)
-    while IFS= read -r glob; do
-        [[ -n "$glob" ]] && excludes+=("$glob")
-    done < <(cpf_policy_list "$tool" exclude)
-    if [[ "${#includes[@]}" -eq 0 ]]; then
-        echo "lint.sh: .cpf/policy.json declares no include globs for $tool" >&2
-        return 1
-    fi
-
-    while IFS= read -r -d '' f; do
-        [[ -f "$f" ]] || continue
-        matched=0
-        for glob in "${includes[@]}"; do
-            if _cpf_glob_match "$f" "$glob"; then
-                matched=1
-                break
-            fi
-        done
-        [[ "$matched" -eq 1 ]] || continue
-        for glob in "${excludes[@]}"; do
-            if _cpf_glob_match "$f" "$glob"; then
-                matched=0
-                break
-            fi
-        done
-        [[ "$matched" -eq 1 ]] && printf '%s\0' "$f"
-    done < <(git ls-files -z --cached --others --exclude-standard)
+run_fix() {
+    export CPF_PROJECT_ROOT="$REPO_ROOT" CPF_POLICY_FILE="$REPO_ROOT/.cpf/policy.json"
+    # shellcheck source=../.cpf/runtime/lib/cpf-policy.sh
+    # shellcheck disable=SC1091
+    source "$RUNTIME/lib/cpf-policy.sh"
+    # shellcheck source=../.cpf/runtime/lib/cpf-tools.sh
+    # shellcheck disable=SC1091
+    source "$RUNTIME/lib/cpf-tools.sh"
+    # shellcheck disable=SC2034  # read by cpf_tool_files (sourced)
+    POLICY_LOADED=1
+    local files=() f
+    while IFS= read -r -d '' f; do files+=("$f"); done < <(cpf_tool_files prettier all)
+    [[ "${#files[@]}" -gt 0 ]] && node_modules/.bin/prettier --write "${files[@]}"
+    files=()
+    while IFS= read -r -d '' f; do files+=("$f"); done < <(cpf_tool_files markdownlint all)
+    [[ "${#files[@]}" -gt 0 ]] && node_modules/.bin/markdownlint-cli2 --fix "${files[@]/#/:}"
+    return 0
 }
 
-# --- Runners -----------------------------------------------------------------
-
-run_tool() {
-    local tool="$1"
-    local files=()
-    local f
-    while IFS= read -r -d '' f; do
-        files+=("$f")
-    done < <(policy_files "$tool")
-
-    echo ""
-    echo "=== $tool (${#files[@]} files) ==="
-    if [[ "${#files[@]}" -eq 0 ]]; then
-        return 0
-    fi
-
-    local rc=0
-    case "$tool" in
-        prettier)
-            if [[ "$FIX" -eq 1 ]]; then
-                node_modules/.bin/prettier --write "${files[@]}" || rc=$?
-            else
-                node_modules/.bin/prettier --check "${files[@]}" || rc=$?
-            fi
-            ;;
-        markdownlint)
-            # A leading ':' makes markdownlint-cli2 treat each argument as a
-            # literal path rather than a glob.
-            if [[ "$FIX" -eq 1 ]]; then
-                node_modules/.bin/markdownlint-cli2 --fix "${files[@]/#/:}" || rc=$?
-            else
-                node_modules/.bin/markdownlint-cli2 "${files[@]/#/:}" || rc=$?
-            fi
-            ;;
-        shellcheck)
-            bash scripts/shellcheck.sh -x "${files[@]}" || rc=$?
-            ;;
-    esac
-    if [[ "$rc" -ne 0 ]]; then
-        fail "$tool (rc=$rc)"
-    fi
-}
-
-# --- Main --------------------------------------------------------------------
-
-FIX=0
 if [[ "${1:-}" == "--fix" ]]; then
-    FIX=1
-    shift
-fi
-TOOLS=("$@")
-if [[ "${#TOOLS[@]}" -eq 0 ]]; then
-    TOOLS=(prettier markdownlint shellcheck)
+    run_fix
+    exit 0
 fi
 
-PINS_OK=1
-for tool in "${TOOLS[@]}"; do
-    # A tool with no include globs would select zero files and pass
-    # silently; treat a missing scope as a failure.
-    if [[ -z "$(cpf_policy_list "$tool" include 2>/dev/null || true)" ]]; then
-        fail "$tool: .cpf/policy.json declares no include globs"
-        PINS_OK=0
-    fi
-    case "$tool" in
-        prettier) check_node_pin prettier || PINS_OK=0 ;;
-        markdownlint) check_node_pin markdownlint-cli2 || PINS_OK=0 ;;
-        shellcheck) check_shellcheck_pin || PINS_OK=0 ;;
-        *)
-            echo "lint.sh: unknown tool \"$tool\" (prettier|markdownlint|shellcheck)" >&2
-            exit 2
-            ;;
-    esac
-done
-check_generated_configs || PINS_OK=0
-if [[ "$PINS_OK" -eq 0 ]]; then
+check_node_pin prettier || true
+check_node_pin markdownlint-cli2 || true
+check_shellcheck_pin || true
+check_generated_configs || true
+if [[ "$FAILED" -gt 0 ]]; then
     echo "" >&2
     echo "Lint aborted: tool pins or generated configs are out of sync." >&2
     exit 1
 fi
 
-for tool in "${TOOLS[@]}"; do
-    run_tool "$tool"
-done
-
 echo ""
-if [[ "$FAILED" -gt 0 ]]; then
-    echo "Lint FAILED ($FAILED)." >&2
+if CLAUDE_PROJECT_DIR="$REPO_ROOT" bash "$RUNTIME/verify.sh" --boundary ci; then
+    echo "Lint passed."
+else
+    echo "Lint FAILED." >&2
     exit 1
 fi
-echo "Lint passed."

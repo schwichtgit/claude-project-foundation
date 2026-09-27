@@ -1,34 +1,34 @@
 # Release Gate
 
-All PR gate checks apply, plus the following.
+The PR gate applies, plus the checks below. cpf enforces none of them;
+they are a checklist for the project's release workflow.
 
 ## 1. Dependency Audit
+
+No high or critical vulnerabilities:
 
 | Ecosystem | Command                 |
 | --------- | ----------------------- |
 | Node.js   | `npm audit`             |
 | Python    | `pip-audit` or `safety` |
 | Rust      | `cargo audit`           |
-
-No high or critical vulnerabilities allowed.
+| Go        | `govulncheck ./...`     |
 
 ## 2. License Compliance
 
-All dependencies must use approved licenses:
-
-**Approved:** MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, Unlicense
-
-**Flag for manual review:** GPL, AGPL, LGPL, unknown
+- **Approved:** MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD,
+  Unlicense
+- **Manual review:** GPL, AGPL, LGPL, unknown
 
 ## 3. Changelog Entry
 
-CHANGELOG.md entry must exist for the version being released.
-Use [Keep a Changelog](https://keepachangelog.com/) format.
+`CHANGELOG.md` has an entry for the released version, in
+[Keep a Changelog](https://keepachangelog.com/) format.
 
 ## 4. Version Bump
 
-Version must be incremented from previous release.
-Use [SemVer](https://semver.org/) format.
+The version is incremented from the previous release, following
+[SemVer](https://semver.org/).
 
 ## 5. Clean Dependency Tree
 

@@ -1,93 +1,43 @@
-# GitLab CI Mapping Guide
+# GitLab CI Guide
 
-This guide maps the abstract SDLC principles to GitLab CI
-configuration. A fully templated `.gitlab-ci.yml` is provided at
-`.claude-plugin/scaffold/gitlab/.gitlab-ci.yml` with equivalent
-quality gates to the GitHub Actions CI workflow.
+GitLab CI for a cpf project uses two files:
 
-## Mapping
+| File                           | Upgrade tier | Owner                             |
+| ------------------------------ | ------------ | --------------------------------- |
+| `.gitlab-ci.yml`               | skip         | Project; upgrade never touches    |
+| `ci/gitlab/gitlab-ci-base.yml` | overwrite    | cpf; included by `.gitlab-ci.yml` |
 
-| Abstract Concept  | GitLab CI Equivalent                                   |
-| ----------------- | ------------------------------------------------------ |
-| Commit gate       | Pipeline stages with `rules: changes`                  |
-| PR gate           | Merge request pipelines                                |
-| Release gate      | Tagged pipelines (`rules: if: $CI_COMMIT_TAG =~ /^v/`) |
-| Path filtering    | `rules: changes: [paths]`                              |
-| Required checks   | Merge request approvals + pipeline success             |
-| CODEOWNERS        | GitLab CODEOWNERS format (same syntax)                 |
-| Branch protection | Protected branches settings                            |
+Every check runs through the cpf checks runtime in `.cpf/runtime/`,
+the same code as the Claude Code Stop hook and the git pre-commit hook,
+so a change that passes locally passes in CI. The files each linter
+covers come from `.cpf/policy.json`; tool versions come from
+`package-lock.json` (prettier, markdownlint-cli2) and `.tool-versions`
+(shellcheck). At the CI boundary a linter the policy needs but cannot
+be found fails the job instead of being skipped.
 
-## Pipeline Overview
+## Pipeline
 
-The `.gitlab-ci.yml` defines three stages:
+Stages: `lint -> test -> release`. Default image:
+`node:${NODE_VERSION}-slim` (`NODE_VERSION` is `22`).
 
-```text
-lint -> test -> release
-```
+| Job                | Stage   | Runs on                   | Does                                                                                                                       |
+| ------------------ | ------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `checks`           | lint    | MRs, default branch, tags | `npm ci` (or unpinned `prettier@3 markdownlint-cli2` without a lockfile), then `bash .cpf/runtime/verify.sh --boundary ci` |
+| `commit-standards` | lint    | MRs only                  | Fetches the target branch, runs `commit-check.sh --range` over the MR commits and `--title` on the MR title                |
+| `summary`          | test    | MRs, default branch, tags | Terminal merge-gate job; `needs` the lint jobs (`optional: true`)                                                          |
+| `release`          | release | tags matching `v*`        | Compares the tag with `.claude-plugin/plugin.json`; skips when no plugin manifest exists                                   |
 
-### Lint Stage
+The MR title is validated because GitLab uses it as the squash commit
+message. `release` only checks the version; it does not create a
+GitLab release.
 
-| Job                 | Purpose                                         | Runs When                           |
-| ------------------- | ----------------------------------------------- | ----------------------------------- |
-| `shellcheck`        | Lints all `.sh` files with shellcheck           | `*.sh` or `scripts/hooks/*` changed |
-| `markdownlint`      | Validates markdown files with markdownlint-cli2 | `*.md` changed                      |
-| `prettier`          | Checks formatting of md, yml, yaml, json        | Relevant files changed              |
-| `commit-standards`  | Validates conventional commit format            | Merge requests only                 |
-| `plugin-validation` | Validates plugin.json, hooks, skill paths       | `.claude-plugin/**` changed         |
+## Project-Specific Jobs
 
-All lint jobs use `rules: changes:` for path-based filtering.
-Jobs that do not match any changed paths are skipped (not
-created), which keeps pipelines fast.
-
-### Test Stage
-
-| Job       | Purpose                                           |
-| --------- | ------------------------------------------------- |
-| `summary` | Single merge-gate check; depends on all lint jobs |
-
-The `summary` job uses `needs:` with `optional: true` on each
-lint job. This means skipped lint jobs do not block the summary.
-Require **only** the `summary` job in your protected-branch
-pipeline-success settings -- this avoids the problem where
-skipped conditional jobs block merges.
-
-### Release Stage
-
-| Job       | Purpose                                                        |
-| --------- | -------------------------------------------------------------- |
-| `release` | Validates tag version against `plugin.json`, runs on `v*` tags |
-
-The release job extracts the version from the git tag (stripping
-the `v` prefix) and compares it to the `version` field in
-`.claude-plugin/plugin.json`. If they do not match, the pipeline
-fails.
-
-## Merge Request Pipelines
-
-All lint and summary jobs include `if: $CI_MERGE_REQUEST_IID`
-rules, which enables merge request pipelines. This means the
-pipeline runs on every push to a merge request branch.
-
-The `commit-standards` job runs **only** on merge requests
-(it needs the target branch ref to compare commit messages).
-
-## Variables
-
-| Variable       | Default | Purpose                       |
-| -------------- | ------- | ----------------------------- |
-| `NODE_VERSION` | `22`    | Node.js version for lint jobs |
-
-The default image is `node:${NODE_VERSION}-slim`. Jobs that do
-not need Node (shellcheck, commit-standards, plugin-validation)
-override the image to `koalaman/shellcheck-alpine:stable` or
-`alpine:latest`.
-
-## Customization
-
-### Adding test jobs
-
-Add test jobs in the `test` stage and include them in the
-`summary` job's `needs:` list:
+Add jobs to `.gitlab-ci.yml` below the `PROJECT-SPECIFIC JOBS` marker.
+Never edit `ci/gitlab/gitlab-ci-base.yml`: upgrade manages it. If it
+has local edits, upgrade keeps the local file and writes the new
+version to `.cpf/pending/ci/gitlab/gitlab-ci-base.yml` for a manual
+merge, and the pipeline stays on the old version until then.
 
 ```yaml
 unit-tests:
@@ -95,107 +45,61 @@ unit-tests:
   script:
     - npm ci
     - npm test
-  coverage: '/Statements\s+:\s+(\d+\.?\d*)%/'
   rules:
     - if: $CI_MERGE_REQUEST_IID
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+```
 
+A job defined in `.gitlab-ci.yml` with the same name as a base job is
+merged over it, key by key. Use this to extend a base job without
+editing the base file, for example to make `summary` wait for project
+jobs:
+
+```yaml
 summary:
-  stage: test
   needs:
-    - job: shellcheck
-      optional: true
-    - job: markdownlint
-      optional: true
-    - job: prettier
+    - job: checks
       optional: true
     - job: commit-standards
       optional: true
-    - job: plugin-validation
-      optional: true
     - job: unit-tests
       optional: true
-  script:
-    - echo "All upstream jobs passed."
 ```
 
-### Adding build jobs
+An override replaces the whole `needs` list; re-check it after an
+upgrade adds jobs to the base. To add a stage, redefine the full
+`stages:` list in `.gitlab-ci.yml` (for example
+`lint, test, build, release`).
 
-Add a `build` stage between `test` and `release` in the
-`stages:` list, then add your build job:
-
-```yaml
-stages:
-  - lint
-  - test
-  - build
-  - release
-
-build:
-  stage: build
-  script:
-    - npm ci
-    - npm run build
-  artifacts:
-    paths:
-      - dist/
-  rules:
-    - if: $CI_MERGE_REQUEST_IID
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-```
-
-### Extending the release job
-
-To create a GitLab release with artifacts after version validation:
-
-```yaml
-release:
-  stage: release
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
-  script:
-    - TAG_VERSION="${CI_COMMIT_TAG#v}"
-    - PLUGIN_VERSION=$(jq -r '.version' .claude-plugin/plugin.json 2>/dev/null || echo "")
-    - |
-      if [ "$TAG_VERSION" != "$PLUGIN_VERSION" ]; then
-        echo "Tag ($TAG_VERSION) != plugin.json ($PLUGIN_VERSION)"
-        exit 1
-      fi
-  release:
-    tag_name: $CI_COMMIT_TAG
-    description: 'Release $CI_COMMIT_TAG'
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v/
-```
+Projects that author their own Claude Code plugin can uncomment the
+`plugin-validation` example in `.gitlab-ci.yml`, and can extend
+`release` with a `release:` keyword to publish a GitLab release.
 
 ## Merge Request Settings
 
-Configure these in your GitLab project under **Settings > Merge requests**:
+GitLab has no per-job required check: the merge gate is the pipeline
+result, and `summary` is its last job. Configure under **Settings >
+Merge requests**:
 
-- Require pipeline to succeed before merge
-- Require at least 1 approval
-- Enable squash commits by default
-- Delete source branch on merge
-- Under **Settings > Repository > Protected branches**, require
-  only the `summary` job to pass
-
-Enable branch auto-deletion after merge:
-
-```bash
-glab api "projects/${PROJECT_PATH}" \
-  --method PUT \
-  -f "remove_source_branch_after_merge=true"
-```
-
-Require pipelines to pass before merge:
+- Pipelines must succeed: enabled; "Skipped pipelines are considered
+  successful": disabled
+- Squash commits when merging: encourage or require
+- Delete source branch: enabled by default
+- Approvals: at least 1 (for multi-maintainer projects)
 
 ```bash
-glab api "projects/${PROJECT_PATH}" \
-  --method PUT \
-  -f "only_allow_merge_if_pipeline_succeeds=true"
+glab api "projects/${PROJECT_PATH}" --method PUT \
+  -f "only_allow_merge_if_pipeline_succeeds=true" \
+  -f "allow_merge_on_skipped_pipeline=false" \
+  -f "remove_source_branch_after_merge=true" \
+  -f "squash_option=default_on"
 ```
 
-Add to your project checklist:
+`PROJECT_PATH` is the URL-encoded project path (`group%2Fproject`) or
+the numeric project ID. Use `squash_option=always` to enforce squash.
 
-- [ ] Merge request settings: delete source branch after
-      merge -- enabled
-- [ ] Merge request settings: pipelines must succeed -- enabled
+GitLab CODEOWNERS uses the same syntax as GitHub; place the file at
+`CODEOWNERS`, `.gitlab/CODEOWNERS`, or `docs/CODEOWNERS` and enable
+code-owner approval on the protected branch if required. The
+projected `.gitlab/merge_request_templates/Default.md` is the default
+MR description.

@@ -82,7 +82,7 @@ assert_dir_exists "scaffold/jenkins/ directory exists" "$SCAFFOLD/jenkins"
 
 # --- 5: All 19 common files exist ---
 echo ""
-echo "=== Common scaffold files (17) ==="
+echo "=== Common scaffold files (24) ==="
 
 COMMON_FILES=(
   ".specify/templates/constitution-template.md"
@@ -103,6 +103,13 @@ COMMON_FILES=(
   # .prettierignore and markdownlint configs are no longer bundled: they are
   # generated on the host from .cpf/policy.json (INFRA-018, INFRA-031).
   ".cpf/policy.json"
+  ".cpf/runtime/verify.sh"
+  ".cpf/runtime/commit-check.sh"
+  ".cpf/runtime/VERSION"
+  ".cpf/runtime/lib/cpf-policy.sh"
+  ".cpf/runtime/lib/cpf-shellcheck-fragment.sh"
+  ".cpf/runtime/lib/cpf-shellcheck.sh"
+  ".cpf/runtime/lib/cpf-tools.sh"
   "CLAUDE.md.template"
 )
 
