@@ -425,6 +425,39 @@ else
     printf '    %s\n' "${LAST_OUT//$'\n'/$'\n    '}"
 fi
 
+# ===========================================================================
+# 14. Python formatting uses the project's pinned ruff, never $PATH
+# ===========================================================================
+echo ""
+echo "=== 14. format-changed resolves pinned ruff ==="
+cat >"$WORKDIR/bin/ruff" <<'MOCK'
+#!/bin/bash
+echo "PATH-ruff $*" >>"${CPF_TEST_RUFF_LOG:-/dev/null}"
+exit 0
+MOCK
+chmod +x "$WORKDIR/bin/ruff"
+FIX="$(new_fixture ruffpin)"
+write_policy "$FIX" '{ "hooks": { "format-changed": { "severity": "warning" } } }'
+mkdir -p "$FIX/svc/.venv/bin"
+printf '[project]\nname = "svc"\n' >"$FIX/svc/pyproject.toml"
+cat >"$FIX/svc/.venv/bin/ruff" <<'MOCK'
+#!/bin/bash
+echo "venv-ruff $*" >>"${CPF_TEST_RUFF_LOG:-/dev/null}"
+exit 0
+MOCK
+chmod +x "$FIX/svc/.venv/bin/ruff"
+printf 'x = 1\n' >"$FIX/svc/app.py"
+(cd "$FIX" && git add svc/pyproject.toml svc/app.py && git commit -q -m init)
+echo 'y = 2' >>"$FIX/svc/app.py"
+: >"$FIX/ruff.log"
+run_hook "$FORMAT_HOOK" "$FIX" CPF_TEST_RUFF_LOG="$FIX/ruff.log"
+if grep -q '^venv-ruff format' "$FIX/ruff.log" && ! grep -q 'PATH-ruff' "$FIX/ruff.log"; then
+    pass "format-changed used svc/.venv/bin/ruff, not PATH ruff"
+else
+    fail "ruff resolution in format-changed: $(tr '\n' ';' <"$FIX/ruff.log")"
+fi
+rm -f "$WORKDIR/bin/ruff"
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 if [[ "$FAILED" -gt 0 ]]; then

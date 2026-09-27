@@ -59,6 +59,38 @@ _cpf_dispatch_project_root() {
     git rev-parse --show-toplevel 2>/dev/null || pwd
 }
 
+# Resolve a pinned Python tool for <file>: walk up from the file to the
+# nearest directory with pyproject.toml (stopping at the project root);
+# use <svc>/.venv/bin/<tool>, then <root>/.venv/bin/<tool>, then
+# `uv run --frozen --project <svc> <tool>` when a uv.lock exists. Sets
+# _CPF_PY_TOOL (argv prefix); returns 1 when no pinned copy exists.
+_cpf_resolve_python_tool() {
+    local file_path="$1" tool="$2" root svc dir
+    _CPF_PY_TOOL=()
+    root="$(_cpf_dispatch_project_root)"
+    dir="$(cd "$(dirname "$file_path")" 2>/dev/null && pwd)" || return 1
+    svc="$root"
+    while [[ -n "$dir" && "$dir" != "/" ]]; do
+        if [[ -f "$dir/pyproject.toml" ]]; then
+            svc="$dir"
+            break
+        fi
+        [[ "$dir" == "$root" ]] && break
+        dir="$(dirname "$dir")"
+    done
+    if [[ -x "$svc/.venv/bin/$tool" ]]; then
+        _CPF_PY_TOOL=("$svc/.venv/bin/$tool")
+    elif [[ -x "$root/.venv/bin/$tool" ]]; then
+        _CPF_PY_TOOL=("$root/.venv/bin/$tool")
+    elif command -v uv >/dev/null 2>&1 \
+        && [[ -f "$svc/uv.lock" || -f "$root/uv.lock" ]]; then
+        _CPF_PY_TOOL=(uv run --frozen --project "$svc" "$tool")
+    else
+        return 1
+    fi
+    return 0
+}
+
 # Test a single path against a single glob using bash `[[ == ]]`.
 # Normalizes `**/` (leading) and `/**` (trailing) so the common policy
 # convention works without globstar (which `[[ == ]]` ignores anyway).
@@ -167,13 +199,20 @@ format_file() {
             fi
             ;;
         py)
-            if command -v ruff >/dev/null 2>&1; then
-                _cpf_run_tool ruff format "$file_path" || rc=$?
-                _cpf_run_tool ruff check --fix "$file_path" || rc=$?
-            elif command -v black >/dev/null 2>&1; then
-                _cpf_run_tool black "$file_path" || rc=$?
-            elif command -v autopep8 >/dev/null 2>&1; then
-                _cpf_run_tool autopep8 --in-place "$file_path" || rc=$?
+            # Pinned tools only (the service's .venv, else `uv run
+            # --frozen`), never a bare binary from $PATH whose version can
+            # differ from the lock, the Stop hook, pre-commit, and CI.
+            local py_cmd=()
+            if _cpf_resolve_python_tool "$file_path" ruff; then
+                py_cmd=("${_CPF_PY_TOOL[@]}")
+                _cpf_run_tool "${py_cmd[@]}" format "$file_path" || rc=$?
+                _cpf_run_tool "${py_cmd[@]}" check --fix "$file_path" || rc=$?
+            elif _cpf_resolve_python_tool "$file_path" black; then
+                py_cmd=("${_CPF_PY_TOOL[@]}")
+                _cpf_run_tool "${py_cmd[@]}" "$file_path" || rc=$?
+            elif _cpf_resolve_python_tool "$file_path" autopep8; then
+                py_cmd=("${_CPF_PY_TOOL[@]}")
+                _cpf_run_tool "${py_cmd[@]}" --in-place "$file_path" || rc=$?
             fi
             ;;
         rs)
