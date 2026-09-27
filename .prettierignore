@@ -7,5 +7,5 @@ claude-project-foundation-PLAN.md
 LICENSE
 
 # Git hooks (no extension -- Prettier cannot determine parser)
-scripts/hooks/pre-commit
-scripts/hooks/commit-msg
+.claude-plugin/scaffold/common/.cpf/scripts/hooks/pre-commit
+.claude-plugin/scaffold/common/.cpf/scripts/hooks/commit-msg

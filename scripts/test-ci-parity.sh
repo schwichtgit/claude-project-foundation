@@ -62,6 +62,11 @@ SCAFFOLD="$REPO_ROOT/.claude-plugin/scaffold"
 
 GITHUB_CI="$SCAFFOLD/github/.github/workflows/ci.yml"
 GITLAB_CI="$SCAFFOLD/gitlab/.gitlab-ci.yml"
+# Since the base/host split (#45), plugin-owned lint jobs live in the base
+# file and the host file only references it. Parity is checked against the
+# host + base pair, which is what a downstream pipeline actually runs.
+GITHUB_CI_BASE="$SCAFFOLD/github/.github/workflows/ci-base.yml"
+GITLAB_CI_BASE="$SCAFFOLD/gitlab/ci/gitlab/gitlab-ci-base.yml"
 JENKINS_CI="$SCAFFOLD/jenkins/Jenkinsfile"
 GITHUB_RELEASE="$SCAFFOLD/github/.github/workflows/release.yml"
 
@@ -71,6 +76,8 @@ echo "=== CI config file existence ==="
 assert_file_exists "GitHub ci.yml exists" "$GITHUB_CI"
 assert_file_exists "GitLab .gitlab-ci.yml exists" "$GITLAB_CI"
 assert_file_exists "Jenkins Jenkinsfile exists" "$JENKINS_CI"
+assert_file_exists "GitHub ci-base.yml exists" "$GITHUB_CI_BASE"
+assert_file_exists "GitLab gitlab-ci-base.yml exists" "$GITLAB_CI_BASE"
 
 # Read file contents for string matching
 GITHUB_CONTENT=""
@@ -79,7 +86,9 @@ JENKINS_CONTENT=""
 RELEASE_CONTENT=""
 
 [[ -f "$GITHUB_CI" ]] && GITHUB_CONTENT=$(cat "$GITHUB_CI")
+[[ -f "$GITHUB_CI_BASE" ]] && GITHUB_CONTENT+=$'\n'$(cat "$GITHUB_CI_BASE")
 [[ -f "$GITLAB_CI" ]] && GITLAB_CONTENT=$(cat "$GITLAB_CI")
+[[ -f "$GITLAB_CI_BASE" ]] && GITLAB_CONTENT+=$'\n'$(cat "$GITLAB_CI_BASE")
 [[ -f "$JENKINS_CI" ]] && JENKINS_CONTENT=$(cat "$JENKINS_CI")
 [[ -f "$GITHUB_RELEASE" ]] && RELEASE_CONTENT=$(cat "$GITHUB_RELEASE")
 
@@ -87,24 +96,24 @@ RELEASE_CONTENT=""
 echo ""
 echo "=== ShellCheck parity ==="
 
-assert_contains_ci "GitHub ci.yml contains shellcheck" "$GITHUB_CONTENT" "shellcheck"
-assert_contains_ci "GitLab .gitlab-ci.yml contains shellcheck" "$GITLAB_CONTENT" "shellcheck"
+assert_contains_ci "GitHub ci.yml + ci-base.yml contains shellcheck" "$GITHUB_CONTENT" "shellcheck"
+assert_contains_ci "GitLab .gitlab-ci.yml + base contains shellcheck" "$GITLAB_CONTENT" "shellcheck"
 assert_contains_ci "Jenkins Jenkinsfile contains shellcheck" "$JENKINS_CONTENT" "shellcheck"
 
 # --- 7-9: Markdownlint present in all platforms ---
 echo ""
 echo "=== Markdownlint parity ==="
 
-assert_contains "GitHub ci.yml contains markdownlint" "$GITHUB_CONTENT" "markdownlint"
-assert_contains "GitLab .gitlab-ci.yml contains markdownlint" "$GITLAB_CONTENT" "markdownlint"
+assert_contains "GitHub ci.yml + ci-base.yml contains markdownlint" "$GITHUB_CONTENT" "markdownlint"
+assert_contains "GitLab .gitlab-ci.yml + base contains markdownlint" "$GITLAB_CONTENT" "markdownlint"
 assert_contains "Jenkins Jenkinsfile contains markdownlint" "$JENKINS_CONTENT" "markdownlint"
 
 # --- 10-12: Prettier present in all platforms ---
 echo ""
 echo "=== Prettier parity ==="
 
-assert_contains "GitHub ci.yml contains prettier" "$GITHUB_CONTENT" "prettier"
-assert_contains "GitLab .gitlab-ci.yml contains prettier" "$GITLAB_CONTENT" "prettier"
+assert_contains "GitHub ci.yml + ci-base.yml contains prettier" "$GITHUB_CONTENT" "prettier"
+assert_contains "GitLab .gitlab-ci.yml + base contains prettier" "$GITLAB_CONTENT" "prettier"
 assert_contains "Jenkins Jenkinsfile contains prettier" "$JENKINS_CONTENT" "prettier"
 
 # --- 13: GitHub release.yml contains version validation ---

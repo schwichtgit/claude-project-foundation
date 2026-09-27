@@ -47,14 +47,46 @@ FAILED=0
 WARNINGS=0
 CHECKS_RUN=0
 
+# Lines of tool output shown under a FAIL/WARN/INTERNAL line, and the
+# per-line character cap. Overridable for tests and noisy tools.
+CPF_OUTPUT_TAIL_LINES="${CPF_OUTPUT_TAIL_LINES:-20}"
+CPF_OUTPUT_LINE_CHARS="${CPF_OUTPUT_LINE_CHARS:-240}"
+
+# Run "$@" with stdout+stderr captured. Sets _CPF_RC and _CPF_OUT. The
+# `|| _CPF_RC=$?` form keeps a failing tool from tripping the ERR trap
+# (which would exit 0 and silently pass the gate).
+_cpf_capture() {
+    _CPF_RC=0
+    _CPF_OUT="$("$@" 2>&1)" || _CPF_RC=$?
+}
+
+# Same as _cpf_capture, but runs "$@" from $PROJECT_ROOT. The cd happens
+# inside the command substitution's subshell, so it does not leak.
+_cpf_capture_in_root() {
+    _CPF_RC=0
+    _CPF_OUT="$(cd "$PROJECT_ROOT" && "$@" 2>&1)" || _CPF_RC=$?
+}
+
+# Print the tail of the last captured output to stderr so the agent can see
+# which file/rule/test failed. No-op when the tool printed nothing.
+_cpf_emit_tail() {
+    [[ -n "${_CPF_OUT:-}" ]] || return 0
+    printf '%s\n' "$_CPF_OUT" \
+        | tail -n "$CPF_OUTPUT_TAIL_LINES" \
+        | cut -c "1-$CPF_OUTPUT_LINE_CHARS" \
+        | sed 's/^/      | /' >&2
+}
+
 run_check() {
     local name="$1"
     shift
     echo "  [check] $name"
-    if "$@" >/dev/null 2>&1; then
+    _cpf_capture "$@"
+    if [[ "$_CPF_RC" -eq 0 ]]; then
         echo "    PASS"
     else
         echo "    FAIL: $name" >&2
+        _cpf_emit_tail
         FAILED=$((FAILED + 1))
     fi
     CHECKS_RUN=$((CHECKS_RUN + 1))
@@ -64,10 +96,12 @@ run_optional_check() {
     local name="$1"
     shift
     echo "  [optional] $name"
-    if "$@" >/dev/null 2>&1; then
+    _cpf_capture "$@"
+    if [[ "$_CPF_RC" -eq 0 ]]; then
         echo "    PASS"
     else
         echo "    WARN: $name" >&2
+        _cpf_emit_tail
         WARNINGS=$((WARNINGS + 1))
     fi
     CHECKS_RUN=$((CHECKS_RUN + 1))
@@ -122,9 +156,14 @@ cpf_pyproject_has_section() {
 
 # Resolve the runner for <tool> in <svc_dir>. Sets the global
 # `_CPF_RUNNER_CMD` array to the argv prefix that should be invoked. Returns
-# 0 if a runner was resolved, 1 if neither `.venv/bin/<tool>` exists nor `uv`
-# is on PATH. NEVER falls back to bare `<tool>` from $PATH -- that is the
-# central contract of INFRA-025.
+# 0 if a runner was resolved, 1 if neither `.venv/bin/<tool>` exists nor
+# `uv` plus a lockfile is available. NEVER falls back to bare `<tool>` from
+# $PATH -- that is the central contract of INFRA-025.
+#
+# The uv fallback passes `--frozen` so the hook never re-locks: `uv.lock` is
+# read, never written. `--frozen` errors without a lockfile, so the fallback
+# is only taken when `uv.lock` exists in the service dir or at the project
+# root (uv workspace); otherwise the tool counts as unresolved.
 resolve_python_runner() {
     local svc_dir="$1" tool="$2"
     _CPF_RUNNER_CMD=()
@@ -135,8 +174,9 @@ resolve_python_runner() {
         return 0
     fi
 
-    if command -v uv >/dev/null 2>&1; then
-        _CPF_RUNNER_CMD=(uv run --project "$svc_dir" "$tool")
+    if command -v uv >/dev/null 2>&1 \
+        && [[ -f "$svc_dir/uv.lock" || -f "$PROJECT_ROOT/uv.lock" ]]; then
+        _CPF_RUNNER_CMD=(uv run --frozen --project "$svc_dir" "$tool")
         return 0
     fi
 
@@ -165,8 +205,8 @@ run_pytest_classified() {
     local rel_dir="$1" on_missing_tests="$2"
     shift 2
     echo "  [check] Pytest ($rel_dir)"
-    local rc=0
-    "$@" >/dev/null 2>&1 || rc=$?
+    _cpf_capture "$@"
+    local rc="$_CPF_RC"
     CHECKS_RUN=$((CHECKS_RUN + 1))
     case "$rc" in
         0)
@@ -174,6 +214,7 @@ run_pytest_classified() {
             ;;
         1)
             echo "    FAIL: Pytest ($rel_dir)" >&2
+            _cpf_emit_tail
             FAILED=$((FAILED + 1))
             ;;
         5)
@@ -189,6 +230,7 @@ run_pytest_classified() {
             ;;
         *)
             echo "    INTERNAL: Pytest ($rel_dir) rc=$rc" >&2
+            _cpf_emit_tail
             FAILED=$((FAILED + 1))
             ;;
     esac
@@ -414,19 +456,23 @@ run_task_orchestrator() {
     echo "Task orchestrator (cwd: $PROJECT_ROOT)"
 
     echo "  [check] task lint"
-    if (cd "$PROJECT_ROOT" && task lint) >/dev/null 2>&1; then
+    _cpf_capture_in_root task lint
+    if [[ "$_CPF_RC" -eq 0 ]]; then
         echo "    PASS"
     else
         echo "    FAIL: task lint" >&2
+        _cpf_emit_tail
         FAILED=$((FAILED + 1))
     fi
     CHECKS_RUN=$((CHECKS_RUN + 1))
 
     echo "  [optional] task test"
-    if (cd "$PROJECT_ROOT" && task test) >/dev/null 2>&1; then
+    _cpf_capture_in_root task test
+    if [[ "$_CPF_RC" -eq 0 ]]; then
         echo "    PASS"
     else
         echo "    WARN: task test" >&2
+        _cpf_emit_tail
         WARNINGS=$((WARNINGS + 1))
     fi
     CHECKS_RUN=$((CHECKS_RUN + 1))
@@ -452,8 +498,8 @@ run_custom_orchestrator() {
     echo "Custom orchestrator (cwd: $PROJECT_ROOT, severity: $severity)"
     echo "  [check] $custom_command"
 
-    local rc=0
-    (cd "$PROJECT_ROOT" && sh -c "$custom_command") >/dev/null 2>&1 || rc=$?
+    _cpf_capture_in_root sh -c "$custom_command"
+    local rc="$_CPF_RC"
     CHECKS_RUN=$((CHECKS_RUN + 1))
 
     if [[ "$rc" -eq 0 ]]; then
@@ -464,10 +510,12 @@ run_custom_orchestrator() {
     case "$severity" in
         error)
             echo "    FAIL: custom_command (rc=$rc)" >&2
+            _cpf_emit_tail
             FAILED=$((FAILED + 1))
             ;;
         warning)
             echo "    WARN: custom_command (rc=$rc)" >&2
+            _cpf_emit_tail
             WARNINGS=$((WARNINGS + 1))
             ;;
         info)
@@ -475,6 +523,7 @@ run_custom_orchestrator() {
             ;;
         *)
             echo "    FAIL: custom_command (rc=$rc, unknown severity \"$severity\")" >&2
+            _cpf_emit_tail
             FAILED=$((FAILED + 1))
             ;;
     esac
@@ -513,7 +562,8 @@ run_shellcheck_pass() {
     echo ""
     echo "Shellcheck (${#files[@]} file(s))"
     CHECKS_RUN=$((CHECKS_RUN + 1))
-    if shellcheck -x "${files[@]}" >/dev/null 2>&1; then
+    _cpf_capture shellcheck -x -f gcc "${files[@]}"
+    if [[ "$_CPF_RC" -eq 0 ]]; then
         echo "  PASS"
         return 0
     fi
@@ -521,6 +571,7 @@ run_shellcheck_pass() {
     case "${SEVERITY:-error}" in
         warning)
             echo "  WARN: shellcheck reported issues" >&2
+            _cpf_emit_tail
             WARNINGS=$((WARNINGS + 1))
             ;;
         info)
@@ -528,6 +579,7 @@ run_shellcheck_pass() {
             ;;
         error | *)
             echo "  FAIL: shellcheck reported issues" >&2
+            _cpf_emit_tail
             FAILED=$((FAILED + 1))
             ;;
     esac

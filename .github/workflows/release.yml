@@ -19,7 +19,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Extract and compare versions
         id: version
         run: |
@@ -43,36 +43,38 @@ jobs:
   shellcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: Install shellcheck
-        run: sudo apt-get install -y shellcheck
-      - name: Run shellcheck
-        run: |
-          find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*' -print0 | xargs -0 shellcheck -x
-          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+      - uses: actions/checkout@v7
+      - name: shellcheck (pinned in .tool-versions, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh shellcheck
 
   markdownlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: DavidAnson/markdownlint-cli2-action@v23
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          globs: '**/*.md'
+          node-version: '22'
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
+      - name: markdownlint (pinned version, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh markdownlint
 
   prettier:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - run: npm install
-      - run: npx prettier --check .
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
+      - name: prettier (pinned version, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh prettier
 
   plugin-validation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Validate plugin.json
         run: |
           jq empty .claude-plugin/plugin.json
@@ -103,7 +105,7 @@ jobs:
       [validate-version, shellcheck, markdownlint, prettier, plugin-validation]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Create release tarball
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"

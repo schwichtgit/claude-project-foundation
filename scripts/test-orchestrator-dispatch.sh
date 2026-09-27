@@ -7,6 +7,8 @@ set -euo pipefail
 # never requires real go-task on CI.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Pinned shellcheck (.tool-versions); never the OS binary.
+SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 HOOK="$REPO_ROOT/.claude-plugin/hooks/verify-quality.sh"
 DETECT="$REPO_ROOT/.claude-plugin/lib/cpf-taskfile-detect.sh"
 POLICY_LIB="$REPO_ROOT/.claude-plugin/lib/cpf-policy.sh"
@@ -382,18 +384,18 @@ fi
 # ===========================================================================
 echo ""
 echo "=== shellcheck: verify-quality.sh ==="
-if shellcheck "$HOOK" >/dev/null 2>&1; then
+if "$SHELLCHECK" "$HOOK" >/dev/null 2>&1; then
     pass "shellcheck clean on verify-quality.sh"
 else
     fail "shellcheck reported issues:"
-    shellcheck "$HOOK" || true
+    "$SHELLCHECK" "$HOOK" || true
 fi
 
-if shellcheck "$DETECT" >/dev/null 2>&1; then
+if "$SHELLCHECK" "$DETECT" >/dev/null 2>&1; then
     pass "shellcheck clean on cpf-taskfile-detect.sh"
 else
     fail "shellcheck reported issues on detect helper:"
-    shellcheck "$DETECT" || true
+    "$SHELLCHECK" "$DETECT" || true
 fi
 
 echo ""
