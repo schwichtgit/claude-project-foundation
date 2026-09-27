@@ -5,6 +5,104 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-alpha.12] - 2026-09-27
+
+Hook policy, orchestrator dispatch, per-service Python runner
+resolution, scaffold reorganization (Spec A), plus the ci-base
+polyglot fixes. There is no alpha.11 release: the alpha.11 content
+(#47) was never tagged and ships here. The version is alpha.12
+because the Spec A migration guide is keyed to
+`migrations["0.1.0-alpha.12"]` and only runs when the plugin
+version is at or above that key.
+
+### Behavior changes (read before upgrading)
+
+The `verify-quality` Stop hook no longer runs Python tools from
+`$PATH`. It resolves each tool per service from
+`<service>/.venv/bin/<tool>`, falling back to
+`uv run --frozen --project <service> <tool>` when a `uv.lock`
+exists. Before this release, tools not on `$PATH` were silently
+skipped. On upgrade, a Python service may start running:
+
+- **pytest** on every Stop, over the whole suite. This is always
+  attempted for a service with `pyproject.toml`. Cost scales with
+  the suite.
+- **mypy** as a blocking check when `[tool.mypy]` is present in
+  `pyproject.toml`.
+- **black** `--check` as a warning when `[tool.black]` is present.
+- **ruff** from the lock-pinned version rather than whatever is
+  on `$PATH`, so results can differ from before (and now match
+  CI).
+
+Opt out per service in `pyproject.toml`:
+
+```toml
+[tool.cpf.hooks]
+skip = ["pytest", "mypy"]
+```
+
+Or replace the built-in Python walk with a project script that CI
+also runs, in `.cpf/policy.json`:
+
+```json
+{
+  "hooks": {
+    "verify-quality": {
+      "orchestrator": "custom",
+      "custom_command": "scripts/lint-changed.sh",
+      "severity": "error"
+    }
+  }
+}
+```
+
+A service with no `.venv` and no `uv.lock` is reported as
+`WARN: no resolver` (or `SKIP` with `on_missing_runner: skip`)
+instead of running anything.
+
+### Added
+
+- `.cpf/policy.json` with schema and jq loader; per-hook
+  include/exclude, orchestrator binding, and severity (#49,
+  INFRA-017)
+- `verify-quality` orchestrator dispatch: `none` (built-in walk),
+  `task` (`task lint` = error, `task test` = warning), `custom`
+  (#49, INFRA-024)
+- Generated `.prettierignore`, `.markdownlint-cli2.yaml`, and
+  `.cpf/shellcheck-excludes.txt` from policy (#49, INFRA-018,
+  INFRA-019)
+- Per-service Python runner resolution with
+  `[tool.cpf.hooks] skip` opt-out (#49, INFRA-025)
+- pytest exit-code classification with
+  `on_missing_tests: skip|warn` (#49, INFRA-026)
+- alpha.12 upgrade migration guide (policy seed: defaults, infer,
+  or skip) tracked in `.specforge-migrations-applied` (#49,
+  INFRA-029)
+- `verify-quality` prints the last 20 lines of a failing tool's
+  output under each FAIL/WARN line (file, rule, test name) instead
+  of discarding it. Applies to the built-in walk, `task`, `custom`,
+  and shellcheck. Tunable via `CPF_OUTPUT_TAIL_LINES`.
+
+### Fixed
+
+- `verify-quality` uv fallback passes `--frozen`, so the Stop hook
+  never re-locks or rewrites `uv.lock`
+- Scaffold CI shellcheck excludes `.venv`, `node_modules`,
+  `target`, `dist`; prettier job works without a root
+  `package.json`; plugin-validation removed from the scaffold base
+  (#47)
+- `test-ci-parity.sh`, `test-scaffold.sh`, and `test-upgrade.sh`
+  updated for the base/host CI split, generated lint configs, and
+  skill path; now run in CI
+
+### Changed
+
+- Read-only scaffold assets moved to the plugin cache and resolved
+  via `cpf_resolve_asset`, with `.cpf/overrides/` shadowing (#49,
+  INFRA-027)
+- Jenkinsfile moved to a review-with-upstream-cache flow (#49,
+  INFRA-028)
+
 ## [0.1.0-alpha.10] - 2026-04-10
 
 Pre-commit staged content fix, CI base/host split, and

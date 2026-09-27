@@ -9,7 +9,7 @@ or any two-agent pattern for multi-session autonomous
 implementation with production-grade quality
 enforcement.
 
-**Status:** All 82 features passing (v0.1.0-alpha.10).
+**Status:** 92 of 95 features passing (v0.1.0-alpha.12).
 Full CI parity across GitHub, GitLab, and Jenkins.
 The foundation applies its own quality gates in CI.
 
