@@ -45,6 +45,20 @@ npm run format:check
 - **Shell scripts:** ShellCheck clean,
   `set -euo pipefail`, use `$((VAR + 1))`
   not `((VAR++))`
+- **Linting:** run `npm ci`, then `npm run lint`. This is the
+  same `scripts/lint.sh` that CI runs. It uses the exact
+  prettier and markdownlint-cli2 versions from
+  `package-lock.json`, and the shellcheck version from
+  `.tool-versions` (installed by `scripts/shellcheck.sh`, never
+  from the OS). Each tool's file set comes from
+  `.cpf/policy.json`. It fails by name when an installed version
+  or a generated config (`.prettierignore`,
+  `.markdownlint-cli2.yaml`) drifts from its pin or the policy.
+  To change lint scope, edit `.cpf/policy.json` and regenerate
+  the configs; don't add path rules to workflows.
+  Locally, untracked files that aren't ignored are linted too,
+  so new files are caught before commit. CI sees only committed
+  files.
 - **Markdown:** markdownlint clean, Prettier formatted
 - **YAML/JSON:** Prettier formatted
 - **Communication:** technical and direct, no emoji,

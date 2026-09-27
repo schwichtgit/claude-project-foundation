@@ -1,0 +1,9 @@
+# Pins for tools that are not npm-resolvable (asdf format). Node linters
+# (prettier, markdownlint-cli2) are pinned exactly in package.json and
+# package-lock.json. scripts/lint.sh fails by name when an installed
+# version drifts from its pin, locally and in CI.
+#
+# shellcheck: installed from the upstream release by scripts/shellcheck.sh
+# (checksums live there), never from apt/brew. 0.9.0 and 0.11.0 disagree
+# on findings (SC2317 vs SC2329).
+shellcheck 0.11.0
