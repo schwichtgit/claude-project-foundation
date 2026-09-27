@@ -563,6 +563,20 @@ run_custom_orchestrator() {
 # pinned copies (see lib/cpf-tools.sh); an unpinned fallback is noted.
 # ---------------------------------------------------------------------------
 
+# A tool the policy needs cannot be resolved. CI must not pass by
+# skipping, so the ci boundary fails; agent and git warn (a laptop
+# without node must not block every stop or commit).
+_cpf_tool_missing() {
+    local message="$1"
+    if [[ "$BOUNDARY" == "ci" ]]; then
+        echo "  FAIL: $message" >&2
+        FAILED=$((FAILED + 1))
+    else
+        echo "  WARN: $message" >&2
+        WARNINGS=$((WARNINGS + 1))
+    fi
+}
+
 # Map a nonzero tool result through a severity. Args: label severity.
 _cpf_report_failure() {
     local label="$1" severity="$2"
@@ -593,8 +607,7 @@ _cpf_tool_severity() {
 
 run_shellcheck_pass() {
     if ! cpf_shellcheck_tool; then
-        echo "  WARN: shellcheck binary not on PATH; skipping shell lint" >&2
-        WARNINGS=$((WARNINGS + 1))
+        _cpf_tool_missing "shellcheck binary not on PATH; skipping shell lint"
         return 0
     fi
     local sc_cmd=("${CPF_TOOL_CMD[@]}")
@@ -642,8 +655,8 @@ run_prettier_pass() {
     [[ "${#files[@]}" -eq 0 ]] && return 0
     echo ""
     if ! cpf_node_tool prettier; then
-        echo "Prettier (${#files[@]} file(s)): prettier not installed; skipped" >&2
-        WARNINGS=$((WARNINGS + 1))
+        echo "Prettier (${#files[@]} file(s))"
+        _cpf_tool_missing "prettier not installed (npm ci); files not checked"
         return 0
     fi
     local cmd=("${CPF_TOOL_CMD[@]}")
@@ -678,8 +691,8 @@ run_markdownlint_pass() {
     [[ "${#files[@]}" -eq 0 ]] && return 0
     echo ""
     if ! cpf_node_tool markdownlint-cli2; then
-        echo "Markdownlint (${#files[@]} file(s)): markdownlint-cli2 not installed; skipped" >&2
-        WARNINGS=$((WARNINGS + 1))
+        echo "Markdownlint (${#files[@]} file(s))"
+        _cpf_tool_missing "markdownlint-cli2 not installed (npm ci); files not checked"
         return 0
     fi
     local cmd=("${CPF_TOOL_CMD[@]}")

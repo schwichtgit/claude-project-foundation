@@ -36,6 +36,24 @@ echo ""
 echo "=== validate-bash.sh ==="
 check "allowed ls"                    0 bash -c "echo '{\"tool_input\":{\"command\":\"ls -la\"}}' | bash $HOOKS/validate-bash.sh"
 check "blocked rm -rf /"              2 bash -c 'echo '"'"'{"tool_input":{"command":"rm -rf /"}}'"'"' | bash '"$HOOKS"'/validate-bash.sh'
+# rm guard: root, home, and wildcard targets are blocked; ordinary paths
+# are not. Built with jq so quoting cannot hide a case (GNU and BSD grep
+# must agree; CI runs GNU).
+rm_case() {
+    local label="$1" want="$2" cmd="$3"
+    check "$label" "$want" bash -c "jq -n --arg c \"\$1\" '{tool_input: {command: \$c}}' | bash '$HOOKS/validate-bash.sh'" _ "$cmd"
+}
+rm_case "blocked rm root wildcard"      2 'rm -rf /*'
+rm_case "blocked rm home"               2 'rm -rf ~'
+rm_case "blocked rm home slash"         2 'rm -fr ~/'
+rm_case "blocked rm split flags"        2 'rm -r -f /'
+# shellcheck disable=SC2016  # literal $HOME is the command under test
+rm_case "blocked rm \$HOME"             2 'rm -rf $HOME'
+rm_case "blocked rm root then ;"        2 'sudo rm -rf / ; ls'
+rm_case "allowed rm /tmp path"          0 'rm -rf /tmp/build'
+rm_case "allowed rm relative dir"       0 'rm -rf ./dist'
+rm_case "allowed rm path under home"    0 'rm -rf ~/projects/x/node_modules'
+rm_case "allowed rm single file"        0 'rm file.txt'
 check "blocked git push --force"      2 bash -c 'echo '"'"'{"tool_input":{"command":"git push --force origin main"}}'"'"' | bash '"$HOOKS"'/validate-bash.sh'
 check "blocked fork bomb"             2 bash -c 'echo '"'"'{"tool_input":{"command":":(){ :|:& };:"}}'"'"' | bash '"$HOOKS"'/validate-bash.sh'
 check "fail-open bad JSON"            0 bash -c "echo 'not-json' | bash $HOOKS/validate-bash.sh"

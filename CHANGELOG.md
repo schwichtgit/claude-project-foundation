@@ -34,7 +34,15 @@ call these, so a change that passes at one boundary passes at the next
   bundled with the plugin.
 - **The Stop hook and `pre-commit` also run prettier and markdownlint**
   when `.cpf/policy.json` has a section for them, as CI always did.
-  Without a section, the tool is not run.
+  Without a section, the tool is not run. A project with existing
+  markdown or formatting debt will have Stop blocked until it is fixed;
+  set `"severity": "warning"` on that tool's policy section to report
+  instead of block while the debt is paid down. The Stop hook checks
+  tracked and untracked (not ignored) files, so a stray scratch file
+  can block too; `pre-commit` checks only staged content.
+- **CI fails when a linter the policy needs is not installed** instead of
+  passing by skipping it. Locally (Stop, `pre-commit`) a missing tool is
+  a warning.
 - **CI templates** have one `checks` job instead of separate
   markdownlint, prettier, and shellcheck jobs; `summary` is still the
   only job to require. Node linters come from `package-lock.json` when
@@ -100,6 +108,10 @@ call these, so a change that passes at one boundary passes at the next
   separate command after the heredoc. Identifiers and paths that
   contain the product name (`CLAUDE_PROJECT_DIR`, `.claude/`) no
   longer count as a standalone mention.
+- The Bash guard (`validate-bash.sh`) did not block `rm -rf /` on Linux:
+  its pattern ended in `\b` right after `/`, which GNU grep never
+  matches, while other greps also blocked ordinary paths such as
+  `/tmp/build`. Targets must now end the argument.
 - `.cpf/pending/` ignores itself (`.cpf/pending/.gitignore`), so merge
   aids never reach commits or lint scope.
 - The asset resolver, `doctor.sh`, and the skill's commands resolve

@@ -137,6 +137,22 @@ printf '#   Docs\n\nSome   text.\n' >"$P/docs/guide.md"
 expect "clean staged, dirty working tree" "2 0 2" "$(verdicts "$P")"
 
 echo ""
+echo "=== missing linters: ci fails, agent and git warn ==="
+P="$(new_project nolinters)"
+rm "$P/node_modules"
+# Keep PATH free of any globally installed prettier/markdownlint.
+verdicts_no_global() {
+    PATH="/usr/bin:/bin" verdicts "$1"
+}
+expect "node linters not installed" "0 0 2" "$(verdicts_no_global "$P")"
+if grep -q 'WARN: prettier not installed' "$WORKDIR/agent.log" \
+    && grep -q 'FAIL: prettier not installed' "$WORKDIR/ci.log"; then
+    pass "missing linters are reported (agent WARN, ci FAIL), not skipped silently"
+else
+    fail "missing-linter messages not found in the boundary logs"
+fi
+
+echo ""
 echo "=== the runtime never references the plugin tree ==="
 if ! grep -rnE 'claude-plugin|CLAUDE_PLUGIN_ROOT' "$RUNTIME_SRC" >/dev/null; then
     pass "runtime contains no plugin paths"
