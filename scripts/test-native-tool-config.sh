@@ -366,7 +366,7 @@ fi
 # ===========================================================================
 # 12. Shellcheck excludes are root-relative. A project that itself lives in
 # <repo>/.claude/worktrees/<name> must not be excluded wholesale by an
-# exclude such as `*/.claude/*` (reported by accelno-cortex on alpha.12).
+# exclude such as `*/.claude/*` (reported by a CPF downstream project).
 # ===========================================================================
 echo ""
 echo "=== 12. worktree-rooted project: excludes match root-relative paths ==="

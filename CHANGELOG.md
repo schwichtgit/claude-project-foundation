@@ -49,7 +49,7 @@ this release rather than alpha.12 or alpha.13.
     `uv run --frozen`), never `$PATH`, and runs `format --check` as CI
     does.
 
-  Reported by accelno-cortex.
+  Reported by a CPF downstream project.
 
 - The per-edit formatter resolves ruff, black, and autopep8 the same
   way instead of using `$PATH`.

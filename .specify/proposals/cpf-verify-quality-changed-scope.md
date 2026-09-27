@@ -1,6 +1,6 @@
 # CPF Proposal: Changed-Files Scope for verify-quality
 
-**Source:** accelno-cortex handoff, 2026-09-27
+**Source:** CPF downstream project report, 2026-09-27
 **Status:** Proposed (not in 0.1.0-alpha.12)
 **Touches:** `.claude-plugin/hooks/verify-quality.sh`,
 `.claude-plugin/lib/cpf-policy.schema.json`, `scripts/test-policy.sh`,
@@ -9,7 +9,8 @@
 ## Problem
 
 Repositories with existing lint debt fail the Stop gate on every turn,
-even when the session changed no Python file. accelno-cortex has 3,594
+even when the session changed no Python file. One CPF downstream
+project has 3,594
 pre-existing ruff errors across 187 files, so the gate fires every
 turn. The cpf git hooks already scope to staged files, and the
 scaffold CI scopes to changed files. The Stop hook is the only gate
@@ -47,9 +48,10 @@ per-file ratcheting baseline work.
    `main`, then `master`. What happens on a detached HEAD or a shallow
    clone with no merge base?
 3. **pytest on Stop by default.** Since alpha.12, pytest runs on every
-   Stop for each Python service. Cost scales with the suite (cortex:
-   about 1,800 tests, about 60 s). Should pytest become opt-in (for
-   example `"tests": "off" | "on"` on the hook), or stay on with the
+   Stop for each Python service. Cost scales with the suite (one CPF
+   downstream project: about 1,800 tests, about 60 s). Should pytest
+   become opt-in (for example `"tests": "off" | "on"` on the hook), or
+   stay on with the
    documented `[tool.cpf.hooks] skip` opt-out? Changing the default is
    a behavior change for shipped users, so it belongs in this spec
    rather than a patch release.
