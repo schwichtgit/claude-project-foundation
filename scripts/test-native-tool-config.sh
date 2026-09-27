@@ -363,6 +363,68 @@ else
     "$SHELLCHECK" "$FORMAT_HOOK" "$VERIFY_HOOK" "$POSTEDIT_HOOK" || true
 fi
 
+# ===========================================================================
+# 12. Shellcheck excludes are root-relative. A project that itself lives in
+# <repo>/.claude/worktrees/<name> must not be excluded wholesale by an
+# exclude such as `*/.claude/*` (reported by accelno-cortex on alpha.12).
+# ===========================================================================
+echo ""
+echo "=== 12. worktree-rooted project: excludes match root-relative paths ==="
+FIX="$(new_fixture repo/.claude/worktrees/wt)"
+write_policy "$FIX" '{
+  "hooks": {
+    "shellcheck": { "exclude": ["*/.claude/*", "*/.venv/*"], "severity": "error" },
+    "verify-quality": { "orchestrator": "none", "severity": "error" },
+    "format-changed": { "severity": "warning" }
+  }
+}'
+printf '%s\n' '*/.claude/*' '*/.venv/*' >"$FIX/.cpf/shellcheck-excludes.txt"
+mkdir -p "$FIX/scripts" "$FIX/.claude/hooks"
+cat >"$FIX/scripts/bad.sh" <<'SH'
+#!/bin/bash
+x=$1
+echo $x
+SH
+printf '#!/bin/bash\necho ok\n' >"$FIX/.claude/hooks/local.sh"
+run_hook "$VERIFY_HOOK" "$FIX"
+if grep -q 'Shellcheck (1 file(s))' <<<"$LAST_OUT" \
+    && grep -q 'scripts/bad.sh' <<<"$LAST_OUT" \
+    && [[ "$LAST_RC" -eq 2 ]]; then
+    pass "verify-quality checks scripts/bad.sh; only ./.claude/ is excluded"
+else
+    fail "verify-quality under a .claude/worktrees root (rc=$LAST_RC)"
+    printf '    %s\n' "${LAST_OUT//$'\n'/$'\n    '}"
+fi
+
+(cd "$FIX" && git add -A && git commit -q -m init)
+echo 'echo more' >>"$FIX/scripts/bad.sh"
+: >"$FIX/shfmt.log"
+run_hook "$FORMAT_HOOK" "$FIX" CPF_TEST_SHFMT_LOG="$FIX/shfmt.log"
+if grep -q 'scripts/bad.sh' "$FIX/shfmt.log" 2>/dev/null; then
+    pass "format-changed formats scripts/bad.sh under a .claude/worktrees root"
+else
+    fail "format-changed skipped scripts/bad.sh (exclude matched the absolute path)"
+fi
+
+echo ""
+echo "=== 13. zero shellcheck files is reported, not silent ==="
+FIX="$(new_fixture sc-zero)"
+write_policy "$FIX" '{
+  "hooks": {
+    "shellcheck": { "exclude": ["*"], "severity": "error" },
+    "verify-quality": { "orchestrator": "none", "severity": "error" }
+  }
+}'
+printf '%s\n' '*' >"$FIX/.cpf/shellcheck-excludes.txt"
+printf '#!/bin/bash\necho ok\n' >"$FIX/run.sh"
+run_hook "$VERIFY_HOOK" "$FIX"
+if grep -q 'Shellcheck (0 files' <<<"$LAST_OUT"; then
+    pass "over-broad exclude prints 'Shellcheck (0 files ...)'"
+else
+    fail "zero-file shellcheck pass was silent"
+    printf '    %s\n' "${LAST_OUT//$'\n'/$'\n    '}"
+fi
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 if [[ "$FAILED" -gt 0 ]]; then

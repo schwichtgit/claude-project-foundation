@@ -550,19 +550,28 @@ run_shellcheck_pass() {
         fragment="$(bash "$fragment_lib" emit-find-fragment "$PROJECT_ROOT" || echo "")"
     fi
 
+    # find runs from the project root with `.` as the start point, exactly
+    # like the ci-base workflows, so exclude globs match root-relative
+    # paths (`./.git/*`, `*/.venv/*`). With an absolute start point the
+    # globs would also match the project's own ancestors: a project in
+    # <repo>/.claude/worktrees/<name> plus an exclude of `*/.claude/*`
+    # would exclude every file.
     local files=()
     while IFS= read -r -d '' f; do
         files+=("$f")
-    done < <(eval "find '$PROJECT_ROOT' -name '*.sh' $fragment -print0" 2>/dev/null)
+    done < <(cd "$PROJECT_ROOT" && eval "find . -name '*.sh' $fragment -print0" 2>/dev/null)
 
+    echo ""
     if [[ "${#files[@]}" -eq 0 ]]; then
+        # Say so instead of skipping silently: an over-broad exclude
+        # would otherwise look exactly like "nothing to check".
+        echo "Shellcheck (0 files; check .cpf/shellcheck-excludes.txt if unexpected)"
         return 0
     fi
 
-    echo ""
     echo "Shellcheck (${#files[@]} file(s))"
     CHECKS_RUN=$((CHECKS_RUN + 1))
-    _cpf_capture shellcheck -x -f gcc "${files[@]}"
+    _cpf_capture_in_root shellcheck -x -f gcc "${files[@]}"
     if [[ "$_CPF_RC" -eq 0 ]]; then
         echo "  PASS"
         return 0
