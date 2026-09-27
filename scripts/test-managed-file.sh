@@ -92,7 +92,19 @@ if cmp -s "$P/$REL" "$WORKDIR/edited.orig" \
 else
     fail "keep did not preserve host / write pending"
 fi
-status_is "edited after keep" "$P" "$WORKDIR/v2.yml" modified
+status_is "edited after keep" "$P" "$WORKDIR/v2.yml" unchanged
+RC=0
+bash "$MF" apply "$P" "$REL" "$WORKDIR/v2.yml" >/dev/null 2>&1 || RC=$?
+rm -f "$P/.cpf/pending/$REL"
+bash "$MF" apply "$P" "$REL" "$WORKDIR/v2.yml" >/dev/null 2>&1 || RC=$?
+if [[ "$RC" -eq 0 ]] && cmp -s "$P/$REL" "$WORKDIR/edited.orig" \
+    && [[ ! -e "$P/.cpf/pending/$REL" ]]; then
+    pass "unchanged upstream: apply is a silent no-op on the edited file"
+else
+    fail "unchanged upstream: rc=$RC or file/pending changed"
+fi
+printf 'upstream: v3\n' >"$WORKDIR/v3.yml"
+status_is "edited, upstream moves again" "$P" "$WORKDIR/v3.yml" modified
 
 echo ""
 echo "=== project from before the cache existed: unknown -> refused ==="

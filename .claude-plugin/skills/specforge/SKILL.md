@@ -129,6 +129,19 @@ principles needed for spec-driven development.
    `scaffold/<platform>/` under the plugin root to the target project
    root, where `<platform>` is the selected CI platform. Apply the
    same plugin-cache-prefix skip filter.
+   After steps 6 and 7, seed the upgrade baseline for every
+   overwrite-tier path in `upgrade-tiers.json` that was projected
+   (`<src>` is `common` or the platform directory the file came from):
+
+   ```bash
+   bash "$CLAUDE_PLUGIN_ROOT/lib/cpf-managed-file.sh" apply \
+     "$CLAUDE_PROJECT_DIR" <path> "$CLAUDE_PLUGIN_ROOT/scaffold/<src>/<path>"
+   ```
+
+   `apply` installs missing files and records
+   `.cpf/upstream-cache/<path>`, so the first upgrade can tell untouched
+   files from edited ones.
+
 8. **Discover orchestrators and confirm policy:** The bundled
    `.cpf/policy.json` from step 6 ships sane defaults. Before the
    generator step runs, confirm the orchestrator choice for
@@ -622,6 +635,8 @@ host).
    - `missing`, `current`, or `clean` (host still equals the version cpf
      last projected, cached at `.cpf/upstream-cache/<path>`): run
      `bash "$MF" apply ...` without prompting.
+   - `unchanged` (edited locally, but upstream has not changed since the
+     cached baseline): nothing to do; do not prompt.
    - `modified` (edited since cpf projected it) or `unknown` (no cached
      baseline, e.g. a project set up before alpha.13, and the file
      differs): do NOT overwrite. Show `diff -u <path> "$NEW"` and ask

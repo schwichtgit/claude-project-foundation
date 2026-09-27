@@ -21,12 +21,16 @@
 #   current   host file already equals the new version
 #   clean     host equals the cached baseline (not edited since cpf
 #             projected it) and differs from the new version
+#   unchanged host edited locally, but upstream has not changed since
+#             the cached baseline: nothing new to take, nothing to ask
 #   modified  host differs from the cached baseline (edited locally)
+#             and upstream has a new version
 #   unknown   no baseline cached and host differs from the new version
 #             (projects set up before this mechanism existed)
 #
-# apply    missing|current|clean: host := new, cache := new. Exits 3 for
-#          modified|unknown without touching anything.
+# apply    missing|current|clean: host := new, cache := new.
+#          unchanged: no-op. Exits 3 for modified|unknown without
+#          touching anything.
 # accept   host := new, cache := new, pending removed. Discards local edits;
 #          only on explicit user choice.
 # keep     host unchanged; new version written to .cpf/pending/<relpath>
@@ -64,6 +68,8 @@ cpf_mf_status() {
         echo unknown
     elif cmp -s "$MF_HOST" "$MF_CACHE"; then
         echo clean
+    elif cmp -s "$MF_CACHE" "$new"; then
+        echo unchanged
     else
         echo modified
     fi
@@ -79,6 +85,9 @@ cpf_mf_apply() {
             _cpf_mf_install "$new" "$MF_CACHE"
             rm -f "$MF_PENDING"
             echo "$state: $rel"
+            ;;
+        unchanged)
+            echo "unchanged: $rel (local edits kept; no new upstream version)"
             ;;
         *)
             echo "refused: $rel has local changes ($state); choose accept or keep" >&2
