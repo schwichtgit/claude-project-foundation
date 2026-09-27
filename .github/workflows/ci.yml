@@ -85,6 +85,8 @@ jobs:
         run: bash scripts/test-scaffold.sh
       - name: Upgrade tier and skill contract test
         run: bash scripts/test-upgrade.sh
+      - name: Managed overwrite-tier file test
+        run: bash scripts/test-managed-file.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)

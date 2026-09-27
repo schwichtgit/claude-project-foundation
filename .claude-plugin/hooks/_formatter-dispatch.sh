@@ -90,27 +90,35 @@ _cpf_glob_match() {
 }
 
 # Return 0 (excluded) if $path matches any exclude glob for $tool.
-# Tries both the absolute and project-relative path so policy globs that
-# omit a leading slash still work. Returns 1 (not excluded) when the policy
-# loader is unavailable -- the caller's fallback path.
+# Globs are root-relative. A file inside the project is matched as
+# `<rel>` and as `./<rel>` (the find-style form shellcheck excludes use,
+# e.g. `./.git/*`), never as its absolute path: the absolute path also
+# contains the project's ancestors, so a project living under
+# `.claude/worktrees/` would match an exclude like `*/.claude/*` for
+# every file. Files outside the project fall back to the absolute path.
+# Returns 1 (not excluded) when the policy loader is unavailable -- the
+# caller's fallback path.
 _cpf_path_excluded_for_tool() {
     local tool="$1" abs_path="$2"
     if ! command -v cpf_policy_list >/dev/null 2>&1; then
         return 1
     fi
-    local project_root rel_path
+    local project_root candidates=()
     project_root="$(_cpf_dispatch_project_root)"
-    rel_path="$abs_path"
     if [[ -n "$project_root" && "$abs_path" == "$project_root/"* ]]; then
-        rel_path="${abs_path#"$project_root"/}"
+        local rel_path="${abs_path#"$project_root"/}"
+        candidates=("$rel_path" "./$rel_path")
+    else
+        candidates=("$abs_path")
     fi
-    local glob
+    local glob candidate
     while IFS= read -r glob; do
         [[ -z "$glob" ]] && continue
-        if _cpf_glob_match "$rel_path" "$glob" \
-            || _cpf_glob_match "$abs_path" "$glob"; then
-            return 0
-        fi
+        for candidate in "${candidates[@]}"; do
+            if _cpf_glob_match "$candidate" "$glob"; then
+                return 0
+            fi
+        done
     done < <(cpf_policy_list "$tool" exclude 2>/dev/null || true)
     return 1
 }

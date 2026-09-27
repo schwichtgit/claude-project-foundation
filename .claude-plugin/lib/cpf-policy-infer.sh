@@ -56,28 +56,54 @@ _cpf_infer_parse_prettierignore() {
     ' "$file"
 }
 
-# Extract entries from the single `ignores:` YAML block. Each entry is
-# a single-quoted scalar: `  - 'value'`. Intentionally strict (matches
-# the shape emitted by cpf-generate-configs.sh) to avoid parsing the
-# wider YAML surface. Uses awk with -v SQ='\''  so the awk body itself
-# contains no literal single quotes (avoids shell quoting collisions).
+# Extract entries from the top-level `ignores:` YAML key. Accepts the
+# shapes hosts write by hand as well as the generator's own output:
+#   block form, items indented or at column 0, interleaved comments;
+#   single-quoted ('a''b'), double-quoted ("a\"b"), or plain scalars
+#   (a trailing ` # comment` is stripped from plain scalars);
+#   single-line flow form: ignores: ['a', "b", c]
+# Uses awk with -v SQ="'" so the awk body contains no literal single
+# quotes (avoids shell quoting collisions).
 _cpf_infer_parse_markdownlint() {
     local file="$1"
     [[ -f "$file" ]] || return 0
     awk -v SQ="'" '
-        BEGIN {
-            in_ignores = 0
-            entry_re = "^[[:space:]]*-[[:space:]]+" SQ
-            tail_re  = SQ "[[:space:]]*$"
-            doubled  = SQ SQ
+        function unquote(v,    q) {
+            sub(/^[[:space:]]+/, "", v)
+            q = substr(v, 1, 1)
+            if (q == SQ) {
+                v = substr(v, 2)
+                sub(SQ "[[:space:]]*(#.*)?$", "", v)
+                gsub(SQ SQ, SQ, v)
+            } else if (q == "\"") {
+                v = substr(v, 2)
+                sub(/"[[:space:]]*(#.*)?$/, "", v)
+                gsub(/\\"/, "\"", v)
+                gsub(/\\\\/, "\\", v)
+            } else {
+                sub(/[[:space:]]+#.*$/, "", v)
+                sub(/[[:space:]]+$/, "", v)
+            }
+            return v
         }
-        /^ignores:[[:space:]]*$/ { in_ignores = 1; next }
-        in_ignores && /^[^[:space:]-]/ { in_ignores = 0 }
-        in_ignores && $0 ~ entry_re {
-            sub(entry_re, "")
-            sub(tail_re, "")
-            gsub(doubled, SQ)
-            print
+        /^ignores:[[:space:]]*(#.*)?$/ { in_ignores = 1; next }
+        /^ignores:[[:space:]]*\[/ {
+            line = $0
+            sub(/^ignores:[[:space:]]*\[/, "", line)
+            sub(/\][[:space:]]*(#.*)?$/, "", line)
+            n = split(line, parts, ",")
+            for (i = 1; i <= n; i++) {
+                v = unquote(parts[i])
+                if (v != "") print v
+            }
+            next
+        }
+        in_ignores && /^[^[:space:]#-]/ { in_ignores = 0 }
+        in_ignores && /^[[:space:]]*-[[:space:]]+/ {
+            v = $0
+            sub(/^[[:space:]]*-[[:space:]]+/, "", v)
+            v = unquote(v)
+            if (v != "") print v
         }
     ' "$file"
 }

@@ -279,6 +279,30 @@ else
   FAILED=$((FAILED + 1))
 fi
 
+# --- 12: overwrite tier is managed (never discards local edits) ---
+echo ""
+echo "=== Managed overwrite tier ==="
+
+TOTAL=$((TOTAL + 1))
+if grep -q 'cpf-managed-file.sh" apply' "$SKILL_FILE" \
+  && grep -q 'seed the upgrade baseline' "$SKILL_FILE"; then
+  echo "PASS: init seeds .cpf/upstream-cache via cpf-managed-file.sh apply"
+  PASSED=$((PASSED + 1))
+else
+  echo "FAIL: SKILL.md init does not seed the overwrite-tier baseline"
+  FAILED=$((FAILED + 1))
+fi
+
+TOTAL=$((TOTAL + 1))
+if grep -q 'Overwrite tier (never discards local edits)' "$SKILL_FILE" \
+  && grep -q '\[keep/replace\] (default keep)' "$SKILL_FILE"; then
+  echo "PASS: upgrade overwrite tier keeps locally edited files by default"
+  PASSED=$((PASSED + 1))
+else
+  echo "FAIL: SKILL.md upgrade overwrite tier does not protect local edits"
+  FAILED=$((FAILED + 1))
+fi
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 [[ "$FAILED" -eq 0 ]] && exit 0 || exit 1
