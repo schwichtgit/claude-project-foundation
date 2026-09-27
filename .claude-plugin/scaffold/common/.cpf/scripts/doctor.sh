@@ -47,6 +47,10 @@ resolve_registry_path() {
   if [[ -z "$plugin_root" ]]; then
     return 1
   fi
+  # CLAUDE_PLUGIN_ROOT is the install root; assets live in .claude-plugin/.
+  if [[ -d "$plugin_root/.claude-plugin" ]]; then
+    plugin_root="$plugin_root/.claude-plugin"
+  fi
   local resolver="$plugin_root/lib/cpf-resolve-asset.sh"
   if [[ ! -f "$resolver" ]]; then
     return 1

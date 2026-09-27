@@ -35,10 +35,16 @@ cpf_resolve_asset() {
         project_dir="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")"
     fi
 
+    # Claude Code sets CLAUDE_PLUGIN_ROOT to the plugin's install root (the
+    # repo root, which holds .claude-plugin/), as hooks.json assumes. The
+    # assets live under .claude-plugin/, so normalize to that directory.
+    # Without the env var, this file's own lib/.. is already that base.
     local plugin_root
     plugin_root="${CLAUDE_PLUGIN_ROOT:-}"
     if [[ -z "$plugin_root" ]]; then
         plugin_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    elif [[ -d "$plugin_root/.claude-plugin" ]]; then
+        plugin_root="$plugin_root/.claude-plugin"
     fi
 
     local override="$project_dir/.cpf/overrides/$relpath"
