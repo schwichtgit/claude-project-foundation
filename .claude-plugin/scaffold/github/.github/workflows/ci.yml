@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # `edited` re-runs CI when the PR title changes; the title becomes
+    # the squash-merge subject and commit-standards checks it.
+    types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
 
 permissions:

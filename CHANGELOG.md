@@ -118,6 +118,13 @@ read`, more than the calling `ci.yml` granted, so every run ended in
   `startup_failure`. The base now asks only for `contents: read`, and
   the host `ci.yml` grants it explicitly. Projects that keep a local
   `ci-base.yml` should drop that line too.
+- Scaffold `codeql.yml` grants `actions: read`; without it the analyze
+  step failed in private repositories.
+- Scaffold `dependabot.yml` enables only GitHub Actions by default; npm,
+  pip, cargo, and gomod are opt-in (an ecosystem without its manifest
+  failed every Dependabot run).
+- The scaffold host `ci.yml` re-runs on PR title edits, so a corrected
+  title clears commit-standards.
 - At the ci boundary the runtime lints committed files only; installed
   dependencies (`node_modules/`) and build output are never in scope.
 - Commit-standards jobs run both the commit and the PR-title check and

@@ -28,10 +28,11 @@ If any is missing, stop and name the `/cpf:specforge` sub-command to run
 4. **Create the project structure** per the plan, with `README.md` and
    a stack-appropriate `.gitignore`. No feature logic.
 5. **Run `./init.sh`** and confirm it succeeds.
-6. **Commit** on a branch (for example `chore/init`) with
-   `chore: initialize project structure`.
-7. **Update `claude-progress.txt`:** session type, files created,
+6. **Update `claude-progress.txt`:** session type, files created,
    issues, readiness for the coder agent.
+7. **Commit** on a branch (for example `chore/init`) with
+   `chore: initialize project structure`, leaving no uncommitted
+   changes.
 
 ## Rules
 

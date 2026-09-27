@@ -109,8 +109,10 @@ are the project's responsibility; cpf does not enforce them.
 
 `.prettierignore`, `.markdownlint-cli2.yaml` (its `ignores` list), and
 `.cpf/shellcheck-excludes.txt` are generated from `.cpf/policy.json`.
-Edit the policy, not the generated files, then run
-`/cpf:specforge upgrade` to regenerate them. Run the same command after
+Edit the policy, not the generated files: the checks read the policy
+directly, so an edit takes effect immediately. The generated files,
+which editors and tools run outside cpf use, are rewritten by the next
+`/cpf:specforge init` or `upgrade`. Run `/cpf:specforge upgrade` after
 updating the plugin.
 
 Proposals in `.specify/proposals/` mature into specs through

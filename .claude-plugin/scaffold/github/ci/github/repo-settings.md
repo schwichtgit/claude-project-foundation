@@ -88,11 +88,10 @@ gh api repos/{owner}/{repo} -X PATCH \
   -f squash_merge_commit_message=PR_BODY
 ```
 
-`ci.yml` does not re-run when only the PR title is edited. Re-run the
-workflow (or push) after renaming a pull request.
-`ci/github/workflows/commit-standards.yml` is a standalone alternative
-that also triggers on title edits; use it only in repositories that do
-not call `ci-base.yml`, otherwise the check runs twice.
+`ci.yml` re-runs when the PR title is edited, so a fixed title clears
+the check. `ci/github/workflows/commit-standards.yml` is a standalone
+alternative for repositories that do not call `ci-base.yml`; using both
+runs the check twice.
 
 ## 4. Security
 
@@ -114,8 +113,8 @@ not call `ci-base.yml`, otherwise the check runs twice.
   ```
 
 - **Dependabot alerts and security updates:** init projects
-  `.github/dependabot.yml` (GitHub Actions and npm; uncomment pip,
-  cargo, or gomod as needed). Alerts and security updates are
+  `.github/dependabot.yml` (GitHub Actions; uncomment npm, pip, cargo,
+  or gomod for the ecosystems the project uses). Alerts and security updates are
   repository settings:
 
   ```bash
