@@ -21,6 +21,19 @@
       "additionalProperties": {
         "$ref": "#/$defs/hook"
       }
+    },
+    "pins": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pin compliance (.cpf/runtime/pins.sh). cpf reports which linters are pinned and how to pin the rest; it never pins them itself. Optional; absent means severity warn.",
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": ["warn", "error"],
+          "default": "warn",
+          "description": "warn: pins.sh check reports findings and passes. error: pins.sh check fails CI on any finding. Set error once the project has pinned its linters."
+        }
+      }
     }
   },
   "$defs": {

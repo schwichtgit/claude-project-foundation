@@ -5,6 +5,60 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Pin compliance: `.cpf/runtime/pins.sh report [--json]` and
+  `pins.sh check`. cpf reports how each linter is pinned and how to pin
+  the rest; it never creates pins itself.
+  - Pins recognized: shellcheck in `.tool-versions` with a checksum, or
+    `shellcheck-py` in `uv.lock`; prettier and markdownlint-cli2 as
+    exact versions in `package.json` and `package-lock.json`, installed
+    in `node_modules`. The running version must match the pin.
+  - Named as not pinned: the npm `shellcheck` package (it downloads the
+    latest release at install time), version ranges, tools from `$PATH`.
+  - The project's CI files are scanned for linter installs that bypass
+    the pins (`apt-get`, `brew`, `npm -g`, `pkg@^N`).
+  - `check` warns by default. With `"pins": {"severity": "error"}` in
+    `.cpf/policy.json` it fails.
+  - The GitHub, GitLab, and Jenkins templates run `pins.sh check` after
+    `verify.sh`. Doctor and upgrade show the report.
+- A project can pin a shellcheck version cpf has no checksum for by
+  adding the release checksums to `.cpf/shellcheck-checksums`.
+
+### Changed
+
+- `verify.sh` reports an unpinned linter as a warning at every boundary
+  instead of a note. Warnings never block a stop, a commit, or CI.
+- shellcheck resolves `shellcheck-py` from `.venv` or `uv run --frozen`
+  when `uv.lock` lists it.
+- Doctor install hints for prettier, markdownlint-cli2, and shellcheck
+  describe how to pin them instead of `npm install -g`, brew, or apt.
+
+### Fixed
+
+- A `.tool-versions` shellcheck version without a checksum, or a failed
+  download, silently fell back to the shellcheck on `$PATH`. The reason
+  is now shown on the warning.
+- The runtime's `lib/` was not committed in projects whose `.gitignore`
+  has a bare `lib/` line (the GitHub Python template), so CI and fresh
+  clones ran `verify.sh` without its libraries. The scaffold now ships
+  `.cpf/.gitignore`, which keeps `runtime/lib/` in.
+  Reported by a CPF downstream project.
+- The Jenkins template installs `curl` and `xz`, which the pinned
+  shellcheck download needs.
+
+### Upgrading
+
+- `.cpf/.gitignore` and `.cpf/runtime/pins.sh` arrive as new files.
+- `.cpf/scripts/install-hooks.sh` writes `.git/hooks`, which every
+  worktree of the repository shares. Run it after the upgrade is merged,
+  or other worktrees' branches get hooks that need `.cpf/runtime/`.
+- Until the new `commit-msg` hook is installed, an alpha.10 hook rejects
+  commit messages that mention `.claude-plugin/` or `CLAUDE.md`,
+  including the upgrade's own commits.
+
 ## [0.1.0-alpha.14] - 2026-09-27
 
 One checks runtime for every boundary, and a safe upgrade path from

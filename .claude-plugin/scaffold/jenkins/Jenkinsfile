@@ -40,13 +40,15 @@ pipeline {
                         npm ci
                     else
                         echo "No package-lock.json: installing unpinned node linters"
-                        npm install --no-save --no-package-lock prettier@3 markdownlint-cli2
+                        npm install --no-save --no-package-lock prettier@3 markdownlint-cli2 # cpf: unpinned fallback
                     fi
                 '''
+                // curl and xz fetch the shellcheck pinned in .tool-versions;
+                // an apt shellcheck is only the unpinned fallback.
                 sh '''
-                    for tool in jq shellcheck; do
-                        if ! command -v "$tool" > /dev/null 2>&1; then
-                            apt-get update -qq && apt-get install -y -qq "$tool"
+                    for pkg in jq:jq curl:curl xz:xz-utils shellcheck:shellcheck; do
+                        if ! command -v "${pkg%%:*}" > /dev/null 2>&1; then
+                            apt-get update -qq && apt-get install -y -qq "${pkg#*:}"
                         fi
                     done
                 '''
@@ -61,6 +63,7 @@ pipeline {
         stage('Lint') {
             steps {
                 sh 'bash .cpf/runtime/verify.sh --boundary ci'
+                sh 'bash .cpf/runtime/pins.sh check'
             }
         }
 

@@ -123,6 +123,22 @@ cpf_validate_policy() {
         | .[]
     ' "$file" 2>/dev/null)"
 
+    local pin_errors
+    pin_errors="$(jq -r '
+        if has("pins") | not then empty
+        elif (.pins | type) != "object" then "pins: must be an object"
+        else
+          ( .pins | keys[] | select(. != "severity") | "pins: unknown field \"\(.)\"" ),
+          ( .pins.severity as $s
+            | if (.pins | has("severity")) and ((["warn","error"] | index($s)) == null)
+                then "pins: invalid severity \"\($s)\" (allowed: warn, error)"
+              else empty end )
+        end
+    ' "$file" 2>/dev/null)"
+    if [[ -n "$pin_errors" ]]; then
+        errors="${errors:+$errors$'\n'}$pin_errors"
+    fi
+
     if [[ -n "$errors" ]]; then
         echo "ERROR: policy validation failed in $file:" >&2
         printf '%s\n' "$errors" | sed 's/^/  - /' >&2

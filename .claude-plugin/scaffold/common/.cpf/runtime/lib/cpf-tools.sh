@@ -13,14 +13,18 @@
 #   - Runtime-internal paths come from this file's own directory.
 #
 # Tool resolution never silently uses a different version than the
-# project pins:
+# project pins. It only looks at files, so it stays cheap enough for every
+# hook run; pins.sh compares running versions against the pins.
 #   python tools  <svc>/.venv/bin/<tool>, else `uv run --frozen` when a
 #                 uv.lock exists; otherwise unavailable (never $PATH).
 #   node tools    <root>/node_modules/.bin/<bin>; else $PATH, reported as
 #                 unpinned; otherwise unavailable.
 #   ShellCheck    the version in <root>/.tool-versions, installed from the
-#                 upstream release and checksum-verified; else $PATH,
-#                 reported as unpinned; otherwise unavailable.
+#                 upstream release and checksum-verified; else shellcheck-py
+#                 when <root>/uv.lock lists it (.venv, else uv run); else
+#                 $PATH, reported as unpinned; otherwise unavailable.
+# CPF_TOOL_SOURCE names where the tool came from; CPF_TOOL_PIN_ERROR says
+# why a declared pin could not be used.
 
 CPF_RUNTIME_LIB_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
@@ -160,36 +164,73 @@ cpf_python_tool() {
     return 1
 }
 
-# Resolve a node CLI. Sets CPF_TOOL_CMD and CPF_TOOL_PINNED (1/0).
+# Resolve a node CLI. Sets CPF_TOOL_CMD, CPF_TOOL_PINNED (1/0), and
+# CPF_TOOL_SOURCE.
 cpf_node_tool() {
     local bin="$1"
     CPF_TOOL_CMD=()
     CPF_TOOL_PINNED=0
+    CPF_TOOL_SOURCE=""
+    CPF_TOOL_PIN_ERROR=""
     if [[ -x "$CPF_PROJECT_ROOT/node_modules/.bin/$bin" ]]; then
         CPF_TOOL_CMD=("$CPF_PROJECT_ROOT/node_modules/.bin/$bin")
         CPF_TOOL_PINNED=1
+        CPF_TOOL_SOURCE="node_modules"
         return 0
     fi
     if command -v "$bin" >/dev/null 2>&1; then
         CPF_TOOL_CMD=("$bin")
+        CPF_TOOL_SOURCE="PATH"
         return 0
     fi
     return 1
 }
 
-# Resolve shellcheck. Sets CPF_TOOL_CMD and CPF_TOOL_PINNED (1/0).
+# Version of <package> in <root>/uv.lock, empty when it is not locked.
+cpf_uv_lock_version() {
+    local pkg="$1" lock="$CPF_PROJECT_ROOT/uv.lock"
+    [[ -f "$lock" ]] || return 0
+    awk -v p="$pkg" '
+        /^\[\[package\]\]/ { hit = 0; next }
+        $1 == "name" && $3 == "\"" p "\"" { hit = 1; next }
+        hit && $1 == "version" { gsub(/"/, "", $3); print $3; exit }
+    ' "$lock"
+}
+
+# Resolve shellcheck. Sets CPF_TOOL_CMD, CPF_TOOL_PINNED (1/0),
+# CPF_TOOL_SOURCE, and CPF_TOOL_PIN_ERROR.
 cpf_shellcheck_tool() {
     CPF_TOOL_CMD=()
     CPF_TOOL_PINNED=0
-    local bin
+    CPF_TOOL_SOURCE=""
+    CPF_TOOL_PIN_ERROR=""
+    local bin err
+    err="$(mktemp)"
     if bin="$(CPF_PROJECT_ROOT="$CPF_PROJECT_ROOT" \
-        bash "$CPF_RUNTIME_LIB_DIR/cpf-shellcheck.sh" --print-path 2>/dev/null)"; then
+        bash "$CPF_RUNTIME_LIB_DIR/cpf-shellcheck.sh" --print-path 2>"$err")"; then
+        rm -f "$err"
         CPF_TOOL_CMD=("$bin")
         CPF_TOOL_PINNED=1
+        CPF_TOOL_SOURCE=".tool-versions"
+        return 0
+    fi
+    # A .tool-versions pin that cannot be used (no checksum, failed
+    # download) must be visible, not a silent fall-through.
+    if grep -qs '^shellcheck[[:space:]]' "$CPF_PROJECT_ROOT/.tool-versions"; then
+        CPF_TOOL_PIN_ERROR="$(tail -n 1 "$err")"
+    fi
+    rm -f "$err"
+    # The shellcheck-py wheel bundles the binary, so a uv.lock entry is
+    # a real pin. Without that entry uv run would fall back to $PATH.
+    if [[ -n "$(cpf_uv_lock_version shellcheck-py)" ]] \
+        && cpf_python_tool "$CPF_PROJECT_ROOT" shellcheck; then
+        CPF_TOOL_PINNED=1
+        CPF_TOOL_SOURCE="shellcheck-py (uv.lock)"
         return 0
     fi
     if command -v shellcheck >/dev/null 2>&1; then
         CPF_TOOL_CMD=(shellcheck)
+        CPF_TOOL_SOURCE="PATH"
         return 0
     fi
     return 1

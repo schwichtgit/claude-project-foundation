@@ -10,9 +10,9 @@
 # The checks themselves are the runtime's -- the same code downstream
 # projects run in their hooks and CI. This wrapper adds what only this
 # repo needs, failing by name before anything is linted:
-#   1. Pins. prettier and markdownlint-cli2 in node_modules must match the
-#      exact versions in package.json and package-lock.json; shellcheck
-#      must match .tool-versions.
+#   1. Pins. The runtime's pins.sh check, with "pins": {"severity":
+#      "error"} in this repo's policy: prettier and markdownlint-cli2 match
+#      package.json and package-lock.json, shellcheck matches .tool-versions.
 #   2. Generated configs. .prettierignore, .markdownlint-cli2.yaml, and
 #      .cpf/shellcheck-excludes.txt must equal what cpf-generate-configs.sh
 #      produces from .cpf/policy.json.
@@ -26,37 +26,6 @@ FAILED=0
 fail() {
     echo "FAIL: $*" >&2
     FAILED=$((FAILED + 1))
-}
-
-check_node_pin() {
-    local pkg="$1" declared locked installed
-    declared="$(jq -r --arg p "$pkg" '.devDependencies[$p] // empty' package.json)"
-    locked="$(jq -r --arg p "node_modules/$pkg" '.packages[$p].version // empty' package-lock.json)"
-    installed="$(jq -r '.version // empty' "node_modules/$pkg/package.json" 2>/dev/null || true)"
-    if [[ ! "$declared" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        fail "$pkg: package.json must pin an exact version (found \"$declared\")"
-        return 1
-    fi
-    if [[ "$locked" != "$declared" ]]; then
-        fail "$pkg: package-lock.json has \"$locked\", package.json pins $declared (run npm install)"
-        return 1
-    fi
-    if [[ "$installed" != "$declared" ]]; then
-        fail "$pkg: installed \"${installed:-none}\", pinned $declared (run npm ci)"
-        return 1
-    fi
-    echo "pin: $pkg $installed"
-}
-
-check_shellcheck_pin() {
-    local pinned installed
-    pinned="$(awk '$1 == "shellcheck" { print $2 }' .tool-versions)"
-    installed="$(bash scripts/shellcheck.sh --version | awk '/^version:/ { print $2 }')"
-    if [[ -z "$pinned" || "$installed" != "$pinned" ]]; then
-        fail "shellcheck: installed \"${installed:-none}\", pinned \"${pinned:-none}\" (.tool-versions)"
-        return 1
-    fi
-    echo "pin: shellcheck $installed"
 }
 
 check_generated_configs() {
@@ -100,9 +69,9 @@ if [[ "${1:-}" == "--fix" ]]; then
     exit 0
 fi
 
-check_node_pin prettier || true
-check_node_pin markdownlint-cli2 || true
-check_shellcheck_pin || true
+if ! CLAUDE_PROJECT_DIR="$REPO_ROOT" bash "$RUNTIME/pins.sh" check; then
+    fail "tool pins (bash .cpf/runtime/pins.sh report)"
+fi
 check_generated_configs || true
 if [[ "$FAILED" -gt 0 ]]; then
     echo "" >&2

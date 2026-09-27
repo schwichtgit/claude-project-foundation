@@ -11,8 +11,11 @@
 # version (callers then fall back to an unpinned shellcheck, if any).
 #
 # The project root is CPF_PROJECT_ROOT, else $CLAUDE_PROJECT_DIR, else the
-# git top level, else $PWD. To support a new version, add its checksums
-# (sha256 of each .tar.xz release asset) to sha256_for.
+# git top level, else $PWD. Checksums (sha256 of each .tar.xz release
+# asset) come from the table in sha256_for, then from the project's
+# .cpf/shellcheck-checksums, one `<version> <os>.<arch> <sha256>` per
+# line. A project pins a version cpf does not know by adding its
+# checksums there; a version with no checksum is never installed.
 set -euo pipefail
 
 PROJECT_ROOT="${CPF_PROJECT_ROOT:-${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}}"
@@ -31,7 +34,14 @@ sha256_for() {
         0.11.0/linux.aarch64) echo 12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588 ;;
         0.11.0/darwin.x86_64) echo 3c89db4edcab7cf1c27bff178882e0f6f27f7afdf54e859fa041fca10febe4c6 ;;
         0.11.0/darwin.aarch64) echo 56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79 ;;
-        *) return 1 ;;
+        *)
+            local file="$PROJECT_ROOT/.cpf/shellcheck-checksums" sum=""
+            if [[ -f "$file" ]]; then
+                sum="$(awk -v k="$1" '$1 "/" $2 == k && length($3) == 64 && $3 ~ /^[0-9a-f]+$/ { print $3; exit }' "$file")"
+            fi
+            [[ -n "$sum" ]] || return 1
+            echo "$sum"
+            ;;
     esac
 }
 
@@ -69,7 +79,7 @@ install_shellcheck() {
     local expected
     if ! expected="$(sha256_for "$VERSION/$os.$arch")"; then
         echo "shellcheck.sh: no checksum for $VERSION ($os.$arch);" \
-            "add it to sha256_for" >&2
+            "add it to .cpf/shellcheck-checksums" >&2
         exit 1
     fi
 

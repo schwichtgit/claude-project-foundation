@@ -258,10 +258,21 @@ main() {
     policy_present="false"
     warnings=$((warnings + 1))
   fi
+  # Pin compliance (.cpf/runtime/pins.sh): reported, never a doctor failure.
+  local pins_sh="$PROJECT_DIR/.cpf/runtime/pins.sh"
   if [[ "$OUTPUT_FORMAT" == "json" ]]; then
-    output_json "$platform" "$project_types_str" "$results" "$passed" "$warnings" "$failures" "$policy_present"
+    local pins_json="null"
+    if [[ -f "$pins_sh" ]]; then
+      pins_json="$(CLAUDE_PROJECT_DIR="$PROJECT_DIR" bash "$pins_sh" report --json 2>/dev/null || echo null)"
+    fi
+    output_json "$platform" "$project_types_str" "$results" "$passed" "$warnings" "$failures" "$policy_present" \
+      | jq --argjson p "${pins_json:-null}" '. + {pins: $p}'
   else
     output_text "$platform" "$project_types_str" "$results" "$passed" "$warnings" "$failures" "$missing_required" "$policy_warn_msg"
+    if [[ -f "$pins_sh" ]]; then
+      echo ""
+      CLAUDE_PROJECT_DIR="$PROJECT_DIR" bash "$pins_sh" report 2>/dev/null || true
+    fi
   fi
   [[ $failures -gt 0 ]] && exit 1
   exit 0

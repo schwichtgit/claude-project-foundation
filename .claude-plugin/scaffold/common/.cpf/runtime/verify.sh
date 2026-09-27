@@ -566,7 +566,8 @@ run_custom_orchestrator() {
 # section for them; shellcheck runs on **/*.sh by default. Each tool's
 # policy severity applies (error blocks, warning warns, info reports);
 # ShellCheck uses verify-quality.severity. Tools resolve to the project's
-# pinned copies (see lib/cpf-tools.sh); an unpinned fallback is noted.
+# pinned copies (see lib/cpf-tools.sh); an unpinned fallback is a warning
+# (never a failure: pins.sh enforces pins in CI when the policy says so).
 # ---------------------------------------------------------------------------
 
 # A tool the policy needs cannot be resolved. CI must not pass by
@@ -581,6 +582,14 @@ _cpf_tool_missing() {
         echo "  WARN: $message" >&2
         WARNINGS=$((WARNINGS + 1))
     fi
+}
+
+# A tool ran from an unpinned source. Warns at every boundary; pins.sh
+# does the version comparison and the enforcement.
+_cpf_unpinned() {
+    local tool="$1" why="$2"
+    echo "  WARN: $tool is not pinned ($why); see bash .cpf/runtime/pins.sh report" >&2
+    WARNINGS=$((WARNINGS + 1))
 }
 
 # Map a nonzero tool result through a severity. Args: label severity.
@@ -617,8 +626,10 @@ run_shellcheck_pass() {
         return 0
     fi
     local sc_cmd=("${CPF_TOOL_CMD[@]}")
-    [[ "$CPF_TOOL_PINNED" -eq 1 ]] \
-        || echo "  note: shellcheck is not pinned in .tool-versions"
+    local sc_unpinned=""
+    if [[ "$CPF_TOOL_PINNED" -ne 1 ]]; then
+        sc_unpinned="${CPF_TOOL_PIN_ERROR:-using $CPF_TOOL_SOURCE}"
+    fi
 
     local files=() f
     while IFS= read -r -d '' f; do
@@ -638,6 +649,7 @@ run_shellcheck_pass() {
     fi
 
     echo "Shellcheck (${#files[@]} file(s))"
+    [[ -z "$sc_unpinned" ]] || _cpf_unpinned shellcheck "$sc_unpinned"
     CHECKS_RUN=$((CHECKS_RUN + 1))
     _cpf_capture_in_root "${sc_cmd[@]}" -x -f gcc "${files[@]}"
     if [[ "$_CPF_RC" -eq 0 ]]; then
@@ -671,7 +683,7 @@ run_prettier_pass() {
     fi
     local cmd=("${CPF_TOOL_CMD[@]}")
     echo "Prettier (${#files[@]} file(s))"
-    [[ "$CPF_TOOL_PINNED" -eq 1 ]] || echo "  note: prettier is not pinned (no node_modules)"
+    [[ "$CPF_TOOL_PINNED" -eq 1 ]] || _cpf_unpinned prettier "using $CPF_TOOL_SOURCE, no node_modules"
     CHECKS_RUN=$((CHECKS_RUN + 1))
     if [[ "$STAGED_MODE" == "--staged" ]]; then
         # Check the staged content, not the working tree.
@@ -707,7 +719,7 @@ run_markdownlint_pass() {
     fi
     local cmd=("${CPF_TOOL_CMD[@]}")
     echo "Markdownlint (${#files[@]} file(s))"
-    [[ "$CPF_TOOL_PINNED" -eq 1 ]] || echo "  note: markdownlint-cli2 is not pinned (no node_modules)"
+    [[ "$CPF_TOOL_PINNED" -eq 1 ]] || _cpf_unpinned markdownlint-cli2 "using $CPF_TOOL_SOURCE, no node_modules"
     CHECKS_RUN=$((CHECKS_RUN + 1))
     if [[ "$STAGED_MODE" == "--staged" ]]; then
         local out="" rc=0 one
