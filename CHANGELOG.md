@@ -5,6 +5,61 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-alpha.14] - 2026-09-27
+
+Completes upgrade safety for projects coming from alpha.10: moved git
+hooks keep their local fixes, untouched files upgrade without prompts,
+and the projected pre-commit hook matches the Stop hook. Upgrade to
+this release rather than alpha.12 or alpha.13.
+
+### Upgrading from 0.1.0-alpha.10, alpha.12, or alpha.13
+
+1. Update the plugin: `claude plugin update cpf@specforge`, then
+   `/reload-plugins` in open sessions.
+2. On a clean branch, run `/cpf:specforge upgrade`.
+   - Git hooks from alpha.10 at `scripts/hooks/`,
+     `scripts/install-hooks.sh`, and `scripts/doctor.sh` are adopted
+     to their `.cpf/scripts/` paths, local edits included. The old
+     files are listed as no longer used.
+   - Managed files that match any released cpf version are upgraded
+     without a prompt. Files with local edits show the diff and
+     `[keep/replace]`, defaulting to keep. The new version goes to
+     `.cpf/pending/<path>`.
+   - Answer the CI platform prompt, and accept or reject each
+     review-tier diff.
+3. Merge what you want from `.cpf/pending/` by hand, then delete it.
+4. Review `git diff`, run lint and tests, commit, and open a PR.
+
+### Fixed
+
+- Upgrade adopts files that moved between releases
+  (`upgrade-tiers.json` `relocations`). A project's edited
+  `scripts/hooks/pre-commit` is no longer silently replaced by a fresh
+  `.cpf/scripts/hooks/pre-commit`.
+- Without a cached baseline, a managed file that matches a released cpf
+  version is treated as untouched and upgraded without prompting
+  (`lib/cpf-known-upstream.json`, generated from the release tags by
+  `scripts/gen-known-upstream.sh`; CI fails when it is stale).
+- Scaffold `pre-commit`:
+  - `.env.sample`, `.env.example`, `.env.template`, and `.env.dist`
+    can be committed.
+  - The YAML check prefers the project's `.venv` python and skips when
+    PyYAML is unavailable instead of failing every YAML file.
+  - ruff resolves the project's pinned copy (`.venv`, else
+    `uv run --frozen`), never `$PATH`, and runs `format --check` as CI
+    does.
+
+  Reported by accelno-cortex.
+
+- The per-edit formatter resolves ruff, black, and autopep8 the same
+  way instead of using `$PATH`.
+- `ci/gitlab/gitlab-ci-base.yml` is upgraded again. It was also
+  covered by the plugin-cache prefix `ci/gitlab/`, which upgrade skips.
+- The asset resolver, `doctor.sh`, and the skill's commands resolve
+  plugin files from the install root that Claude Code sets.
+  `cpf_resolve_asset` previously failed for every template when the
+  variable was set.
+
 ## [0.1.0-alpha.13] - 2026-09-27
 
 Upgrade safety: `/cpf:specforge upgrade` no longer discards local
