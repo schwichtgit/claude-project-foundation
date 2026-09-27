@@ -625,6 +625,10 @@ run_shellcheck_pass() {
         files+=("$f")
     done < <(cpf_tool_files shellcheck "$FILE_MODE" '**/*.sh')
 
+    # No shell files staged is normal for a commit; say nothing.
+    if [[ "${#files[@]}" -eq 0 && "$STAGED_MODE" == "--staged" ]]; then
+        return 0
+    fi
     echo ""
     if [[ "${#files[@]}" -eq 0 ]]; then
         # Say so instead of skipping silently: an over-broad exclude
