@@ -77,11 +77,14 @@ pipeline {
         stage('Commit Standards') {
             when { changeRequest() }
             steps {
-                sh 'bash .cpf/runtime/commit-check.sh --range "origin/${CHANGE_TARGET}..HEAD"'
+                // Run both checks so every problem is reported, then fail.
                 sh '''
+                    rc=0
+                    bash .cpf/runtime/commit-check.sh --range "origin/${CHANGE_TARGET}..HEAD" || rc=1
                     if [ -n "${CHANGE_TITLE:-}" ]; then
-                        bash .cpf/runtime/commit-check.sh --title "$CHANGE_TITLE"
+                        bash .cpf/runtime/commit-check.sh --title "$CHANGE_TITLE" || rc=1
                     fi
+                    exit "$rc"
                 '''
             }
         }

@@ -117,8 +117,11 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          bash .cpf/runtime/commit-check.sh --range "$BASE..$HEAD"
-          bash .cpf/runtime/commit-check.sh --title "$TITLE" --pr "$PR_NUMBER"
+          # Run both checks so every problem is reported, then fail.
+          rc=0
+          bash .cpf/runtime/commit-check.sh --range "$BASE..$HEAD" || rc=1
+          bash .cpf/runtime/commit-check.sh --title "$TITLE" --pr "$PR_NUMBER" || rc=1
+          exit "$rc"
 
   # ---------------------------------------------------------------------------
   # Plugin validation

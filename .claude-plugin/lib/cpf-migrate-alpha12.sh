@@ -50,6 +50,9 @@ source "$CPF_MIG_LIB_DIR/cpf-taskfile-detect.sh"
 # shellcheck source=cpf-resolve-asset.sh
 # shellcheck disable=SC1091
 source "$CPF_MIG_LIB_DIR/cpf-resolve-asset.sh"
+# shellcheck source=cpf-managed-file.sh
+# shellcheck disable=SC1091
+source "$CPF_MIG_LIB_DIR/cpf-managed-file.sh"
 
 MIG_TARGET_VERSION_DEFAULT="0.1.0-alpha.12"
 
@@ -313,6 +316,11 @@ _mig_file_differs_from_scaffold() {
     # cpf_resolve_asset may resolve the override to the host copy itself
     # in future flows; compare byte-equal either way.
     if cmp -s "$host_file" "$plugin_copy"; then
+        return 1
+    fi
+    # A copy that matches any released version was never edited: the
+    # plugin's current version may simply be newer.
+    if _cpf_mf_is_known_upstream "$relpath" "$host_file"; then
         return 1
     fi
     return 0

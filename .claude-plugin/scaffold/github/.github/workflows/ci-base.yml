@@ -12,9 +12,11 @@ name: CI Base
 on:
   workflow_call:
 
+# A called workflow cannot hold more than its caller grants: keep this
+# within the host ci.yml's permissions (contents: read), or every run
+# ends in startup_failure.
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -57,8 +59,11 @@ jobs:
             echo "Not a pull request context -- skipping commit validation."
             exit 0
           fi
-          bash .cpf/runtime/commit-check.sh --range "$BASE..$HEAD"
-          bash .cpf/runtime/commit-check.sh --title "$TITLE" --pr "$PR_NUMBER"
+          # Run both checks so every problem is reported, then fail.
+          rc=0
+          bash .cpf/runtime/commit-check.sh --range "$BASE..$HEAD" || rc=1
+          bash .cpf/runtime/commit-check.sh --title "$TITLE" --pr "$PR_NUMBER" || rc=1
+          exit "$rc"
 
   # ---------------------------------------------------------------------------
   # Summary (ONLY job to require in branch protection)

@@ -72,6 +72,8 @@ cpf_path_matches_any() {
 
 # Print (NUL-separated) project-relative candidate files.
 #   --staged   files staged for commit (added/copied/modified)
+#   --tracked  committed files only (ci: build artifacts and installed
+#              dependencies such as node_modules/ are never in scope)
 #   default    tracked plus untracked-not-ignored files in a git work tree,
 #              else every regular file outside .git/
 cpf_candidate_files() {
@@ -80,6 +82,8 @@ cpf_candidate_files() {
         cd "$CPF_PROJECT_ROOT" || exit 0
         if [[ "$mode" == "--staged" ]]; then
             git diff --cached --name-only -z --diff-filter=ACM 2>/dev/null
+        elif [[ "$mode" == "--tracked" ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            git ls-files -z --cached 2>/dev/null
         elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
             git ls-files -z --cached --others --exclude-standard 2>/dev/null
         else

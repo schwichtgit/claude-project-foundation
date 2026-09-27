@@ -94,6 +94,18 @@ else
 fi
 
 echo ""
+echo "=== the called base asks for no more than the host grants ==="
+# A reusable workflow cannot exceed its caller's permissions; exceeding
+# them makes every run a startup_failure.
+BASE_PERMS="$(awk '/^permissions:/{f=1;next} f&&/^[^ ]/{f=0} f&&/:/{gsub(/ /,"");print}' "$GITHUB_BASE" | sort | tr '\n' ' ')"
+HOST_PERMS="$(awk '/^permissions:/{f=1;next} f&&/^[^ ]/{f=0} f&&/:/{gsub(/ /,"");print}' "$GITHUB_HOST" | sort | tr '\n' ' ')"
+if [[ -n "$HOST_PERMS" && "$BASE_PERMS" == "$HOST_PERMS" ]]; then
+  pass "ci-base.yml permissions ($BASE_PERMS) match the host ci.yml grant"
+else
+  fail "ci-base.yml permissions [$BASE_PERMS] exceed or differ from host ci.yml [$HOST_PERMS]"
+fi
+
+echo ""
 echo "=== plugin-only release steps are guarded for downstream projects ==="
 for f in "$GITHUB_RELEASE" "$GITLAB_BASE" "$JENKINS"; do
   if grep -qE "! -f \.claude-plugin/plugin\.json|fileExists\('\.claude-plugin/plugin\.json'\)" "$f"; then

@@ -1,8 +1,9 @@
 #!/bin/bash
-# Generate .claude-plugin/lib/cpf-known-upstream.json: for every
-# overwrite-tier path, the sha256 of each version cpf has ever shipped for
-# it (every v* release tag plus the working tree), including versions
-# shipped at the path's older location (upgrade-tiers.json relocations).
+# Generate .claude-plugin/lib/cpf-known-upstream.json: the sha256 of each
+# version cpf has ever shipped (every v* release tag plus the working tree)
+# for every overwrite-tier path -- including versions shipped at the
+# path's older location (upgrade-tiers.json relocations) -- and for every
+# file under a migration's reorg_paths (files that moved into the plugin).
 #
 # cpf-managed-file.sh uses this list when a host has no cached baseline
 # (.cpf/upstream-cache/<path>): a host file that matches a released
@@ -58,6 +59,29 @@ while IFS= read -r path; do
         done
     done
 done < <(jq -r '.tiers.overwrite[]' "$TIERS")
+
+# Files that moved into the plugin (migration reorg_paths such as
+# prompts/ or .specify/WORKFLOW.md): the migration guide uses these hashes
+# to tell a project's untouched copy from a customized one.
+while IFS= read -r reorg; do
+    for t in "${TAGS[@]}" WORKTREE; do
+        if [[ "$t" == WORKTREE ]]; then
+            list="$(cd .claude-plugin/scaffold/common && find "./${reorg%/}" -type f 2>/dev/null | sed 's|^\./||')"
+        else
+            list="$(git ls-tree -r --name-only "$t" -- ".claude-plugin/scaffold/common/${reorg%/}" 2>/dev/null \
+                | sed 's|^\.claude-plugin/scaffold/common/||')"
+        fi
+        while IFS= read -r rel; do
+            [[ -z "$rel" ]] && continue
+            src=".claude-plugin/scaffold/common/$rel"
+            if [[ "$t" == WORKTREE ]]; then
+                printf '%s\t%s\n' "$rel" "$(sha256_stdin <"$src")" >>"$tmp"
+            else
+                printf '%s\t%s\n' "$rel" "$(git show "$t:$src" | sha256_stdin)" >>"$tmp"
+            fi
+        done <<<"$list"
+    done
+done < <(jq -r '.migrations[]?.reorg_paths[]?' "$TIERS" | sort -u)
 
 json="$(sort -u "$tmp" | jq -R -s '
     split("\n") | map(select(length > 0) | split("\t"))

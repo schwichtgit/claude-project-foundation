@@ -48,9 +48,13 @@ commit-standards:
   script:
     - apk add --no-cache bash git python3 >/dev/null
     - git fetch --quiet origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-    - bash .cpf/runtime/commit-check.sh --range "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..HEAD"
-    # GitLab uses the MR title as the squash commit message.
-    - bash .cpf/runtime/commit-check.sh --title "$CI_MERGE_REQUEST_TITLE"
+    # Run both checks so every problem is reported, then fail. GitLab
+    # uses the MR title as the squash commit message.
+    - |
+      rc=0
+      bash .cpf/runtime/commit-check.sh --range "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..HEAD" || rc=1
+      bash .cpf/runtime/commit-check.sh --title "$CI_MERGE_REQUEST_TITLE" || rc=1
+      exit "$rc"
   rules:
     - if: $CI_MERGE_REQUEST_IID
 

@@ -35,7 +35,8 @@ This repository runs its own source:
   2. It then runs `.cpf/runtime/verify.sh --boundary ci`.
 
   Change lint scope in `.cpf/policy.json`, not in workflows. Locally,
-  untracked files are linted too; CI sees committed files only.
+  `npm run lint` (like CI) checks committed files only; the Stop hook
+  also checks untracked files.
 
 - **Shellcheck** only through `scripts/shellcheck.sh`, which installs
   the pinned version.

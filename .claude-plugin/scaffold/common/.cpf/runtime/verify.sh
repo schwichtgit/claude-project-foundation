@@ -57,6 +57,12 @@ case "$BOUNDARY" in
         exit 2
         ;;
 esac
+# Which files the static linters see: staged (git --staged), committed
+# only (ci), or tracked plus untracked-not-ignored (agent).
+FILE_MODE="$STAGED_MODE"
+if [[ "$BOUNDARY" == "ci" && "$STAGED_MODE" == "all" ]]; then
+    FILE_MODE="--tracked"
+fi
 if [[ "$BOUNDARY" == "agent" ]]; then
     trap 'exit 0' ERR
 fi
@@ -617,7 +623,7 @@ run_shellcheck_pass() {
     local files=() f
     while IFS= read -r -d '' f; do
         files+=("$f")
-    done < <(cpf_tool_files shellcheck "$STAGED_MODE" '**/*.sh')
+    done < <(cpf_tool_files shellcheck "$FILE_MODE" '**/*.sh')
 
     echo ""
     if [[ "${#files[@]}" -eq 0 ]]; then
@@ -651,7 +657,7 @@ run_prettier_pass() {
     local files=() f
     while IFS= read -r -d '' f; do
         files+=("$f")
-    done < <(cpf_tool_files prettier "$STAGED_MODE")
+    done < <(cpf_tool_files prettier "$FILE_MODE")
     [[ "${#files[@]}" -eq 0 ]] && return 0
     echo ""
     if ! cpf_node_tool prettier; then
@@ -687,7 +693,7 @@ run_markdownlint_pass() {
     local files=() f
     while IFS= read -r -d '' f; do
         files+=("$f")
-    done < <(cpf_tool_files markdownlint "$STAGED_MODE")
+    done < <(cpf_tool_files markdownlint "$FILE_MODE")
     [[ "${#files[@]}" -eq 0 ]] && return 0
     echo ""
     if ! cpf_node_tool markdownlint-cli2; then

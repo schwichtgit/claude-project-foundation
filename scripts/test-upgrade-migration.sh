@@ -345,6 +345,33 @@ else
     fail "infer flow-form markdownlint.exclude = $GOT"
 fi
 
+# --- reorg notice: an untouched copy from an older release is not
+# "customized" even when the plugin's current version is newer ---
+echo ""
+echo "=== reorg notice recognizes released versions ==="
+if git -C "$REPO_ROOT" rev-parse -q --verify refs/tags/v0.1.0-alpha.10 >/dev/null; then
+    FIX_RE="$(make_fixture reorg-released)"
+    mkdir -p "$FIX_RE/.specify" "$FIX_RE/prompts"
+    git -C "$REPO_ROOT" show v0.1.0-alpha.10:.claude-plugin/scaffold/common/.specify/WORKFLOW.md \
+        >"$FIX_RE/.specify/WORKFLOW.md"
+    git -C "$REPO_ROOT" show v0.1.0-alpha.10:.claude-plugin/scaffold/common/prompts/coding-prompt.md \
+        >"$FIX_RE/prompts/coding-prompt.md"
+    printf '# local tweak\n' >>"$FIX_RE/prompts/coding-prompt.md"
+    CPF_MIGRATE_ANSWER=skip run_migrate "$FIX_RE" >"$FIX_RE/out.log" 2>&1
+    if grep -q '\.specify/WORKFLOW.md (default; no override needed)' "$FIX_RE/out.log"; then
+        pass "untouched alpha.10 WORKFLOW.md is reported as default"
+    else
+        fail "untouched alpha.10 WORKFLOW.md reported as customized"
+    fi
+    if grep -q 'prompts/coding-prompt.md -> .cpf/overrides/prompts/coding-prompt.md' "$FIX_RE/out.log"; then
+        pass "an edited alpha.10 prompt is still reported as customized"
+    else
+        fail "edited prompt not reported as customized"
+    fi
+else
+    echo "SKIP: tag v0.1.0-alpha.10 not available (git fetch --tags)"
+fi
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 if [[ "$FAILED" -eq 0 ]]; then

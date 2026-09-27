@@ -112,6 +112,19 @@ call these, so a change that passes at one boundary passes at the next
   its pattern ended in `\b` right after `/`, which GNU grep never
   matches, while other greps also blocked ordinary paths such as
   `/tmp/build`. Targets must now end the argument.
+- The scaffold GitHub CI never started in repositories with GitHub's
+  restricted default token: `ci-base.yml` asked for `pull-requests:
+read`, more than the calling `ci.yml` granted, so every run ended in
+  `startup_failure`. The base now asks only for `contents: read`, and
+  the host `ci.yml` grants it explicitly. Projects that keep a local
+  `ci-base.yml` should drop that line too.
+- At the ci boundary the runtime lints committed files only; installed
+  dependencies (`node_modules/`) and build output are never in scope.
+- Commit-standards jobs run both the commit and the PR-title check and
+  report every problem before failing.
+- The upgrade migration no longer reports untouched copies of
+  `prompts/`, `.specify/WORKFLOW.md`, or `ci/principles/` as customized
+  when they match a released version.
 - `install-hooks.sh` works in git worktrees and honors `core.hooksPath`
   (it assumed `.git/` is a directory).
 - `.cpf/pending/` ignores itself (`.cpf/pending/.gitignore`), so merge

@@ -137,6 +137,13 @@ printf '#   Docs\n\nSome   text.\n' >"$P/docs/guide.md"
 expect "clean staged, dirty working tree" "2 0 2" "$(verdicts "$P")"
 
 echo ""
+echo "=== an untracked file is checked by agent only ==="
+P="$(new_project untracked)"
+(cd "$P" && git commit -q -m "chore: base" --no-verify)
+printf '#   Scratch\n\n\n' >"$P/docs/scratch.md"
+expect "unformatted untracked scratch file" "2 0 0" "$(verdicts "$P")"
+
+echo ""
 echo "=== missing linters: ci fails, agent and git warn ==="
 P="$(new_project nolinters)"
 rm "$P/node_modules"
