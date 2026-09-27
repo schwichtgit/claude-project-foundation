@@ -59,11 +59,20 @@ _cpf_dispatch_project_root() {
     git rev-parse --show-toplevel 2>/dev/null || pwd
 }
 
-# Resolve a pinned Python tool for <file>: walk up from the file to the
-# nearest directory with pyproject.toml (stopping at the project root);
-# use <svc>/.venv/bin/<tool>, then <root>/.venv/bin/<tool>, then
-# `uv run --frozen --project <svc> <tool>` when a uv.lock exists. Sets
-# _CPF_PY_TOOL (argv prefix); returns 1 when no pinned copy exists.
+# Glob matching and pinned Python tool resolution come from the cpf checks
+# runtime (the project's .cpf/runtime, else the plugin's bundled copy), so
+# the formatter and the checks share one implementation.
+# shellcheck source=_runtime.sh
+# shellcheck disable=SC1091
+source "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/_runtime.sh"
+# shellcheck source=../scaffold/common/.cpf/runtime/lib/cpf-tools.sh
+# shellcheck disable=SC1091
+source "$(cpf_runtime_dir "$(_cpf_dispatch_project_root)")/lib/cpf-tools.sh"
+
+# Resolve a pinned Python tool for <file>: the nearest directory with
+# pyproject.toml (up to the project root) is the service; its .venv, else
+# `uv run --frozen` with a uv.lock; the project root's .venv as a last
+# resort. Sets _CPF_PY_TOOL; returns 1 when no pinned copy exists.
 _cpf_resolve_python_tool() {
     local file_path="$1" tool="$2" root svc dir
     _CPF_PY_TOOL=()
@@ -78,45 +87,10 @@ _cpf_resolve_python_tool() {
         [[ "$dir" == "$root" ]] && break
         dir="$(dirname "$dir")"
     done
-    if [[ -x "$svc/.venv/bin/$tool" ]]; then
-        _CPF_PY_TOOL=("$svc/.venv/bin/$tool")
-    elif [[ -x "$root/.venv/bin/$tool" ]]; then
-        _CPF_PY_TOOL=("$root/.venv/bin/$tool")
-    elif command -v uv >/dev/null 2>&1 \
-        && [[ -f "$svc/uv.lock" || -f "$root/uv.lock" ]]; then
-        _CPF_PY_TOOL=(uv run --frozen --project "$svc" "$tool")
-    else
-        return 1
-    fi
-    return 0
-}
-
-# Test a single path against a single glob using bash `[[ == ]]`.
-# Normalizes `**/` (leading) and `/**` (trailing) so the common policy
-# convention works without globstar (which `[[ == ]]` ignores anyway).
-_cpf_glob_match() {
-    local path="$1" glob="$2"
-    [[ -z "$glob" ]] && return 1
-    # shellcheck disable=SC2053,SC2295  # intentional unquoted glob pattern
-    if [[ $path == $glob ]]; then
+    if CPF_PROJECT_ROOT="$root" cpf_python_tool "$svc" "$tool" \
+        || CPF_PROJECT_ROOT="$root" cpf_python_tool "$root" "$tool"; then
+        _CPF_PY_TOOL=("${CPF_TOOL_CMD[@]}")
         return 0
-    fi
-    # Strip a single trailing /** so `foo/**` also matches `foo/bar/baz`
-    # via the `foo/*` form, not just descendants of `foo`.
-    if [[ "$glob" == */\*\* ]]; then
-        local trimmed="${glob%/\*\*}"
-        # shellcheck disable=SC2053,SC2295
-        if [[ $path == $trimmed/* || $path == "$trimmed" ]]; then
-            return 0
-        fi
-    fi
-    # `**/x` should match top-level `x` too (no leading slash).
-    if [[ "$glob" == \*\*/* ]]; then
-        local rest="${glob#\*\*/}"
-        # shellcheck disable=SC2053,SC2295
-        if [[ $path == $rest || $path == */$rest ]]; then
-            return 0
-        fi
     fi
     return 1
 }
@@ -147,7 +121,7 @@ _cpf_path_excluded_for_tool() {
     while IFS= read -r glob; do
         [[ -z "$glob" ]] && continue
         for candidate in "${candidates[@]}"; do
-            if _cpf_glob_match "$candidate" "$glob"; then
+            if cpf_glob_match "$candidate" "$glob"; then
                 return 0
             fi
         done

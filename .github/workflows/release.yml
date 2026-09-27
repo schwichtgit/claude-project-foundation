@@ -40,14 +40,7 @@ jobs:
   # ---------------------------------------------------------------------------
   # Lint and validation (mirrors CI checks)
   # ---------------------------------------------------------------------------
-  shellcheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: shellcheck (pinned in .tool-versions, scope from .cpf/policy.json)
-        run: bash scripts/lint.sh shellcheck
-
-  markdownlint:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -56,20 +49,8 @@ jobs:
           node-version: '22'
       - name: Install pinned linters (package-lock.json)
         run: npm ci
-      - name: markdownlint (pinned version, scope from .cpf/policy.json)
-        run: bash scripts/lint.sh markdownlint
-
-  prettier:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-      - name: Install pinned linters (package-lock.json)
-        run: npm ci
-      - name: prettier (pinned version, scope from .cpf/policy.json)
-        run: bash scripts/lint.sh prettier
+      - name: cpf checks runtime (ci boundary)
+        run: bash scripts/lint.sh
 
   plugin-validation:
     runs-on: ubuntu-latest
@@ -101,8 +82,7 @@ jobs:
   # Create GitHub release with artifact attestation
   # ---------------------------------------------------------------------------
   release:
-    needs:
-      [validate-version, shellcheck, markdownlint, prettier, plugin-validation]
+    needs: [validate-version, lint, plugin-validation]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
