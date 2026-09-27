@@ -150,7 +150,10 @@ exit 0
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "<abs-path-to>/.claude/hooks/no-policy-changes.sh" }
+          {
+            "type": "command",
+            "command": "<abs-path-to>/.claude/hooks/no-policy-changes.sh"
+          }
         ]
       }
     ]
