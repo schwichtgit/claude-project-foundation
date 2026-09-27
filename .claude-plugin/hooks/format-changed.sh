@@ -33,7 +33,7 @@ if [[ "$STOP_ACTIVE" == "true" ]]; then
     exit 0
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 CPF_HOOK_LIB_DIR="$(cd "$SCRIPT_DIR/../lib" && pwd)"
 POLICY_LIB="$CPF_HOOK_LIB_DIR/cpf-policy.sh"
 

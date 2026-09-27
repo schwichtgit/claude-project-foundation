@@ -39,7 +39,7 @@ PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null 
 # pattern used by cpf-generate-configs.sh; do NOT introduce a
 # $CLAUDE_PLUGIN_ROOT dependency here (a known semantic split exists
 # between hooks.json and the resolver -- see Spec A changepoints).
-CPF_HOOK_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
+CPF_HOOK_LIB_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd -P)"
 POLICY_LIB="$CPF_HOOK_LIB_DIR/cpf-policy.sh"
 
 # Per-run state shared between dispatchers and the legacy walker.

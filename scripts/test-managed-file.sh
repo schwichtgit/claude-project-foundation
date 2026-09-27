@@ -92,6 +92,11 @@ if cmp -s "$P/$REL" "$WORKDIR/edited.orig" \
 else
     fail "keep did not preserve host / write pending"
 fi
+if [[ "$(cat "$P/.cpf/pending/.gitignore" 2>/dev/null)" == "*" ]]; then
+    pass "keep makes .cpf/pending/ self-ignoring"
+else
+    fail ".cpf/pending/.gitignore missing"
+fi
 status_is "edited after keep" "$P" "$WORKDIR/v2.yml" unchanged
 RC=0
 bash "$MF" apply "$P" "$REL" "$WORKDIR/v2.yml" >/dev/null 2>&1 || RC=$?

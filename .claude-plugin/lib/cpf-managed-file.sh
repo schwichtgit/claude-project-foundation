@@ -145,6 +145,10 @@ cpf_mf_keep() {
     local project_dir="$1" rel="$2" new="$3"
     _cpf_mf_paths "$project_dir" "$rel"
     _cpf_mf_install "$new" "$MF_PENDING"
+    # Merge aids only: keep them out of commits and out of lint scope
+    # without touching the project's own .gitignore.
+    [[ -f "$project_dir/.cpf/pending/.gitignore" ]] \
+        || printf '*\n' >"$project_dir/.cpf/pending/.gitignore"
     _cpf_mf_install "$new" "$MF_CACHE"
     echo "kept: $rel (upstream version at .cpf/pending/$rel;" \
         "merge with: diff -u $rel .cpf/pending/$rel)"

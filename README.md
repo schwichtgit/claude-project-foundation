@@ -258,7 +258,8 @@ value.
 **Hook checks:** The plugin provides 6 hooks via
 `.claude-plugin/hooks/`. Each is a standalone shell
 script with fail-open behavior. When developing on
-this repo, the hooks also exist at `.claude/hooks/`.
+this repo, `.claude/hooks/` is a symlink to them, so
+the repo runs its own current hooks.
 
 **Language support:** All hooks auto-detect project
 type from configuration files (package.json,
