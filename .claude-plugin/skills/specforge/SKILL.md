@@ -631,7 +631,15 @@ host).
    "overwrite" list, resolve the helper once with
    `MF="$CLAUDE_PLUGIN_ROOT/lib/cpf-managed-file.sh"` and the new version
    `NEW="$CLAUDE_PLUGIN_ROOT/scaffold/<platform-or-common>/<path>"`, then
-   run `bash "$MF" status "$CLAUDE_PROJECT_DIR" <path> "$NEW"`:
+   first handle files that moved: if `upgrade-tiers.json` has
+   `.relocations["<path>"]` (e.g. `.cpf/scripts/hooks/pre-commit` was
+   `scripts/hooks/pre-commit` before alpha.12), run
+   `bash "$MF" adopt "$CLAUDE_PROJECT_DIR" <path> <legacy-path>`. It copies
+   the host's legacy file to the new path when the new path is missing,
+   so local edits are kept. Then run
+   `bash "$MF" status "$CLAUDE_PROJECT_DIR" <path> "$NEW"`. Without a
+   cached baseline, a file that matches any released cpf version
+   (`lib/cpf-known-upstream.json`) reports `clean`:
    - `missing`, `current`, or `clean` (host still equals the version cpf
      last projected, cached at `.cpf/upstream-cache/<path>`): run
      `bash "$MF" apply ...` without prompting.
@@ -716,7 +724,9 @@ host).
 19. **Summary:** Print counts of overwritten, reviewed
     (accepted/rejected), skipped, new, and deprecated files, and list
     overwrite-tier files kept because of local changes, each with its
-    `.cpf/pending/<path>` merge target.
+    `.cpf/pending/<path>` merge target, and every adopted legacy file
+    (for example `scripts/hooks/pre-commit`) as "no longer used by cpf;
+    remove after checking nothing else references it".
 
 **Notes:**
 

@@ -15,6 +15,7 @@
 #   cpf-managed-file.sh apply  <project_dir> <relpath> <new_file>
 #   cpf-managed-file.sh accept <project_dir> <relpath> <new_file>
 #   cpf-managed-file.sh keep   <project_dir> <relpath> <new_file>
+#   cpf-managed-file.sh adopt  <project_dir> <relpath> <legacy_relpath>
 #
 # status prints one word on stdout:
 #   missing   host file does not exist
@@ -25,8 +26,13 @@
 #             the cached baseline: nothing new to take, nothing to ask
 #   modified  host differs from the cached baseline (edited locally)
 #             and upstream has a new version
-#   unknown   no baseline cached and host differs from the new version
-#             (projects set up before this mechanism existed)
+#   unknown   no baseline cached, host differs from the new version, and
+#             host matches no released version (edited locally before
+#             this mechanism existed)
+#
+# Without a cached baseline, a host file whose sha256 matches any version
+# cpf has released for that path (lib/cpf-known-upstream.json) was never
+# edited, so it reports `clean` and is upgraded without prompting.
 #
 # apply    missing|current|clean: host := new, cache := new.
 #          unchanged: no-op. Exits 3 for modified|unknown without
@@ -36,8 +42,34 @@
 # keep     host unchanged; new version written to .cpf/pending/<relpath>
 #          for a manual merge; cache := new so the next upgrade compares
 #          against the version the user has now seen.
+# adopt    the file moved (upgrade-tiers.json relocations). If <relpath>
+#          is missing and <legacy_relpath> exists, copy the host's legacy
+#          file to <relpath> so local edits move with it; the normal
+#          status/apply/keep flow then runs on the new path. The legacy
+#          file is left in place (no longer used by cpf) for the user to
+#          remove.
 #
 # Exit codes: 0 ok, 2 usage error, 3 apply refused (local changes).
+
+CPF_MF_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CPF_MF_KNOWN="${CPF_MF_KNOWN:-$CPF_MF_LIB_DIR/cpf-known-upstream.json}"
+
+_cpf_mf_sha256() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | cut -d' ' -f1
+    else
+        shasum -a 256 "$1" | cut -d' ' -f1
+    fi
+}
+
+# Return 0 if <file> equals a released version of <relpath>.
+_cpf_mf_is_known_upstream() {
+    local rel="$1" file="$2" sum
+    [[ -f "$CPF_MF_KNOWN" ]] || return 1
+    sum="$(_cpf_mf_sha256 "$file")"
+    jq -e --arg p "$rel" --arg s "$sum" '(.[$p] // []) | index($s) != null' \
+        "$CPF_MF_KNOWN" >/dev/null 2>&1
+}
 
 _cpf_mf_paths() {
     local project_dir="$1" rel="$2"
@@ -65,8 +97,12 @@ cpf_mf_status() {
     elif cmp -s "$MF_HOST" "$new"; then
         echo current
     elif [[ ! -f "$MF_CACHE" ]]; then
-        echo unknown
-    elif cmp -s "$MF_HOST" "$MF_CACHE"; then
+        if _cpf_mf_is_known_upstream "$rel" "$MF_HOST"; then
+            echo clean
+        else
+            echo unknown
+        fi
+    elif cmp -s "$MF_HOST" "$MF_CACHE" || _cpf_mf_is_known_upstream "$rel" "$MF_HOST"; then
         echo clean
     elif cmp -s "$MF_CACHE" "$new"; then
         echo unchanged
@@ -114,16 +150,33 @@ cpf_mf_keep() {
         "merge with: diff -u $rel .cpf/pending/$rel)"
 }
 
+cpf_mf_adopt() {
+    local project_dir="$1" rel="$2" legacy="$3"
+    _cpf_mf_paths "$project_dir" "$rel"
+    local legacy_path="$project_dir/$legacy"
+    if [[ -f "$MF_HOST" || ! -f "$legacy_path" ]]; then
+        return 0
+    fi
+    _cpf_mf_install "$legacy_path" "$MF_HOST"
+    echo "adopted: $legacy -> $rel (local edits move with the file;" \
+        "$legacy is no longer used by cpf and can be removed)"
+}
+
 if [[ "${BASH_SOURCE[0]:-}" == "${0}" ]]; then
     set -euo pipefail
     if [[ $# -ne 4 ]]; then
         cat >&2 <<'USAGE'
 Usage: cpf-managed-file.sh <status|apply|accept|keep> <project_dir> <relpath> <new_file>
+       cpf-managed-file.sh adopt <project_dir> <relpath> <legacy_relpath>
 USAGE
         exit 2
     fi
     cmd="$1"
     shift
+    if [[ "$cmd" == "adopt" ]]; then
+        cpf_mf_adopt "$@"
+        exit 0
+    fi
     if [[ ! -f "$3" ]]; then
         echo "cpf-managed-file.sh: new file not found: $3" >&2
         exit 2

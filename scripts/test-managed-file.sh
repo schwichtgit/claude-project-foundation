@@ -143,6 +143,57 @@ else
 fi
 
 echo ""
+echo "=== no baseline, host matches a released version: clean ==="
+P="$(new_project released)"
+mkdir -p "$P/.github/workflows"
+cp "$WORKDIR/v1.yml" "$P/$REL"
+V1SUM="$( (sha256sum "$WORKDIR/v1.yml" 2>/dev/null || shasum -a 256 "$WORKDIR/v1.yml") | cut -d' ' -f1)"
+printf '{"%s": ["%s"]}\n' "$REL" "$V1SUM" >"$WORKDIR/known.json"
+export CPF_MF_KNOWN="$WORKDIR/known.json"
+status_is "released v1, no cache" "$P" "$WORKDIR/v2.yml" clean
+bash "$MF" apply "$P" "$REL" "$WORKDIR/v2.yml" >/dev/null
+if cmp -s "$P/$REL" "$WORKDIR/v2.yml"; then
+    pass "untouched released version upgraded without prompting"
+else
+    fail "released version not upgraded"
+fi
+printf 'upstream: v1\nlocal: edit\n' >"$P/other.yml"
+REL2="other.yml"
+if [[ "$(bash "$MF" status "$P" "$REL2" "$WORKDIR/v2.yml")" == "unknown" ]]; then
+    pass "edited file with no baseline still reports unknown"
+else
+    fail "edited file with no baseline not reported unknown"
+fi
+unset CPF_MF_KNOWN
+
+echo ""
+echo "=== adopt: relocated file carries local edits to the new path ==="
+P="$(new_project relocated)"
+mkdir -p "$P/scripts/hooks"
+printf '#!/bin/bash\n# local fix: allow .env.sample\necho legacy\n' >"$P/scripts/hooks/pre-commit"
+chmod +x "$P/scripts/hooks/pre-commit"
+NEWREL=".cpf/scripts/hooks/pre-commit"
+OUT="$(bash "$MF" adopt "$P" "$NEWREL" scripts/hooks/pre-commit)"
+if cmp -s "$P/$NEWREL" "$P/scripts/hooks/pre-commit" && [[ -x "$P/$NEWREL" ]] \
+    && grep -q "adopted: scripts/hooks/pre-commit -> $NEWREL" <<<"$OUT"; then
+    pass "adopt copied the legacy hook (with edits, executable) to the new path"
+else
+    fail "adopt did not carry the legacy hook over"
+fi
+if [[ "$(bash "$MF" status "$P" "$NEWREL" "$WORKDIR/hook")" == "unknown" ]]; then
+    pass "adopted edited hook then goes through keep/replace (unknown)"
+else
+    fail "adopted hook not reported unknown"
+fi
+printf 'different\n' >"$P/scripts/hooks/pre-commit"
+bash "$MF" adopt "$P" "$NEWREL" scripts/hooks/pre-commit >/dev/null
+if ! grep -q different "$P/$NEWREL"; then
+    pass "adopt never overwrites an existing new-path file"
+else
+    fail "adopt overwrote an existing new-path file"
+fi
+
+echo ""
 echo "=== shellcheck the helper ==="
 if "$SHELLCHECK" -x "$MF" >/dev/null 2>&1; then
     pass "shellcheck clean"

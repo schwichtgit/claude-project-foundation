@@ -73,5 +73,12 @@
       "jenkinsfile_tier_change": true,
       "v02_countdown": true
     }
+  },
+  "relocations": {
+    "_comment": "New host path -> path the same file had in older releases. Upgrade adopts the host's copy from the old path when the new path is missing, so local edits move with the file.",
+    ".cpf/scripts/hooks/pre-commit": "scripts/hooks/pre-commit",
+    ".cpf/scripts/hooks/commit-msg": "scripts/hooks/commit-msg",
+    ".cpf/scripts/install-hooks.sh": "scripts/install-hooks.sh",
+    ".cpf/scripts/doctor.sh": "scripts/doctor.sh"
   }
 }
