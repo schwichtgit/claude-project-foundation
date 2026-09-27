@@ -7,6 +7,8 @@ set -uo pipefail
 # dependencies are jq and bash.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 HOOKS_DIR="$REPO_ROOT/.claude-plugin/hooks"
 FORMAT_HOOK="$HOOKS_DIR/format-changed.sh"
 VERIFY_HOOK="$HOOKS_DIR/verify-quality.sh"
@@ -94,9 +96,7 @@ chmod +x "$WORKDIR/bin/npx"
 # Stub jq onto PATH from system jq path (env -i wipes everything).
 ln -sf "$(command -v jq)" "$WORKDIR/bin/jq"
 ln -sf "$(command -v git)" "$WORKDIR/bin/git"
-if command -v shellcheck >/dev/null 2>&1; then
-    ln -sf "$(command -v shellcheck)" "$WORKDIR/bin/shellcheck"
-fi
+ln -sf "$("$SHELLCHECK" --print-path)" "$WORKDIR/bin/shellcheck"
 
 # Helper: scaffold a git-initialised fixture with a policy file.
 new_fixture() {
@@ -356,11 +356,11 @@ fi
 # ===========================================================================
 echo ""
 echo "=== 11. shellcheck the three hooks ==="
-if shellcheck "$FORMAT_HOOK" "$VERIFY_HOOK" "$POSTEDIT_HOOK" >/dev/null 2>&1; then
+if "$SHELLCHECK" "$FORMAT_HOOK" "$VERIFY_HOOK" "$POSTEDIT_HOOK" >/dev/null 2>&1; then
     pass "shellcheck clean on the three hooks"
 else
     fail "shellcheck reported issues"
-    shellcheck "$FORMAT_HOOK" "$VERIFY_HOOK" "$POSTEDIT_HOOK" || true
+    "$SHELLCHECK" "$FORMAT_HOOK" "$VERIFY_HOOK" "$POSTEDIT_HOOK" || true
 fi
 
 echo ""

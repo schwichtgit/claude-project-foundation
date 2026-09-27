@@ -9,6 +9,8 @@ set -euo pipefail
 # the policy-seed prompt non-interactively.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 LIB_DIR="$REPO_ROOT/.claude-plugin/lib"
 MIGRATE="$LIB_DIR/cpf-migrate-alpha12.sh"
 INFER="$LIB_DIR/cpf-policy-infer.sh"
@@ -286,11 +288,11 @@ fi
 echo ""
 echo "=== shellcheck both libs ==="
 
-if shellcheck "$MIGRATE" "$INFER" >/dev/null 2>&1; then
+if "$SHELLCHECK" "$MIGRATE" "$INFER" >/dev/null 2>&1; then
     pass "shellcheck clean on both libs"
 else
     fail "shellcheck reported issues:"
-    shellcheck "$MIGRATE" "$INFER" || true
+    "$SHELLCHECK" "$MIGRATE" "$INFER" || true
 fi
 
 # --- bonus: --rerun-migration on never-applied version still works ---

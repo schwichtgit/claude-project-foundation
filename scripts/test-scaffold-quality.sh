@@ -5,6 +5,8 @@ set -euo pipefail
 # Validates quality of scaffold files: syntax, linting, non-empty content.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 
 PASSED=0
 FAILED=0
@@ -73,25 +75,20 @@ echo ""
 echo "=== ShellCheck validation ==="
 
 TOTAL=$((TOTAL + 1))
-if command -v shellcheck >/dev/null 2>&1; then
-  SC_ERRORS=0
-  while IFS= read -r shfile; do
-    if ! shellcheck -x "$shfile" >/dev/null 2>&1; then
-      echo "  SHELLCHECK FAIL: $shfile"
-      SC_ERRORS=$((SC_ERRORS + 1))
-    fi
-  done < <(find "$SCAFFOLD" -name '*.sh' -type f)
-
-  if [[ "$SC_ERRORS" -eq 0 ]]; then
-    echo "PASS: all .sh files pass ShellCheck"
-    PASSED=$((PASSED + 1))
-  else
-    echo "FAIL: $SC_ERRORS .sh files failed ShellCheck"
-    FAILED=$((FAILED + 1))
+SC_ERRORS=0
+while IFS= read -r shfile; do
+  if ! "$SHELLCHECK" -x "$shfile" >/dev/null 2>&1; then
+    echo "  SHELLCHECK FAIL: $shfile"
+    SC_ERRORS=$((SC_ERRORS + 1))
   fi
-else
-  echo "SKIP: shellcheck not available"
+done < <(find "$SCAFFOLD" -name '*.sh' -type f)
+
+if [[ "$SC_ERRORS" -eq 0 ]]; then
+  echo "PASS: all .sh files pass ShellCheck"
   PASSED=$((PASSED + 1))
+else
+  echo "FAIL: $SC_ERRORS .sh files failed ShellCheck"
+  FAILED=$((FAILED + 1))
 fi
 
 # --- 3: All .yml/.yaml files under scaffold/ are valid YAML ---

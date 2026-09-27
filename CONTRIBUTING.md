@@ -44,7 +44,10 @@ npm run format:check
 
 - **Shell scripts:** ShellCheck clean,
   `set -euo pipefail`, use `$((VAR + 1))`
-  not `((VAR++))`
+  not `((VAR++))`. Run ShellCheck through
+  `scripts/shellcheck.sh`, which installs the version pinned
+  in `scripts/dev-tool-versions.env` (the same one CI uses).
+  Do not rely on an OS-installed `shellcheck`.
 - **Markdown:** markdownlint clean, Prettier formatted
 - **YAML/JSON:** Prettier formatted
 - **Communication:** technical and direct, no emoji,

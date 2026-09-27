@@ -7,6 +7,8 @@ set -euo pipefail
 # tiers JSON (fail path).
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 LINT="$REPO_ROOT/scripts/check-namespace-discipline.sh"
 SOURCE_TIERS="$REPO_ROOT/.claude-plugin/upgrade-tiers.json"
 
@@ -221,11 +223,11 @@ fi
 echo ""
 echo "=== shellcheck the lint ==="
 
-if shellcheck "$LINT" >/dev/null 2>&1; then
+if "$SHELLCHECK" "$LINT" >/dev/null 2>&1; then
     pass "shellcheck clean on check-namespace-discipline.sh"
 else
     fail "shellcheck reported issues:"
-    shellcheck "$LINT" || true
+    "$SHELLCHECK" "$LINT" || true
 fi
 
 echo ""

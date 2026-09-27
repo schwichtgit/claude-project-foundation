@@ -44,12 +44,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install shellcheck
-        run: sudo apt-get install -y shellcheck
+      - name: Install pinned shellcheck
+        # Version and checksums live in scripts/dev-tool-versions.env; the
+        # same wrapper is used locally. Never use the runner's apt package.
+        run: |
+          dirname "$(bash scripts/shellcheck.sh --print-path)" >> "$GITHUB_PATH"
+          bash scripts/shellcheck.sh --version
       - name: Run shellcheck
         run: |
-          find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*' -print0 | xargs -0 shellcheck -x
-          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+          find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*' -print0 | xargs -0 bash scripts/shellcheck.sh -x
+          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 bash scripts/shellcheck.sh -x
 
   markdownlint:
     runs-on: ubuntu-latest

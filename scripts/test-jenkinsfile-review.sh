@@ -8,6 +8,8 @@ set -euo pipefail
 # drives its verbs against mktemp fixtures.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 HELPER="$REPO_ROOT/.claude-plugin/lib/cpf-jenkinsfile-upgrade.sh"
 TIERS_FILE="$REPO_ROOT/.claude-plugin/upgrade-tiers.json"
 
@@ -239,7 +241,7 @@ fi
 echo ""
 echo "=== helper lint ==="
 
-if shellcheck "$HELPER" >/dev/null 2>&1; then
+if "$SHELLCHECK" "$HELPER" >/dev/null 2>&1; then
     pass "shellcheck clean on helper"
 else
     fail "shellcheck reported issues on helper"

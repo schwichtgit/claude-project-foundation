@@ -9,6 +9,8 @@ set -uo pipefail
 # install via .venv/bin/<tool> and a mocked uv at <workdir>/bin/uv.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 HOOK="$REPO_ROOT/.claude-plugin/hooks/verify-quality.sh"
 POLICY_LIB="$REPO_ROOT/.claude-plugin/lib/cpf-policy.sh"
 
@@ -361,11 +363,11 @@ fi
 # ===========================================================================
 echo ""
 echo "=== step 8: shellcheck verify-quality.sh ==="
-if shellcheck "$HOOK" >/dev/null 2>&1; then
+if "$SHELLCHECK" "$HOOK" >/dev/null 2>&1; then
     pass "step 8: shellcheck clean on verify-quality.sh"
 else
     fail "step 8: shellcheck reported issues:"
-    shellcheck "$HOOK" || true
+    "$SHELLCHECK" "$HOOK" || true
 fi
 
 # ===========================================================================

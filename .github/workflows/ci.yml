@@ -42,8 +42,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install shellcheck
-        run: sudo apt-get install -y shellcheck
+      - name: Install pinned shellcheck
+        # Version and checksums live in scripts/dev-tool-versions.env; the
+        # same wrapper is used locally. Never use the runner's apt package.
+        run: |
+          dirname "$(bash scripts/shellcheck.sh --print-path)" >> "$GITHUB_PATH"
+          bash scripts/shellcheck.sh --version
       - name: Seed shellcheck-excludes from bundled policy
         run: |
           # The cpf source repo has a hand-edited .markdownlint-cli2.yaml and
@@ -57,8 +61,8 @@ jobs:
       - name: Run shellcheck
         run: |
           FRAGMENT="$(bash .claude-plugin/lib/cpf-shellcheck-fragment.sh emit-find-fragment .)"
-          eval "find . -name '*.sh' $FRAGMENT -print0" | xargs -0 shellcheck -x
-          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+          eval "find . -name '*.sh' $FRAGMENT -print0" | xargs -0 bash scripts/shellcheck.sh -x
+          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 bash scripts/shellcheck.sh -x
       - name: Resolver-usage lint
         run: bash .claude-plugin/lib/lint-resolver-usage.sh
       - name: Namespace discipline check

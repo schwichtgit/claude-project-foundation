@@ -111,6 +111,9 @@ npm run format
 
 # Check formatting (CI)
 npm run format:check
+
+# Pinned ShellCheck (same version as CI; see scripts/dev-tool-versions.env)
+scripts/shellcheck.sh -x path/to/script.sh
 ```
 
 ## Quality Standards
