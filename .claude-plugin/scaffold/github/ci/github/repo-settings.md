@@ -98,7 +98,10 @@ runs the check twice.
 - **CodeQL:** init projects `.github/workflows/codeql.yml`, which scans
   the workflow files (`languages: actions`). Add the project's
   languages to its `languages` list. Do not also enable CodeQL
-  default setup; it conflicts with the workflow.
+  default setup; it conflicts with the workflow. Code scanning is
+  available on public repositories, and on private ones only with
+  GitHub Code Security; without it the workflow fails with "Code
+  scanning is not enabled", so delete `codeql.yml` in that case.
 - **Secret scanning** with push protection:
 
   ```bash
