@@ -116,11 +116,14 @@ write_policy() {
 # 1. All three hooks reference cpf-policy.sh
 # ===========================================================================
 echo "=== 1. hooks reference cpf-policy.sh ==="
-HITS="$(grep -l 'cpf-policy.sh' "$FORMAT_HOOK" "$VERIFY_HOOK" "$POSTEDIT_HOOK" 2>/dev/null | wc -l | tr -d ' ')"
-if [[ "$HITS" == "3" ]]; then
-    pass "all three hooks source the policy loader"
+# verify-quality is a shim onto the checks runtime; the runtime loads the
+# policy.
+RUNTIME_VERIFY="$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/runtime/verify.sh"
+HITS="$(grep -l 'cpf-policy.sh' "$FORMAT_HOOK" "$POSTEDIT_HOOK" "$RUNTIME_VERIFY" 2>/dev/null | wc -l | tr -d ' ')"
+if [[ "$HITS" == "3" ]] && grep -q '.cpf/runtime' "$VERIFY_HOOK"; then
+    pass "format hooks and the checks runtime load the policy; Stop hook runs the runtime"
 else
-    fail "expected 3 hooks to reference cpf-policy.sh, got $HITS"
+    fail "expected policy loading in 3 places and the Stop hook to call the runtime (got $HITS)"
 fi
 
 # ===========================================================================

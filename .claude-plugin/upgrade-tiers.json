@@ -14,7 +14,13 @@
       ".cpf/scripts/install-hooks.sh",
       ".cpf/scripts/doctor.sh",
       ".github/workflows/ci-base.yml",
-      "ci/gitlab/gitlab-ci-base.yml"
+      "ci/gitlab/gitlab-ci-base.yml",
+      ".cpf/runtime/verify.sh",
+      ".cpf/runtime/VERSION",
+      ".cpf/runtime/lib/cpf-policy.sh",
+      ".cpf/runtime/lib/cpf-shellcheck-fragment.sh",
+      ".cpf/runtime/lib/cpf-shellcheck.sh",
+      ".cpf/runtime/lib/cpf-tools.sh"
     ],
     "review": [
       ".github/workflows/release.yml",
