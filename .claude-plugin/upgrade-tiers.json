@@ -56,7 +56,7 @@
       ".specify/doctor-registry.json",
       "prompts/",
       "ci/principles/",
-      "ci/gitlab/",
+      "ci/gitlab/gitlab-ci-guide.md",
       "ci/jenkins/",
       "CLAUDE.md.template"
     ]

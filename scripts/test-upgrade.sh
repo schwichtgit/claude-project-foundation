@@ -303,6 +303,24 @@ else
   FAILED=$((FAILED + 1))
 fi
 
+# --- 13: no projected tier entry is also a plugin-cache path ---
+echo ""
+echo "=== Tier / plugin-cache overlap ==="
+
+TOTAL=$((TOTAL + 1))
+OVERLAP="$(jq -r '
+  .tiers["plugin-cache"] as $pc
+  | [.tiers.overwrite[], .tiers.review[], .tiers.customizable[]]
+  | map(. as $p | select(any($pc[]; . as $x | ($p == $x) or (($x | endswith("/")) and ($p | startswith($x))))))
+  | .[]' "$TIERS_FILE")"
+if [[ -z "$OVERLAP" ]]; then
+  echo "PASS: no overwrite/review/customizable path is under a plugin-cache prefix"
+  PASSED=$((PASSED + 1))
+else
+  echo "FAIL: paths both projected and plugin-cache: $OVERLAP"
+  FAILED=$((FAILED + 1))
+fi
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 [[ "$FAILED" -eq 0 ]] && exit 0 || exit 1
