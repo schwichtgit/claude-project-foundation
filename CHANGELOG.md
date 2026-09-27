@@ -5,6 +5,17 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Commit standards now check the PR title, which becomes the
+  squash-merge subject on main. Same rules as commits, with the
+  length budget reduced by the "(#N)" suffix GitHub appends; a
+  title that is too long fails instead of warning. The check
+  re-runs when the title is edited. Applies to this repo's CI and
+  the scaffold `commit-standards.yml`.
+
 ## [0.1.0-alpha.12] - 2026-09-27
 
 Hook policy, orchestrator dispatch, per-service Python runner
