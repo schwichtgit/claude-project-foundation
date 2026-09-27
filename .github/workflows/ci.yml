@@ -85,6 +85,12 @@ jobs:
         run: bash scripts/test-pytest-classification.sh
       - name: Upgrade migration guide test
         run: bash scripts/test-upgrade-migration.sh
+      - name: CI platform parity test
+        run: bash scripts/test-ci-parity.sh
+      - name: Scaffold structure test
+        run: bash scripts/test-scaffold.sh
+      - name: Upgrade tier and skill contract test
+        run: bash scripts/test-upgrade.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)
