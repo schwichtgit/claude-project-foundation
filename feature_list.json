@@ -261,9 +261,7 @@
         "Verify every file in scaffold/ has a corresponding tier entry (compare file list to tier entries)"
       ],
       "passes": true,
-      "dependencies": [
-        "scaffold-bundle-directory"
-      ]
+      "dependencies": ["scaffold-bundle-directory"]
     },
     {
       "id": "skill-md-init-upgrade",
@@ -305,10 +303,7 @@
         "Run `echo 'not-json' | bash .claude/hooks/protect-files.sh` and verify exit code is 0 (fail open on malformed JSON)"
       ],
       "passes": true,
-      "dependencies": [
-        "fix-shebang-corruption",
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["fix-shebang-corruption", "standardize-hook-json-key"]
     },
     {
       "id": "validate-bash-hook",
@@ -329,9 +324,7 @@
         "Run `echo 'not-json' | bash .claude/hooks/validate-bash.sh` and verify exit code is 0 (fail open)"
       ],
       "passes": true,
-      "dependencies": [
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["standardize-hook-json-key"]
     },
     {
       "id": "validate-pr-hook",
@@ -348,9 +341,7 @@
         "Run `echo 'not-json' | bash .claude/hooks/validate-pr.sh` and verify exit code is 0 (fail open)"
       ],
       "passes": true,
-      "dependencies": [
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["standardize-hook-json-key"]
     },
     {
       "id": "post-edit-hook",
@@ -367,10 +358,7 @@
         "Run `echo '{\"tool_input\":{\"file_path\":\"test.xyz\"}}' | bash .claude/hooks/post-edit.sh` and verify exit code is 0 (unrecognized extension, silent skip)"
       ],
       "passes": true,
-      "dependencies": [
-        "standardize-hook-json-key",
-        "shared-formatter-dispatch"
-      ]
+      "dependencies": ["standardize-hook-json-key", "shared-formatter-dispatch"]
     },
     {
       "id": "format-changed-hook",
@@ -409,9 +397,7 @@
         "Run `echo '{}' | bash .claude/hooks/verify-quality.sh` in a directory with no recognized project type and verify exit code is 0"
       ],
       "passes": true,
-      "dependencies": [
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["standardize-hook-json-key"]
     },
     {
       "id": "specforge-constitution",
@@ -427,9 +413,7 @@
         "Verify the template contains sections for: Project Identity, Non-Negotiable Principles, Quality Standards, Architectural Constraints, Security Requirements, Out of Scope"
       ],
       "passes": true,
-      "dependencies": [
-        "plugin-directory-structure"
-      ]
+      "dependencies": ["plugin-directory-structure"]
     },
     {
       "id": "specforge-spec",
@@ -444,10 +428,7 @@
         "Verify the spec section references the spec-template.md as a template source"
       ],
       "passes": true,
-      "dependencies": [
-        "plugin-directory-structure",
-        "specforge-constitution"
-      ]
+      "dependencies": ["plugin-directory-structure", "specforge-constitution"]
     },
     {
       "id": "specforge-clarify",
@@ -461,9 +442,7 @@
         "Verify the clarify section instructs updating spec.md with resolved decisions"
       ],
       "passes": true,
-      "dependencies": [
-        "specforge-spec"
-      ]
+      "dependencies": ["specforge-spec"]
     },
     {
       "id": "specforge-plan",
@@ -478,9 +457,7 @@
         "Verify the plan template exists at `.claude-plugin/templates/plan-template.md` or `.specify/templates/plan-template.md`"
       ],
       "passes": true,
-      "dependencies": [
-        "specforge-spec"
-      ]
+      "dependencies": ["specforge-spec"]
     },
     {
       "id": "specforge-features",
@@ -497,9 +474,7 @@
         "Verify the features section requires minimum 3 testing steps per feature and 20% with 10+ steps"
       ],
       "passes": true,
-      "dependencies": [
-        "specforge-plan"
-      ]
+      "dependencies": ["specforge-plan"]
     },
     {
       "id": "specforge-analyze",
@@ -515,9 +490,7 @@
         "Verify the analyze section mentions remediation steps for dimensions below 70"
       ],
       "passes": true,
-      "dependencies": [
-        "specforge-features"
-      ]
+      "dependencies": ["specforge-features"]
     },
     {
       "id": "specforge-setup",
@@ -532,9 +505,7 @@
         "Verify the setup section mentions using gh api commands for branch protection configuration"
       ],
       "passes": true,
-      "dependencies": [
-        "specforge-plan"
-      ]
+      "dependencies": ["specforge-plan"]
     },
     {
       "id": "specforge-init",
@@ -605,10 +576,7 @@
         "Verify the file explicitly states not to implement features (only scaffolding)"
       ],
       "passes": true,
-      "dependencies": [
-        "plugin-directory-structure",
-        "specforge-features"
-      ]
+      "dependencies": ["plugin-directory-structure", "specforge-features"]
     },
     {
       "id": "coder-agent",
@@ -625,10 +593,7 @@
         "Verify the file mentions conventional commit format with no emoji, no AI-isms, no Co-Authored-By"
       ],
       "passes": true,
-      "dependencies": [
-        "plugin-directory-structure",
-        "initializer-agent"
-      ]
+      "dependencies": ["plugin-directory-structure", "initializer-agent"]
     },
     {
       "id": "pre-commit-git-hook",
@@ -647,9 +612,7 @@
         "Verify the script skips generated files like protobuf outputs"
       ],
       "passes": true,
-      "dependencies": [
-        "plugin-directory-structure"
-      ]
+      "dependencies": ["plugin-directory-structure"]
     },
     {
       "id": "commit-msg-git-hook",
@@ -669,9 +632,7 @@
         "Create temp file with message containing 'Co-Authored-By: Bot <bot@example.com>', run the hook, verify exit 1"
       ],
       "passes": true,
-      "dependencies": [
-        "plugin-directory-structure"
-      ]
+      "dependencies": ["plugin-directory-structure"]
     },
     {
       "id": "install-hooks-script",
@@ -709,10 +670,7 @@
         "Run the script and verify exit code is 0 when all validations pass"
       ],
       "passes": true,
-      "dependencies": [
-        "plugin-directory-structure",
-        "plugin-hooks-manifest"
-      ]
+      "dependencies": ["plugin-directory-structure", "plugin-hooks-manifest"]
     },
     {
       "id": "hook-smoke-tests",
@@ -766,10 +724,7 @@
         "Verify each check prints PASS: or FAIL: and a final summary line with X of Y format"
       ],
       "passes": true,
-      "dependencies": [
-        "scaffold-bundle-directory",
-        "specforge-init"
-      ]
+      "dependencies": ["scaffold-bundle-directory", "specforge-init"]
     },
     {
       "id": "upgrade-tier-test",
@@ -814,9 +769,7 @@
         "Verify the script exits 0 if all tests pass"
       ],
       "passes": true,
-      "dependencies": [
-        "commit-msg-git-hook"
-      ]
+      "dependencies": ["commit-msg-git-hook"]
     },
     {
       "id": "json-key-standardization-test",
@@ -833,9 +786,7 @@
         "Run the script after standardization is complete and verify exit code is 0 with message about no legacy keys found"
       ],
       "passes": true,
-      "dependencies": [
-        "standardize-hook-json-key"
-      ]
+      "dependencies": ["standardize-hook-json-key"]
     },
     {
       "id": "scaffold-quality-gate-test",
@@ -978,9 +929,7 @@
         "Run `npx prettier --check .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "template-delegation-policy"
-      ]
+      "dependencies": ["template-delegation-policy"]
     },
     {
       "id": "template-hooks-table-commit-strategy",
@@ -1001,9 +950,7 @@
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "template-testing-subsections"
-      ]
+      "dependencies": ["template-testing-subsections"]
     },
     {
       "id": "directory-semantics-documentation",
@@ -1020,9 +967,7 @@
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/.specify/WORKFLOW.md` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "scaffold-proposals-directory"
-      ]
+      "dependencies": ["scaffold-proposals-directory"]
     },
     {
       "id": "ci-paths-filter-pattern",
@@ -1094,9 +1039,7 @@
         "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "specforge-tracking-table"
-      ]
+      "dependencies": ["specforge-tracking-table"]
     },
     {
       "id": "template-container-deployment",
@@ -1112,9 +1055,7 @@
         "Run `npx prettier --check --parser markdown .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "template-api-endpoints"
-      ]
+      "dependencies": ["template-api-endpoints"]
     },
     {
       "id": "template-service-environment",
@@ -1130,9 +1071,7 @@
         "Run `npx markdownlint-cli2 .claude-plugin/scaffold/common/CLAUDE.md.template` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "template-container-deployment"
-      ]
+      "dependencies": ["template-container-deployment"]
     },
     {
       "id": "dependabot-multi-ecosystem-template",
@@ -1213,10 +1152,7 @@
         "Verify the jq bootstrap check exits with code 1 and prints darwin and linux install commands"
       ],
       "passes": true,
-      "dependencies": [
-        "tool-tier-registry",
-        "project-type-auto-detection"
-      ]
+      "dependencies": ["tool-tier-registry", "project-type-auto-detection"]
     },
     {
       "id": "compliance-report",
@@ -1245,9 +1181,7 @@
         "Verify --output=text is the default when no --output flag is given"
       ],
       "passes": true,
-      "dependencies": [
-        "tool-presence-check"
-      ]
+      "dependencies": ["tool-presence-check"]
     },
     {
       "id": "standalone-script",
@@ -1288,9 +1222,7 @@
         "Verify init instructions state that doctor failures do not block init completion"
       ],
       "passes": true,
-      "dependencies": [
-        "standalone-script"
-      ]
+      "dependencies": ["standalone-script"]
     },
     {
       "id": "skill-sub-command",
@@ -1306,9 +1238,7 @@
         "Verify the SKILL.md argument-hint frontmatter includes doctor"
       ],
       "passes": true,
-      "dependencies": [
-        "standalone-script"
-      ]
+      "dependencies": ["standalone-script"]
     },
     {
       "id": "upgrade-tiers-registration",
@@ -1321,10 +1251,7 @@
         "Verify both entries are strings matching the exact projected paths in host projects"
       ],
       "passes": true,
-      "dependencies": [
-        "tool-tier-registry",
-        "standalone-script"
-      ]
+      "dependencies": ["tool-tier-registry", "standalone-script"]
     },
     {
       "id": "doctor-self-test",
@@ -1344,9 +1271,7 @@
         "Run /cpf:specforge doctor (skill invocation) and verify it displays the same report"
       ],
       "passes": true,
-      "dependencies": [
-        "standalone-script"
-      ]
+      "dependencies": ["standalone-script"]
     },
     {
       "id": "documentation-update",
@@ -1360,9 +1285,7 @@
         "Run markdownlint on README.md and CHANGELOG.md and verify zero errors"
       ],
       "passes": true,
-      "dependencies": [
-        "skill-sub-command"
-      ]
+      "dependencies": ["skill-sub-command"]
     },
     {
       "id": "precommit-markdown-lint",
@@ -1721,9 +1644,7 @@
         "Run `shellcheck .claude-plugin/lib/cpf-generate-configs.sh` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "policy-json-schema-loader"
-      ]
+      "dependencies": ["policy-json-schema-loader"]
     },
     {
       "id": "native-tool-config-for-hooks",
@@ -1769,9 +1690,7 @@
         "Run `shellcheck .claude-plugin/hooks/verify-quality.sh` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "policy-json-schema-loader"
-      ]
+      "dependencies": ["policy-json-schema-loader"]
     },
     {
       "id": "per-service-resolver-verify-quality",
@@ -1789,9 +1708,7 @@
         "Run `shellcheck .claude-plugin/hooks/verify-quality.sh` and verify exit 0"
       ],
       "passes": true,
-      "dependencies": [
-        "per-hook-orchestrator-dispatch"
-      ]
+      "dependencies": ["per-hook-orchestrator-dispatch"]
     },
     {
       "id": "pytest-exit-code-classification",
@@ -1872,9 +1789,7 @@
         "Inspect ADR-002 in .specify/specs/plan-hook-policy-orchestrator-scaffold.md and verify Decision/Consequences blocks document the in-scope/out-of-scope boundary"
       ],
       "passes": true,
-      "dependencies": [
-        "platform-config-generation"
-      ]
+      "dependencies": ["platform-config-generation"]
     },
     {
       "id": "upgrade-migration-guide-alpha12",
