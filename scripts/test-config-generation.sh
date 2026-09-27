@@ -297,6 +297,107 @@ else
     fail ".claude-plugin/scaffold/common/.markdownlint-cli2.yaml still present"
 fi
 
+# --- 11: policy without a tool section leaves that tool's config alone ---
+echo ""
+echo "=== absent policy section leaves host config untouched ==="
+FIX="$WORKDIR/fix-partial"
+mkdir -p "$FIX/.cpf"
+cat >"$FIX/.cpf/policy.json" <<'JSON'
+{"hooks":{"verify-quality":{"orchestrator":"custom","custom_command":"scripts/lint.sh","severity":"error"},
+ "shellcheck":{"include":["**/*.sh"],"exclude":["*/.venv/*"],"orchestrator":"none","severity":"error"}}}
+JSON
+printf '# host ignores\nbuild/\n' >"$FIX/.prettierignore"
+printf 'config:\n  MD013:\n    line_length: 120\n\nignores:\n  - "docs/generated/**"\n' >"$FIX/.markdownlint-cli2.yaml"
+cp "$FIX/.prettierignore" "$FIX/p.orig"
+cp "$FIX/.markdownlint-cli2.yaml" "$FIX/m.orig"
+if CPF_POLICY_FILE="$FIX/.cpf/policy.json" bash "$GEN" --project-dir "$FIX" >/dev/null 2>&1 \
+    && cmp -s "$FIX/p.orig" "$FIX/.prettierignore" \
+    && cmp -s "$FIX/m.orig" "$FIX/.markdownlint-cli2.yaml"; then
+    pass "no prettier/markdownlint section: host files byte-identical"
+else
+    fail "host config changed although the policy has no section for it"
+fi
+if [[ "$(cat "$FIX/.cpf/shellcheck-excludes.txt" 2>/dev/null)" == "*/.venv/*" ]]; then
+    pass "section that is present (shellcheck) is still generated"
+else
+    fail "shellcheck-excludes.txt not generated from the present section"
+fi
+
+# --- 12: existing markdownlint config keeps its rules; only ignores change ---
+echo ""
+echo "=== markdownlint: host rules preserved, ignores replaced ==="
+FIX="$(make_fixture md-preserve)"
+jq '.hooks.markdownlint.exclude = ["docs/generated/**", "vendor/**"]' \
+    "$BUNDLED_POLICY" >"$FIX/.cpf/policy.json"
+cat >"$FIX/.markdownlint-cli2.yaml" <<'YAML'
+# Project markdownlint settings
+config:
+  MD013:
+    line_length: 120
+  MD046: false
+
+ignores:
+- "old/**"
+  # stale comment inside the list
+- 'older/**'
+
+globs:
+  - "**/*.md"
+YAML
+CPF_POLICY_FILE="$FIX/.cpf/policy.json" bash "$GEN" --project-dir "$FIX" >/dev/null 2>&1
+EXPECTED="$(cat <<'YAML'
+# Project markdownlint settings
+config:
+  MD013:
+    line_length: 120
+  MD046: false
+
+ignores:
+  - 'docs/generated/**'
+  - 'vendor/**'
+
+globs:
+  - "**/*.md"
+YAML
+)"
+if [[ "$(cat "$FIX/.markdownlint-cli2.yaml")" == "$EXPECTED" ]]; then
+    pass "rules, comments, and other keys preserved; ignores replaced"
+else
+    fail "markdownlint config not preserved as expected"
+    diff <(printf '%s\n' "$EXPECTED") "$FIX/.markdownlint-cli2.yaml" || true
+fi
+cp "$FIX/.markdownlint-cli2.yaml" "$FIX/m.first"
+CPF_POLICY_FILE="$FIX/.cpf/policy.json" bash "$GEN" --project-dir "$FIX" >/dev/null 2>&1
+if cmp -s "$FIX/m.first" "$FIX/.markdownlint-cli2.yaml"; then
+    pass "second run is byte-identical (idempotent)"
+else
+    fail "second run changed .markdownlint-cli2.yaml"
+fi
+
+# --- 13: flow-form ignores and missing ignores key ---
+echo ""
+echo "=== markdownlint: flow-form and absent ignores ==="
+FIX="$(make_fixture md-flow)"
+jq '.hooks.markdownlint.exclude = ["a/**"]' "$BUNDLED_POLICY" >"$FIX/.cpf/policy.json"
+printf 'config:\n  MD013: false\nignores: ["x/**", "y/**"]\n' >"$FIX/.markdownlint-cli2.yaml"
+CPF_POLICY_FILE="$FIX/.cpf/policy.json" bash "$GEN" --project-dir "$FIX" >/dev/null 2>&1
+if [[ "$(cat "$FIX/.markdownlint-cli2.yaml")" == "$(printf "config:\n  MD013: false\nignores:\n  - 'a/**'")" ]]; then
+    pass "flow-form ignores replaced with block form"
+else
+    fail "flow-form ignores not replaced"
+    cat "$FIX/.markdownlint-cli2.yaml"
+fi
+FIX="$(make_fixture md-noignores)"
+jq '.hooks.markdownlint.exclude = ["a/**"]' "$BUNDLED_POLICY" >"$FIX/.cpf/policy.json"
+printf 'config:\n  MD013: false\n' >"$FIX/.markdownlint-cli2.yaml"
+CPF_POLICY_FILE="$FIX/.cpf/policy.json" bash "$GEN" --project-dir "$FIX" >/dev/null 2>&1
+if [[ "$(cat "$FIX/.markdownlint-cli2.yaml")" == "$(printf "config:\n  MD013: false\n\nignores:\n  - 'a/**'")" ]]; then
+    pass "missing ignores key is appended; rules kept"
+else
+    fail "missing ignores key not appended correctly"
+    cat "$FIX/.markdownlint-cli2.yaml"
+fi
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 if [[ "$FAILED" -eq 0 ]]; then

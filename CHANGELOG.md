@@ -5,6 +5,64 @@ All notable changes to the specforge plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-alpha.13] - 2026-09-27
+
+Upgrade safety: `/cpf:specforge upgrade` no longer discards local
+edits or rewrites lint configs the policy does not own. Projects on
+alpha.10 should upgrade to this release rather than alpha.12.
+
+### Upgrading from 0.1.0-alpha.10 or alpha.12
+
+1. Update the plugin: `claude plugin update cpf@specforge` (or
+   `/plugin`, Installed, cpf, Update now), then `/reload-plugins` in
+   open sessions. Check that
+   `~/.claude/plugins/cache/specforge/cpf/0.1.0-alpha.13/` exists.
+2. On a clean branch, run `/cpf:specforge upgrade`.
+   - A project without `.cpf/policy.json` is asked
+     `[defaults/infer/skip]`. `infer` builds the policy from the
+     existing `.prettierignore` and `.markdownlint-cli2.yaml`.
+   - Answer the CI platform prompt (`Y` keeps the current one).
+   - For each overwrite-tier file with local changes (or no cached
+     baseline, which is every file from alpha.10), you see the diff
+     and `[keep/replace]`. The default is keep: your file stays and
+     the new version is written to `.cpf/pending/<path>`.
+   - Review-tier files show a diff; accept or reject each one.
+3. Merge anything you want from `.cpf/pending/` by hand
+   (`diff -u <path> .cpf/pending/<path>`), then delete `.cpf/pending/`.
+4. Review `git diff`, run your lint and tests, commit, and open a PR.
+
+Lint configs: a tool whose section is missing from
+`.cpf/policy.json` keeps its config file untouched. For
+markdownlint, only the `ignores:` list is managed; your rule block is
+kept.
+
+### Fixed
+
+- Upgrade never silently overwrites a locally edited overwrite-tier
+  file (git hooks, `install-hooks.sh`, `doctor.sh`, `ci-base`
+  workflows). The last projected version is cached at
+  `.cpf/upstream-cache/<path>`; edited files, and files with no
+  cached baseline, are kept, and the new version goes to
+  `.cpf/pending/<path>` (new `lib/cpf-managed-file.sh`).
+- Config generation no longer empties `.prettierignore` or the
+  markdownlint ignores when the policy has no section for that tool,
+  and no longer replaces the host's markdownlint `config:` rules.
+  Only the `ignores:` block is regenerated.
+- The migration guide's `infer` option reads double-quoted, plain,
+  and flow-form markdownlint ignores. It previously dropped them.
+- `verify-quality` runs shellcheck's `find` from the project root, so
+  exclude globs match root-relative paths as in `ci-base`. A project
+  inside an in-tree worktree directory is no longer excluded
+  wholesale. A pass that matches no files now prints
+  `Shellcheck (0 files; ...)` instead of nothing. The per-edit
+  formatter matches excludes the same way.
+- Commit standards now check the PR title, which becomes the
+  squash-merge subject on main. Same rules as commits, with the
+  length budget reduced by the "(#N)" suffix GitHub appends; a
+  title that is too long fails instead of warning. The check
+  re-runs when the title is edited. Applies to this repo's CI and
+  the scaffold `commit-standards.yml`.
+
 ## [0.1.0-alpha.12] - 2026-09-27
 
 Hook policy, orchestrator dispatch, per-service Python runner

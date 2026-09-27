@@ -108,32 +108,44 @@ USAGE
     # shellcheck disable=SC2064
     trap "rm -rf '$stage'" RETURN
 
-    local stage_prettier="$stage/.prettierignore"
-    local stage_markdown="$stage/.markdownlint-cli2.yaml"
-    local stage_shell="$stage/shellcheck-excludes.txt"
-
-    if ! _cpf_gen_prettierignore "$policy_file" >"$stage_prettier"; then
-        echo "ERROR: failed to generate .prettierignore" >&2
-        return 5
-    fi
-    if ! _cpf_gen_markdownlint_cli2 "$policy_file" >"$stage_markdown"; then
-        echo "ERROR: failed to generate .markdownlint-cli2.yaml" >&2
-        return 5
-    fi
-    if ! _cpf_gen_shellcheck_excludes "$policy_file" >"$stage_shell"; then
-        echo "ERROR: failed to generate shellcheck-excludes.txt" >&2
-        return 5
-    fi
-
     local out_prettier="$project_dir/.prettierignore"
     local out_markdown="$project_dir/.markdownlint-cli2.yaml"
     local out_shell="$project_dir/.cpf/shellcheck-excludes.txt"
 
-    mkdir -p "$project_dir/.cpf"
+    # A tool whose section is absent from the policy is not managed by
+    # cpf: its config file is left exactly as the host has it. Emptying a
+    # host's .prettierignore because the policy only configures
+    # verify-quality would silently widen that tool's scope.
+    local stage_prettier="" stage_markdown="" stage_shell=""
 
-    _cpf_write_if_different "$stage_prettier" "$out_prettier"
-    _cpf_write_if_different "$stage_markdown" "$out_markdown"
-    _cpf_write_if_different "$stage_shell" "$out_shell"
+    if _cpf_gen_has_section "$policy_file" prettier; then
+        stage_prettier="$stage/.prettierignore"
+        if ! _cpf_gen_prettierignore "$policy_file" >"$stage_prettier"; then
+            echo "ERROR: failed to generate .prettierignore" >&2
+            return 5
+        fi
+    fi
+    if _cpf_gen_has_section "$policy_file" markdownlint; then
+        stage_markdown="$stage/.markdownlint-cli2.yaml"
+        if ! _cpf_gen_markdownlint_cli2 "$policy_file" "$out_markdown" >"$stage_markdown"; then
+            echo "ERROR: failed to generate .markdownlint-cli2.yaml" >&2
+            return 5
+        fi
+    fi
+    if _cpf_gen_has_section "$policy_file" shellcheck; then
+        stage_shell="$stage/shellcheck-excludes.txt"
+        if ! _cpf_gen_shellcheck_excludes "$policy_file" >"$stage_shell"; then
+            echo "ERROR: failed to generate shellcheck-excludes.txt" >&2
+            return 5
+        fi
+    fi
+
+    [[ -n "$stage_prettier" ]] && _cpf_write_if_different "$stage_prettier" "$out_prettier"
+    [[ -n "$stage_markdown" ]] && _cpf_write_if_different "$stage_markdown" "$out_markdown"
+    if [[ -n "$stage_shell" ]]; then
+        mkdir -p "$project_dir/.cpf"
+        _cpf_write_if_different "$stage_shell" "$out_shell"
+    fi
 
     return 0
 }
@@ -170,8 +182,30 @@ _cpf_gen_prettierignore() {
     fi
 }
 
+# Return 0 if the policy declares a hooks.<tool> section.
+_cpf_gen_has_section() {
+    local file="$1" tool="$2"
+    jq -e --arg t "$tool" '.hooks | has($t)' "$file" >/dev/null 2>&1
+}
+
+# Emit .markdownlint-cli2.yaml. The policy owns only the `ignores:` list.
+# When the host already has the file, everything else in it (the
+# `config:` rule block, other keys, comments) is preserved and only the
+# top-level `ignores:` block is replaced. Without a host file, the
+# bundled rule block is used as the starting point.
 _cpf_gen_markdownlint_cli2() {
-    local file="$1"
+    local file="$1" existing="${2:-}"
+    local entries
+    entries="$(jq -r '.hooks.markdownlint.exclude // [] | .[]' "$file" \
+        | while IFS= read -r entry; do
+            _cpf_yaml_single_quote "$entry"
+        done)"
+
+    if [[ -n "$existing" && -f "$existing" ]]; then
+        _cpf_gen_replace_ignores "$existing" "$entries"
+        return 0
+    fi
+
     cat <<'HEADER'
 config:
   MD013:
@@ -185,14 +219,59 @@ config:
 
 ignores:
 HEADER
-    # YAML emits each entry as a single-quoted scalar, matching the bundled
-    # scaffold copy byte-for-byte. Single quotes are safe for the bundled
-    # values (no embedded single quotes); _cpf_yaml_quote escapes by
-    # doubling if a future entry ever contains one.
-    jq -r '.hooks.markdownlint.exclude // [] | .[]' "$file" \
-        | while IFS= read -r entry; do
-            _cpf_yaml_single_quote "$entry"
-        done
+    [[ -n "$entries" ]] && printf '%s\n' "$entries"
+    return 0
+}
+
+# Rewrite the top-level `ignores:` block of an existing YAML file with the
+# given pre-rendered entry lines. Handles block form (list items indented
+# or at column 0, interleaved comments and blank lines) and single-line
+# flow form (`ignores: [a, b]`). A blank line or top-level comment
+# directly before the next top-level key is kept. If the file has no
+# top-level `ignores:` key, one is appended.
+_cpf_gen_replace_ignores() {
+    local existing="$1" entries="$2"
+    ENTRIES="$entries" awk '
+        function emit_block() {
+            print "ignores:"
+            if (ENVIRON["ENTRIES"] != "") print ENVIRON["ENTRIES"]
+            done = 1
+        }
+        function flush_pending() {
+            if (pending != "") { printf "%s", pending; pending = "" }
+        }
+        skipping {
+            # Inside the old block: list items, indented lines, and
+            # continuation lines belong to it.
+            if ($0 ~ /^[[:space:]]*$/ || $0 ~ /^#/) {
+                pending = pending $0 "\n"
+                next
+            }
+            if ($0 ~ /^-/ || $0 ~ /^[[:space:]]/) {
+                pending = ""
+                next
+            }
+            skipping = 0
+            flush_pending()
+        }
+        !done && /^ignores:[[:space:]]*(#.*)?$/ {
+            emit_block(); skipping = 1; pending = ""; next
+        }
+        !done && /^ignores:[[:space:]]*\[/ {
+            emit_block()
+            if ($0 !~ /\]/) { flow = 1 }
+            next
+        }
+        flow { if ($0 ~ /\]/) flow = 0; next }
+        { print }
+        END {
+            if (skipping) flush_pending()
+            if (!done) {
+                print ""
+                emit_block()
+            }
+        }
+    ' "$existing"
 }
 
 _cpf_yaml_single_quote() {
