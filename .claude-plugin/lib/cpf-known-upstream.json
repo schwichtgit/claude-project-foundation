@@ -38,7 +38,8 @@
     "d806e6f20377b4762b650b8d46d93ee3d1f36f2761f3bbc2ac4095e9f251175c"
   ],
   ".cpf/scripts/install-hooks.sh": [
-    "6b91a22c186c90100069a35fcd88789f3cbdb2ba3aecbc9a8717694f9940a183"
+    "6b91a22c186c90100069a35fcd88789f3cbdb2ba3aecbc9a8717694f9940a183",
+    "ecd3094ee905a037b09047b8a831e1fc9105453c07686385ca3e2e6c37f21026"
   ],
   ".github/workflows/ci-base.yml": [
     "19f6f331e00d4ee7c8a5ef74a2ed7b0c3b20dad018f8d54e21126b75afbd22b9",

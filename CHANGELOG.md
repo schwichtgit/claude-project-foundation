@@ -112,6 +112,8 @@ call these, so a change that passes at one boundary passes at the next
   its pattern ended in `\b` right after `/`, which GNU grep never
   matches, while other greps also blocked ordinary paths such as
   `/tmp/build`. Targets must now end the argument.
+- `install-hooks.sh` works in git worktrees and honors `core.hooksPath`
+  (it assumed `.git/` is a directory).
 - `.cpf/pending/` ignores itself (`.cpf/pending/.gitignore`), so merge
   aids never reach commits or lint scope.
 - The asset resolver, `doctor.sh`, and the skill's commands resolve

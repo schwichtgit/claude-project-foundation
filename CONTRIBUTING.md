@@ -1,77 +1,68 @@
 # Contributing
 
-## Reporting Issues
+cpf is in maintenance (see [README.md](README.md)): critical and
+security fixes are welcome; new features belong in
+[spec-gates](https://github.com/schwichtgit/spec-gates). Search existing
+issues before opening one, and use the issue templates.
 
-- Use the bug report template for defects
-- Use the feature request template for new capabilities
-- Search existing issues before opening a new one
+## Setup
 
-## Development Setup
-
-Prerequisites: Git,
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code),
-Node.js 22+ (for Prettier formatting only).
+Prerequisites: Git, `jq`, Node.js 22+,
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ```bash
-# Fork and clone the repo, then:
-.cpf/scripts/install-hooks.sh
-npm install
-npm run format:check
+npm ci                                        # pinned prettier, markdownlint-cli2
+bash .claude-plugin/scaffold/common/.cpf/scripts/install-hooks.sh
+npm run lint                                  # same checks CI runs
 ```
 
-## Making Changes
+This repository runs its own source:
 
-1. Create a branch from `main`
-2. Make changes in small, focused commits
-3. Follow conventional commit format: `type(scope): description`
-4. Allowed types: `feat`, `fix`, `docs`, `style`,
-   `refactor`, `perf`, `test`, `build`, `ci`, `chore`,
-   `revert`
-5. Subject line <= 72 characters
-6. No emoji in commit messages or PR titles
-7. No AI-isms (see `CLAUDE.md` for the full blocked patterns list)
-8. No `Co-Authored-By` trailers
+- `.claude/hooks` and `.claude/skills/specforge` are symlinks into
+  `.claude-plugin/`.
+- `.cpf/runtime` is a symlink to the scaffold's checks runtime.
+- The installed cpf plugin is disabled here (`.claude/settings.json`),
+  so hooks do not run twice.
 
-## Pull Requests
+## Checks and tests
 
-- Fill out the PR template completely
-- One logical change per PR
-- All CI checks must pass (markdownlint, Prettier,
-  shellcheck, commit-standards)
-- All review comments must be resolved before merge
+- **Lint:** `npm run lint` (`scripts/lint.sh`).
+  1. It fails by name when prettier or markdownlint-cli2 differ from
+     `package-lock.json`, when shellcheck differs from `.tool-versions`,
+     or when a generated config (`.prettierignore`,
+     `.markdownlint-cli2.yaml`, `.cpf/shellcheck-excludes.txt`) differs
+     from `.cpf/policy.json`.
+  2. It then runs `.cpf/runtime/verify.sh --boundary ci`.
 
-## Code Style
+  Change lint scope in `.cpf/policy.json`, not in workflows. Locally,
+  untracked files are linted too; CI sees committed files only.
 
-- **Shell scripts:** ShellCheck clean,
-  `set -euo pipefail`, use `$((VAR + 1))`
-  not `((VAR++))`
-- **Linting:** run `npm ci`, then `npm run lint`. This is the
-  same `scripts/lint.sh` that CI runs. It uses the exact
-  prettier and markdownlint-cli2 versions from
-  `package-lock.json`, and the shellcheck version from
-  `.tool-versions` (installed by `scripts/shellcheck.sh`, never
-  from the OS). Each tool's file set comes from
-  `.cpf/policy.json`. It fails by name when an installed version
-  or a generated config (`.prettierignore`,
-  `.markdownlint-cli2.yaml`) drifts from its pin or the policy.
-  To change lint scope, edit `.cpf/policy.json` and regenerate
-  the configs; don't add path rules to workflows.
-  Locally, untracked files that aren't ignored are linted too,
-  so new files are caught before commit. CI sees only committed
-  files.
-- **Markdown:** markdownlint clean, Prettier formatted
-- **YAML/JSON:** Prettier formatted
-- **Communication:** technical and direct, no emoji,
-  no marketing adjectives
+- **Shellcheck** only through `scripts/shellcheck.sh`, which installs
+  the pinned version.
+- **Tests:** `for t in scripts/test-*.sh; do bash "$t" || echo "FAIL $t"; done`.
+  CI runs every one. When a managed scaffold file changes, run
+  `scripts/gen-known-upstream.sh`; CI checks it with `--check`.
+- **`npm run format`** applies prettier and markdownlint fixes over the
+  policy file sets.
 
-## Quality Gates
+## Changes and pull requests
 
-Commits are validated locally by git hooks
-(`scripts/hooks/pre-commit`, `scripts/hooks/commit-msg`)
-and in CI (`.github/workflows/ci.yml`). See
-`ci/principles/` for the abstract gate definitions.
+- Branch from `main`; one logical change per PR, in small commits.
+- Commit subjects: `type(scope): description`. The types are feat, fix,
+  docs, style, refactor, perf, test, build, ci, chore, and revert.
+- A subject may be at most 72 characters.
+- A PR title becomes the squash subject, so it must leave room for
+  the "(#N)" suffix.
+- No emoji, AI-isms, or `Co-Authored-By` trailers. The rules live in
+  `.cpf/runtime/commit-check.sh`; the git hooks, the PR hook, and CI all
+  apply them.
+- Shell: `set -euo pipefail`; use `VAR=$((VAR + 1))`, not `((VAR++))`.
+- Runtime code (`.claude-plugin/scaffold/common/.cpf/runtime/`) must
+  never reference `.claude-plugin/`: downstream projects do not have it.
+  `scripts/test-boundary-parity.sh` enforces this.
+- CI must pass. Only `summary` is required.
 
 ## License
 
-By contributing, you agree that your contributions
-will be licensed under the [MIT License](LICENSE).
+By contributing, you agree that your contributions are licensed under
+the [MIT License](LICENSE).

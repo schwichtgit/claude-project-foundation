@@ -1,91 +1,136 @@
-# GitHub Repository Settings Checklist
+# GitHub Repository Settings
 
-Configure these settings after creating your repository.
-Use the `gh` CLI where possible.
+`/cpf:specforge init` projects the `.github/` files (workflows,
+CODEOWNERS, dependabot, PR and issue templates) but does not change
+repository settings. Apply the settings below once per repository.
+Replace `{owner}/{repo}` in each command, or run from a clone where
+`gh` resolves it.
 
-## 1. Branch Protection
+## 1. CODEOWNERS
+
+Replace every `@OWNER` in `.github/CODEOWNERS` with a GitHub user or
+team that has write access, then commit the change:
 
 ```bash
-gh api repos/{owner}/{repo}/branches/main/protection -X PUT -f \
-  required_status_checks='{"strict":true,"contexts":["summary"]}' \
-  enforce_admins=true \
-  required_pull_request_reviews='{"required_approving_review_count":1}' \
-  restrictions=null
+sed -i.bak 's/@OWNER/@your-user-or-org\/team/g' .github/CODEOWNERS
+rm .github/CODEOWNERS.bak
 ```
 
-**Key:** Only require the `summary` job. Conditional jobs
-(nodejs, python, rust) show as "skipped" when no relevant
-files change, and would block PRs if required directly.
+Do this before enabling code-owner review in step 2: while `@OWNER`
+remains, reviews for the listed paths cannot be satisfied.
 
-## 2. Merge Settings
+## 2. Branch Ruleset
 
-- Default merge method: **Squash merge**
-- Auto-delete head branches: **Enabled**
+The scaffold `ci.yml` calls the managed `ci-base.yml` as job `base`.
+All CI results roll up into its `summary` job, which is the only check
+to require. GitHub reports it as `base / summary`; copy the exact name
+from the checks list of an open pull request if it differs. Requiring
+individual jobs instead blocks merges whenever a job is skipped.
+
+```bash
+gh api repos/{owner}/{repo}/rulesets -X POST --input - <<'EOF'
+{
+  "name": "main",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": true,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "required_status_checks": [{ "context": "base / summary" }]
+      }
+    }
+  ]
+}
+EOF
+```
+
+For a single-maintainer repository set
+`required_approving_review_count` to `0` and
+`require_code_owner_review` to `false`; otherwise the maintainer
+cannot merge their own pull requests. Classic branch protection
+(`repos/{owner}/{repo}/branches/main/protection`) works as well, with
+the same single required check.
+
+Projects that add their own jobs to `ci.yml` can either require those
+jobs as additional checks or leave them out of the ruleset.
+
+## 3. Merge Settings
+
+Squash merge only, with the pull request title as the squash subject.
+The `commit-standards` job validates every commit and the PR title, so
+the title that lands on `main` has passed the same check. Merged
+branches are deleted automatically.
 
 ```bash
 gh api repos/{owner}/{repo} -X PATCH \
-  -f allow_squash_merge=true \
-  -f allow_merge_commit=false \
-  -f allow_rebase_merge=false \
-  -f delete_branch_on_merge=true
+  -F allow_squash_merge=true \
+  -F allow_merge_commit=false \
+  -F allow_rebase_merge=false \
+  -F delete_branch_on_merge=true \
+  -f squash_merge_commit_title=PR_TITLE \
+  -f squash_merge_commit_message=PR_BODY
 ```
 
-## 3. Security
+`ci.yml` does not re-run when only the PR title is edited. Re-run the
+workflow (or push) after renaming a pull request.
+`ci/github/workflows/commit-standards.yml` is a standalone alternative
+that also triggers on title edits; use it only in repositories that do
+not call `ci-base.yml`, otherwise the check runs twice.
 
-- **CodeQL:** Enable for detected languages
-- **Secret scanning:** Enable with push protection
+## 4. Security
 
-```bash
-gh api repos/{owner}/{repo}/code-scanning/default-setup -X PATCH \
-  -f state=configured
+- **CodeQL:** init projects `.github/workflows/codeql.yml`, which scans
+  the workflow files (`languages: actions`). Add the project's
+  languages to its `languages` list. Do not also enable CodeQL
+  default setup; it conflicts with the workflow.
+- **Secret scanning** with push protection:
 
-gh api repos/{owner}/{repo} -X PATCH \
-  -f security_and_analysis='{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}'
-```
+  ```bash
+  gh api repos/{owner}/{repo} -X PATCH --input - <<'EOF'
+  {
+    "security_and_analysis": {
+      "secret_scanning": { "status": "enabled" },
+      "secret_scanning_push_protection": { "status": "enabled" }
+    }
+  }
+  EOF
+  ```
 
-### Best Practice: Separate Workflows per Scanner
+- **Dependabot alerts and security updates:** init projects
+  `.github/dependabot.yml` (GitHub Actions and npm; uncomment pip,
+  cargo, or gomod as needed). Alerts and security updates are
+  repository settings:
 
-Keep each security scanner in its own workflow file:
+  ```bash
+  gh api repos/{owner}/{repo}/vulnerability-alerts -X PUT
+  gh api repos/{owner}/{repo}/automated-security-fixes -X PUT
+  ```
 
-- **Independent failure modes** -- a Trivy failure does not
-  mask a CodeQL result or vice versa
-- **Independent triggers** -- CodeQL on every push, container
-  scanning only when Dockerfiles or dependencies change
-- **Clearer ownership** -- code analysis vs image scanning
+Keep each security scanner in a separate workflow file, as the
+scaffold does with `codeql.yml`: failures stay independent, each
+scanner gets its own triggers (for example, container scanning only
+when a Dockerfile changes), and ownership stays clear. Add Trivy,
+Grype, or other container scanners the same way.
 
-The scaffold ships `codeql.yml` as a separate workflow.
-Follow the same pattern when adding container scanning
-(Trivy, Grype) or other security tools.
+## Reference Copies
 
-## 4. Dependabot
-
-Copy the dependabot config to your repo:
-
-```bash
-mkdir -p .github
-cp ci/github/dependabot.yml .github/dependabot.yml
-```
-
-## 5. CODEOWNERS
-
-```bash
-cp ci/github/CODEOWNERS.template .github/CODEOWNERS
-# Edit .github/CODEOWNERS and replace @OWNER with your GitHub username or team
-```
-
-## 6. PR Template
-
-```bash
-cp ci/github/PULL_REQUEST_TEMPLATE.md .github/PULL_REQUEST_TEMPLATE.md
-```
-
-## 7. CI Workflows
-
-```bash
-mkdir -p .github/workflows
-cp ci/github/workflows/ci.yml .github/workflows/ci.yml
-cp ci/github/workflows/commit-standards.yml .github/workflows/commit-standards.yml
-```
-
-Review and customize the workflow files for your tech stack
-(enable/disable language jobs, adjust path filters).
+`ci/github/` holds reference copies of the projected files
+(`CODEOWNERS.template`, `dependabot.yml`, `PULL_REQUEST_TEMPLATE.md`)
+for comparison after an upgrade. The live files are under `.github/`.

@@ -66,8 +66,9 @@ pipeline {
 
         // ===================================================================
         // PROJECT-SPECIFIC STAGES -- add your stages below this marker.
-        // specforge upgrade will show this section in diffs but will
-        // not remove stages you add here.
+        // On /cpf:specforge upgrade the Jenkinsfile is reviewed as a diff:
+        // accepting replaces this file (re-add your stages), declining
+        // keeps it for a manual merge.
         // ===================================================================
 
         // -------------------------------------------------------------------

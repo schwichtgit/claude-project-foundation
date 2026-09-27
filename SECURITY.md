@@ -1,46 +1,42 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-| Version | Supported |
-| ------- | --------- |
-| main    | Yes       |
+cpf is in maintenance. Security fixes land on `main` and ship in the
+next release; only the latest release is supported.
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-Do not open a public issue for security vulnerabilities.
-
-Use GitHub's private vulnerability reporting:
+Do not open a public issue. Use GitHub's private vulnerability
+reporting:
 <https://github.com/schwichtgit/claude-project-foundation/security/advisories/new>
 
-Include:
+Include a description, steps to reproduce, affected files, and the
+potential impact. Expect acknowledgment within 7 days and a resolution
+or mitigation plan within 30 days.
 
-- Description of the vulnerability
-- Steps to reproduce
-- Affected files or components
-- Potential impact
+## What cpf enforces
 
-Expected response time: 7 days for acknowledgment,
-30 days for resolution or mitigation plan.
+In projects that use it:
 
-## Security Practices
+- **Secret scanning.** The `pre-commit` hook scans staged content for
+  secrets: AWS keys, GitHub, GitLab, Slack, and OpenAI tokens, and
+  credential assignments.
+- **Forbidden files.** `pre-commit` blocks them: `.env` and `.env.*`
+  (templates such as `.env.example` are allowed), private keys and
+  certificates, credential files, and `.ssh`/`.gnupg`/`.aws`/`.gcloud`
+  directories.
+- **Claude Code hooks.** They block destructive shell commands (for
+  example `rm -rf` on root or home, force pushes) and edits to
+  sensitive files.
+- **Tool versions.** Tools resolve from the project's pins, and
+  `uv run --frozen` never rewrites `uv.lock`.
 
-This repository enforces several security measures:
-
-- Pre-commit hooks scan for secrets
-  (AWS keys, API tokens, credentials)
-- Forbidden file patterns block `.env`, `.pem`,
-  `.key`, and credential files from commits
-- Claude Code hooks block destructive bash commands
-  and sensitive file modifications
-- CODEOWNERS requires maintainer review for
-  security-critical file changes
-- GitHub secret scanning with push protection is
-  recommended (see `ci/github/repo-settings.md`)
+Recommended repository settings (secret scanning with push protection,
+branch protection) are in the GitHub setup guide, available via
+`/cpf:specforge setup`.
 
 ## Scope
 
-This policy covers the claude-project-foundation
-scaffold itself. Security issues in downstream projects
-that use this foundation should be reported to those
-projects directly.
+This policy covers cpf itself. Report issues in projects that use cpf to
+those projects.

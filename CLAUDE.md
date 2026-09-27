@@ -1,156 +1,87 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when
-working with code in this repository.
+Guidance for Claude Code when working in this repository.
 
-## Project Overview
+## Project
 
-This is a **reusable harness for spec-driven, autonomous Claude
-Code projects**. It provides a portable scaffold with three
-layers:
+cpf is a Claude Code plugin with two parts:
 
-1. **Abstract SDLC Principles** (Layer 1) -- Platform-agnostic
-   quality gates for commits, PRs, and releases
-2. **Interactive Planning** (Layer 2) -- `/cpf:specforge` skill
-   with 7 sub-commands for collaborative spec authoring
-3. **Platform Implementations** (Layer 3) -- GitHub first-class
-   (CI workflows, templates), GitLab/Jenkins documented as
-   mapping guides
+- the `/cpf:specforge` skill for spec-driven projects;
+- one set of quality checks enforced by Claude Code hooks, git hooks,
+  and CI.
 
-The foundation synthesizes patterns from Anthropic's
-autonomous-coding quickstart, AutoForge, and production
-experience into a generalized scaffold. It requires no
-dependencies -- pure shell scripts, markdown, and JSON/YAML
-templates.
+It is in maintenance and being sunset in favor of
+[spec-gates](https://github.com/schwichtgit/spec-gates): only critical
+and security fixes. No runtime dependencies beyond bash, git, and jq.
 
-## Current State
+## Layout
 
-All 6 implementation phases are complete. The repository applies
-its own quality gates: markdownlint, Prettier, shellcheck, and
-commit-standards run in `.github/workflows/ci.yml`. Node.js is
-required only for development tooling (Prettier). The scaffold
-has no runtime dependencies.
+- `.claude-plugin/` -- the plugin:
+  - `plugin.json`, `hooks/hooks.json` plus hook scripts,
+    `skills/specforge/SKILL.md`, `agents/`;
+  - `lib/`: generator, policy inference, managed files, migrations,
+    known-upstream hashes;
+  - `upgrade-tiers.json`;
+  - `scaffold/` (projected into host projects).
+- `.claude-plugin/scaffold/common/.cpf/runtime/` -- the checks runtime:
+  - `verify.sh --boundary agent|git|ci [--staged]` runs every check;
+  - `commit-check.sh` holds the commit and PR rules.
 
-## Implementation Phases
+  Plugin hooks, the git hooks (`scaffold/common/.cpf/scripts/hooks/`),
+  and every CI template only call it. **The runtime must never
+  reference `.claude-plugin/`:** host projects have no plugin tree.
+  `test-boundary-parity.sh` enforces this.
 
-Phases 1-4 are sequential. Phase 5 can run in parallel with
-Phases 3-4. Phase 6 requires all prior phases.
+- `.claude-plugin/upgrade-tiers.json` -- how each scaffold file is
+  treated by upgrade:
+  - overwrite: managed by `lib/cpf-managed-file.sh`; local edits are
+    kept and the new version goes to `.cpf/pending/`;
+  - review, customizable, skip;
+  - plugin-cache: never projected;
+  - `relocations`: files that moved between releases.
+- `scripts/` -- `lint.sh`, `shellcheck.sh` (pinned via
+  `.tool-versions`), `gen-known-upstream.sh`, and the `test-*.sh`
+  suites.
+- This repo runs its own source. `.claude/hooks`,
+  `.claude/skills/specforge`, and `.cpf/runtime` are symlinks into
+  `.claude-plugin/`. The installed cpf plugin is disabled in
+  `.claude/settings.json`.
 
-1. **Repository structure + Abstract SDLC principles**
-   (`ci/principles/`,
-   `.specify/templates/constitution-template.md`)
-2. **Quality gate scripts** (5 Claude Code hooks in
-   `.claude/hooks/`, 2 git hooks in `scripts/hooks/`,
-   `install-hooks.sh`)
-3. **Spec workflow + templates** (`/cpf:specforge` skill,
-   spec/plan/tasks templates, `feature-list-schema.json`,
-   `WORKFLOW.md`)
-4. **Execution harness** (`prompts/initializer-prompt.md`,
-   `prompts/coding-prompt.md`, `CLAUDE.md.template`)
-5. **GitHub implementation** (CI workflows, CODEOWNERS,
-   dependabot, PR template, repo settings,
-   GitLab/Jenkins guides)
-6. **Testing** (manual verification)
-
-## Architecture
-
-### Two-Phase Workflow
-
-**Planning phase:** Human + Claude Code use `/cpf:specforge`
-to produce: constitution.md -> spec.md -> plan.md ->
-feature_list.json (each sub-command feeds the next).
-
-**Execution phase (Two-Agent Pattern):**
-
-- **Initializer agent** (1st session): Reads spec artifacts,
-  creates init.sh, project structure, validates
-  feature_list.json. Does NOT implement features.
-- **Coding agent** (subsequent sessions): 10-step loop --
-  orient, start servers, verify existing, select feature,
-  implement, test, update tracking, commit, document,
-  clean shutdown.
-
-### feature_list.json
-
-Central tracking artifact. Features have: id (kebab-case),
-category (infrastructure|functional|style|testing), title,
-description, testing_steps (3-15 concrete steps), passes
-(boolean), dependencies. The `passes` field is the ONLY
-mutable field during autonomous execution.
-
-### Hook System
-
-Claude Code hooks (`.claude/hooks/`) receive JSON via stdin,
-not positional arguments. Stop hooks use exit code 2 to block
-(not exit 1). Stop hooks must check `stop_hook_active` to
-prevent infinite loops.
-
-All checks live in the checks runtime,
-`.claude-plugin/scaffold/common/.cpf/runtime/` (projected to
-`.cpf/runtime/` in host projects; symlinked here). `verify.sh
---boundary agent|git|ci` runs them and `commit-check.sh` holds the
-commit/PR rules. The Stop and PR hooks, the git hooks
-(`.cpf/scripts/hooks/`, installed to `.git/hooks/` by
-`install-hooks.sh`), and every CI template only call the runtime.
-The runtime must never reference `.claude-plugin/`: host projects
-have no plugin tree.
-
-### Auto-Detection
-
-All scripts auto-detect project type from config files
-(package.json, Cargo.toml, pyproject.toml, go.mod) at project
-root and one level of subdirectories. No hardcoded project
-paths.
-
-## Key Commands
+## Commands
 
 ```bash
-# Install git hooks
-.cpf/scripts/install-hooks.sh
-
-# Make Claude Code hooks executable (done by install-hooks.sh)
-chmod +x .claude/hooks/*.sh
-
-# Install pinned linters (exact versions from package-lock.json)
-npm ci
-
-# Lint exactly as CI does: pinned prettier, markdownlint-cli2, and
-# shellcheck (.tool-versions), file sets from .cpf/policy.json
-npm run lint
-
-# Apply prettier/markdownlint fixes over the same file sets
-npm run format
+npm ci                 # pinned prettier + markdownlint-cli2
+npm run lint           # pin/config drift checks, then runtime --boundary ci
+npm run format         # prettier/markdownlint fixes over policy file sets
+for t in scripts/test-*.sh; do bash "$t" || echo "FAIL $t"; done
+bash scripts/gen-known-upstream.sh   # after changing a managed scaffold file
 ```
 
-## Quality Standards
+## Hooks
 
-- **Commit format:** Conventional Commits
-  (`feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`)
-- **Subject line:** <= 72 characters
-- **No emoji** in commits or PR titles
-- **No AI-isms:** Block self-references ("I have", "I've"),
-  filler ("Certainly"), marketing adjectives ("seamless",
-  "robust", "elegant"), AI branding. Allow "Claude Code" as
-  product name only.
-- **No Co-Authored-By trailers**
-- **Formatting:** Prettier enforces consistent formatting for
-  markdown, YAML, and JSON files (`proseWrap: preserve`)
-- **Code coverage:** >= 85% (configurable per project)
+- Claude Code hooks receive JSON on stdin and block with exit 2.
+- Stop hooks must honor `stop_hook_active`.
+- `hooks.json` registers:
+  - PreToolUse: `protect-files` (Write|Edit), `validate-bash` and
+    `validate-pr` (Bash);
+  - PostToolUse: `post-edit`;
+  - Stop: `format-changed`, then `verify-quality`;
+  - UserPromptSubmit: `check-upgrade`.
+- `verify-quality` and `validate-pr` run the project's
+  `.cpf/runtime/` (the bundled copy if the project has none).
 
-## Communication Style
+## Standards
 
-Technical and direct. No emoji. No AI-isms or self-referential
-language. No marketing adjectives.
-
-## Critical Implementation Details
-
-- Bash arithmetic with `set -e`: Use `VAR=$((VAR + 1))`
-  not `((VAR++))` (latter fails when VAR=0)
-- `$CLAUDE_PROJECT_DIR` env var is available in all hooks
-- CI: Only require the `summary` job in branch protection
-  (conditional jobs show as "skipped" and block PRs if
-  required directly)
-- CI: Always add top-level `permissions` block;
-  `dorny/paths-filter@v3` requires `pull-requests: read`
-- Node 18 is EOL; use Node 20+/22+
-- Python CI: Prefer `uv` over `pip` for speed
+- Conventional commits: `feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`.
+- Subject at most 72 characters. The PR title must leave room for
+  the "(#N)" suffix.
+- No emoji, AI-isms, marketing adjectives, AI branding, or
+  `Co-Authored-By` trailers. "Claude Code" is allowed as the product
+  name.
+- The rules live in `commit-check.sh`.
+- Never name downstream projects that use cpf in commits, PRs, or docs.
+- Bash under `set -e`: `VAR=$((VAR + 1))`, not `((VAR++))`.
+- Resolve paths with `cd -P` where symlinks are possible.
+- CI: require only the `summary` job; always set a top-level
+  `permissions` block.
+- Style: technical and direct.

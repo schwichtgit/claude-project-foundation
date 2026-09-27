@@ -1,146 +1,118 @@
-# Workflow Documentation
+# Workflow
 
-This document describes the two-phase workflow for spec-driven
-autonomous development.
+Spec-driven development with the cpf plugin runs in two phases:
 
-## Overview
+1. **Planning (interactive):** a human and Claude Code author the spec
+   artifacts with `/cpf:specforge`.
+2. **Execution (autonomous):** two agents implement the features across
+   Claude Code sessions.
 
-**Phase 1 (Interactive Planning):** Human and Claude Code
-collaboratively author project specifications through the
-`/cpf:specforge` skill. Seven steps, each producing a concrete
-artifact.
+This document, the prompts, the spec templates, and the CI principles
+are provided by the cpf plugin and are not copied into the project. To
+customize one, place a file at `.cpf/overrides/<path>` (for example
+`.cpf/overrides/prompts/coding-prompt.md`).
 
-**Phase 2 (Autonomous Execution):** Two-agent pattern
-implements features across multiple Claude Code sessions using
-the artifacts from Phase 1.
+## Phase 1: Planning
 
-## Phase 1: Interactive Planning
+Run the steps in order; each sub-command stops if a prerequisite
+artifact is missing.
 
-| Step | Command                       | Input                    | Output                            | Participant    |
-| ---- | ----------------------------- | ------------------------ | --------------------------------- | -------------- |
-| 1    | `/cpf:specforge constitution` | constitution-template.md | `.specify/memory/constitution.md` | Human + Claude |
-| 2    | `/cpf:specforge spec`         | constitution.md          | `.specify/specs/spec.md`          | Human + Claude |
-| 3    | `/cpf:specforge clarify`      | constitution.md, spec.md | spec.md (updated)                 | Human + Claude |
-| 4    | `/cpf:specforge plan`         | constitution.md, spec.md | `.specify/specs/plan.md`          | Human + Claude |
-| 5    | `/cpf:specforge features`     | All artifacts            | `feature_list.json`               | Human + Claude |
-| 6    | `/cpf:specforge analyze`      | All artifacts            | Score report (conversation)       | Claude         |
-| 7    | `/cpf:specforge setup`        | plan.md                  | Setup checklist (conversation)    | Claude         |
+| Step | Command                       | Output                            |
+| ---- | ----------------------------- | --------------------------------- |
+| 1    | `/cpf:specforge constitution` | `.specify/memory/constitution.md` |
+| 2    | `/cpf:specforge spec`         | `.specify/specs/spec.md`          |
+| 3    | `/cpf:specforge clarify`      | `spec.md` (updated)               |
+| 4    | `/cpf:specforge plan`         | `.specify/specs/plan.md`          |
+| 5    | `/cpf:specforge features`     | `feature_list.json`               |
+| 6    | `/cpf:specforge analyze`      | Readiness score (0-100)           |
 
-## Phase 2: Autonomous Execution
+`/cpf:specforge setup` (optional, after `plan`) prints a
+platform-specific setup checklist. Other sub-commands: `init`,
+`upgrade`, `doctor`, `help`.
 
-### Initializer Agent (First Session)
+## Phase 2: Execution
 
-Uses `prompts/initializer-prompt.md`. Creates foundational artifacts:
+**Initializer agent** (first session, initializer prompt): validates
+`feature_list.json`, creates `init.sh` and the project structure,
+commits. Does not implement features.
 
-- Validates feature_list.json against schema
-- Creates init.sh (idempotent environment setup)
-- Initializes git with .gitignore
-- Creates project structure per plan
-- Does NOT implement features
+**Coding agent** (each later session, coding prompt): one feature per
+session in a 10-step loop -- orient, start servers, verify existing,
+select, implement, test, update tracking, commit, document, clean
+shutdown.
 
-### Coding Agent (Subsequent Sessions)
+Rules:
 
-Uses `prompts/coding-prompt.md`. Follows a 10-step loop per session:
-
-1. Orient (read artifacts, check progress)
-2. Start servers (run init.sh)
-3. Verify existing (test passing features, fix regressions)
-4. Select feature (highest priority, deps met, not yet passing)
-5. Implement (follow constitution + plan)
-6. Test (execute all testing_steps)
-7. Update tracking (set passes:true only if ALL steps pass)
-8. Commit (conventional format, no AI-isms)
-9. Document (update claude-progress.txt)
-10. Clean shutdown
+- `feature_list.json` is immutable except `passes`, which only the
+  coding agent sets, and only when every testing step passed.
+- One feature at a time; fix regressions before new work.
+- One conventional commit per feature.
+- Update `claude-progress.txt` at the end of every session.
 
 ## Artifacts
 
-| Artifact     | Location                          | Format     | Created By                  |
-| ------------ | --------------------------------- | ---------- | --------------------------- |
-| Constitution | `.specify/memory/constitution.md` | Markdown   | /cpf:specforge constitution |
-| Spec         | `.specify/specs/spec.md`          | Markdown   | /cpf:specforge spec         |
-| Plan         | `.specify/specs/plan.md`          | Markdown   | /cpf:specforge plan         |
-| Feature List | `feature_list.json`               | JSON       | /cpf:specforge features     |
-| Progress     | `claude-progress.txt`             | Plain text | Coding agent                |
+| Artifact     | Location                          | Created by                    |
+| ------------ | --------------------------------- | ----------------------------- |
+| Constitution | `.specify/memory/constitution.md` | `/cpf:specforge constitution` |
+| Spec         | `.specify/specs/spec.md`          | `/cpf:specforge spec`         |
+| Plan         | `.specify/specs/plan.md`          | `/cpf:specforge plan`         |
+| Feature list | `feature_list.json`               | `/cpf:specforge features`     |
+| Progress     | `claude-progress.txt`             | Coding agent                  |
 
-## Branch Workflow
+## Branches and PRs
 
-All work must happen on feature branches, not directly on
-`main`. The pre-commit hook blocks commits to `main` by
-default.
+Work on feature branches. The git `pre-commit` hook blocks commits on
+`main` and `master`; `CPF_ALLOW_MAIN_COMMIT=1` is for release automation
+and the first commit of a new repository only.
 
-- Create branches from up-to-date main:
-  `git fetch origin main && git checkout -b feat/my-feature origin/main`
-- The opt-out `CPF_ALLOW_MAIN_COMMIT=1` is for release
-  automation and initial project setup only.
+```bash
+git fetch origin main && git checkout -b feat/my-feature origin/main
+```
 
-## Rules
+Before each commit, check the branch's PR (`gh pr view` or
+`glab mr view`). If it is merged, stop and start a new branch from
+`origin/main`.
 
-- **feature_list.json is immutable** except for the `passes`
-  field, which only the coding agent may change.
-- **One feature at a time.** Complete one thoroughly before starting the next.
-- **Regression verification.** Test previously passing features
-  before implementing new ones.
-- **Commit per feature.** Each completed feature gets its own
-  conventional commit.
-- **Progress documentation.** Update claude-progress.txt at
-  the end of every session.
-- **Fix regressions first.** If a previously passing feature
-  breaks, fix it before new work.
-
-## MR/PR Workflow
-
-Before any new commit on a branch:
-
-1. `git fetch origin`
-2. Check MR/PR state:
-   - GitLab: `glab mr view`
-   - GitHub: `gh pr view`
-3. If the MR/PR is already merged, stop. Create a new
-   branch from `origin/main` for the next piece of work.
-
-Do not commit to a branch whose MR/PR has been merged.
-
-Before opening a merge request or pull request:
-
-1. `git fetch origin`
-2. `git rebase origin/main` -- resolve any conflicts
-3. Verify CI passes on the rebased branch
-4. Open the MR/PR
-
-The MR/PR diff must contain only the work introduced by
-the branch. If commits already merged into main appear in
-the diff, rebase is needed.
-
-## Directory Semantics
-
-These conventions define what belongs in each directory.
-
-| Directory             | Purpose                     | Examples                                       |
-| --------------------- | --------------------------- | ---------------------------------------------- |
-| `.claude/`            | Claude Code tooling only    | hooks, settings, PLAN.md (session-scoped)      |
-| `.specify/memory/`    | Specforge governance        | constitution.md, versioning strategy           |
-| `.specify/specs/`     | Specforge spec artifacts    | spec.md, plan.md                               |
-| `.specify/proposals/` | Pre-spec planning documents | change requests, ADR drafts, feature proposals |
-| `.specify/templates/` | Specforge templates         | constitution-template.md, spec-template.md     |
-
-**Key rules:**
-
-- `.claude/` is for tooling configuration, not project
-  planning documents
-- Session-scoped working docs (restart prompts, cheat sheets)
-  are ephemeral -- do not commit them
-- Change requests and proposals that outlive a session belong
-  in `.specify/proposals/`
-- `.specify/proposals/` feeds the specforge workflow: proposals
-  mature into specs via `/cpf:specforge spec`
-- `.claude/PLAN.md` is session-scoped, not a persistent
-  planning artifact
+Before opening a PR, `git fetch origin && git rebase origin/main`,
+confirm CI passes, and check that the diff contains only this branch's
+work.
 
 ## Quality Gates
 
-All code changes are subject to quality gates defined in:
+The gate principles (commit, PR, release) are provided by the cpf plugin.
+cpf enforces them at three boundaries, all through the same runtime in
+`.cpf/runtime/`:
 
-- `ci/principles/commit-gate.md` -- Every commit
-- `ci/principles/pr-gate.md` -- Every pull request
-- `ci/principles/release-gate.md` -- Every release
+| Boundary    | Mechanism                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| Claude Code | Stop hook runs `verify.sh --boundary agent`; `validate-pr` checks `gh pr create`           |
+| git         | `pre-commit` runs `verify.sh --boundary git --staged`; `commit-msg` runs `commit-check.sh` |
+| CI          | `verify.sh --boundary ci` and `commit-check.sh` over the PR's commits and title            |
+
+Coverage thresholds, type checks, dependency audits, and license checks
+are the project's responsibility; cpf does not enforce them.
+
+## Directory Layout
+
+| Path                   | Purpose                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `.specify/memory/`     | Governance: constitution, versioning strategy                                              |
+| `.specify/specs/`      | Spec artifacts: `spec.md`, `plan.md`                                                       |
+| `.specify/proposals/`  | Pre-spec documents: change requests, ADR drafts, proposals                                 |
+| `.cpf/policy.json`     | Project-owned check policy: per-tool include/exclude/severity, verify-quality orchestrator |
+| `.cpf/runtime/`        | Checks runtime (`verify.sh`, `commit-check.sh`); managed by cpf                            |
+| `.cpf/scripts/`        | `install-hooks.sh`, `doctor.sh`, git hook sources in `hooks/`                              |
+| `.cpf/overrides/`      | Project copies that shadow plugin-provided templates and prompts                           |
+| `.cpf/upstream-cache/` | Baselines upgrade uses to detect local edits                                               |
+| `.cpf/pending/`        | Upstream versions of locally edited managed files: merge by hand, then delete              |
+| `.claude/`             | Claude Code settings only, not planning documents                                          |
+
+`.prettierignore`, `.markdownlint-cli2.yaml` (its `ignores` list), and
+`.cpf/shellcheck-excludes.txt` are generated from `.cpf/policy.json`.
+Edit the policy, not the generated files, then run
+`/cpf:specforge upgrade` to regenerate them. Run the same command after
+updating the plugin.
+
+Proposals in `.specify/proposals/` mature into specs through
+`/cpf:specforge spec`. Session-scoped notes (restart prompts,
+`.claude/PLAN.md`) are ephemeral; do not commit them.

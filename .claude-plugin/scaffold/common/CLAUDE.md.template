@@ -1,117 +1,48 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code)
-when working with code in this repository.
+Guidance for Claude Code when working in this repository.
 
 ## Project Overview
 
-**Description:** [PROJECT_DESCRIPTION]
-**Tech Stack:** [PRIMARY_LANGUAGE], [FRAMEWORK], [DATABASE]
-**Repository:** [REPO_URL]
+- **Description:** [PROJECT_DESCRIPTION]
+- **Tech stack:** [PRIMARY_LANGUAGE], [FRAMEWORK], [DATABASE]
+- **Repository:** [REPO_URL]
 
 ## Service Environment (optional -- delete if not applicable)
 
 | Service   | Directory   | Activate Command   |
 | --------- | ----------- | ------------------ |
 | [SERVICE] | [DIRECTORY] | [ACTIVATE_COMMAND] |
-| [SERVICE] | [DIRECTORY] | [ACTIVATE_COMMAND] |
 
-## Development Workflow
-
-### Subagent Delegation Policy
-
-Customize these categories for your project.
-
-**Mandatory delegation** (always use subagents):
-
-- Multi-file changes spanning 3+ files
-- Security-sensitive fixes (auth, secrets, permissions)
-- Running full test suites
-- Large refactors or migrations
-
-**Parallelization** (launch concurrent subagents):
-
-- Independent analyses with no data dependencies
-- Simultaneous lint, test, and type-check runs
-- Reviewing multiple files or modules at once
-
-**Main conversation only** (do not delegate):
-
-- Orchestration and sequencing decisions
-- User-facing questions and confirmations
-- Quick single-file reads or edits
-- Plan creation and updates
-
-### Commands
+## Commands
 
 ```bash
-# Start development
-./init.sh
-
-# Unit tests
-[UNIT_TEST_COMMAND]
-
-# Run single test
-[SINGLE_TEST_COMMAND]
-
-# E2E tests (optional -- delete if not applicable)
-[E2E_TEST_COMMAND]
-
-# Lint
-[LINT_COMMAND]
-
-# Type check
-[TYPECHECK_COMMAND]
-
-# Build
-[BUILD_COMMAND]
+./init.sh                  # set up and start development services
+[UNIT_TEST_COMMAND]        # unit tests
+[SINGLE_TEST_COMMAND]      # single test
+[E2E_TEST_COMMAND]         # E2E tests (optional)
+[LINT_COMMAND]             # lint
+[TYPECHECK_COMMAND]        # type check
+[BUILD_COMMAND]            # build
 ```
-
-## Spec-Driven Workflow
-
-This project uses `/cpf:specforge` for spec-driven development.
-The workflow steps are **mandatory and sequential** -- do not
-skip or reorder them:
-
-| Phase | Command                  | Artifact          | Status   |
-| ----- | ------------------------ | ----------------- | -------- |
-| 1     | `/cpf:specforge const`   | constitution.md   | [STATUS] |
-| 2     | `/cpf:specforge spec`    | spec.md           | [STATUS] |
-| 3     | `/cpf:specforge clarify` | spec.md (updated) | [STATUS] |
-| 4     | `/cpf:specforge plan`    | plan.md           | [STATUS] |
-| 5     | `/cpf:specforge feat`    | feature_list.json | [STATUS] |
-| 6     | `/cpf:specforge analyze` | score report      | [STATUS] |
-| 7     | `/cpf:specforge setup`   | setup checklist   | [STATUS] |
-
-See `.specify/WORKFLOW.md` for the full process documentation.
-Each sub-command enforces artifact gates: if a prerequisite
-artifact is missing, stop and run the required prior step first.
 
 ## Architecture
 
-[Describe the project architecture: main modules, data flow,
-key abstractions.]
+[Main modules, data flow, key abstractions.]
 
 ## API Endpoints (optional -- delete if not applicable)
 
 | Method   | Path   | Description   |
 | -------- | ------ | ------------- |
 | [METHOD] | [PATH] | [DESCRIPTION] |
-| [METHOD] | [PATH] | [DESCRIPTION] |
 
 ## Testing
 
-### Unit Tests
-
-- **Framework:** [UNIT_TEST_FRAMEWORK]
-- **Test files:** [TEST_FILE_PATTERN]
-- **Run all:** [UNIT_TEST_COMMAND]
-
-### E2E Tests (optional -- delete if not applicable)
-
-- **Framework:** [E2E_FRAMEWORK]
-- **Prerequisites:** [E2E_PREREQUISITES]
-- **Run:** [E2E_COMMAND]
+- **Unit:** [UNIT_TEST_FRAMEWORK], files matching [TEST_FILE_PATTERN]
+- **E2E (optional):** [E2E_FRAMEWORK]; prerequisites:
+  [E2E_PREREQUISITES]
+- **Coverage target:** [COVERAGE_THRESHOLD]% (set in the constitution;
+  enforced by the project's CI, not by cpf)
 
 ## Container Deployment (optional -- delete if not applicable)
 
@@ -120,63 +51,97 @@ key abstractions.]
 - **Health check:** [HEALTH_CHECK_ENDPOINT]
 - **Reverse proxy notes:** [PROXY_NOTES]
 
-## Quality Standards
+## Spec-Driven Workflow
 
-Quality is enforced by Claude Project Foundation hooks:
+This project uses the cpf plugin's `/cpf:specforge` skill. Run the steps
+in order; each stops if a prerequisite artifact is missing.
 
-| Hook           | Trigger    | Purpose                               |
-| -------------- | ---------- | ------------------------------------- |
-| protect-files  | Pre-edit   | Block sensitive file modifications    |
-| validate-bash  | Pre-bash   | Block destructive commands            |
-| format-check   | Post-edit  | Auto-format files by language         |
-| verify-quality | On stop    | Run lint, type check, and test suite  |
-| pre-commit     | Pre-commit | Check for secrets and forbidden files |
-| commit-msg     | Commit-msg | Validate conventional commits         |
-| [HOOK_NAME]    | [TRIGGER]  | [PURPOSE]                             |
+| Step | Command                       | Artifact          | Status   |
+| ---- | ----------------------------- | ----------------- | -------- |
+| 1    | `/cpf:specforge constitution` | constitution.md   | [STATUS] |
+| 2    | `/cpf:specforge spec`         | spec.md           | [STATUS] |
+| 3    | `/cpf:specforge clarify`      | spec.md (updated) | [STATUS] |
+| 4    | `/cpf:specforge plan`         | plan.md           | [STATUS] |
+| 5    | `/cpf:specforge features`     | feature_list.json | [STATUS] |
+| 6    | `/cpf:specforge analyze`      | readiness score   | [STATUS] |
 
-Coverage threshold: [COVERAGE_THRESHOLD]% (configured in constitution)
+`/cpf:specforge setup` (optional, after `plan`) prints a setup
+checklist. `/cpf:specforge help` lists all sub-commands. The workflow
+document, prompts, spec templates, and CI principles are provided by
+the plugin; to customize one, place a copy at `.cpf/overrides/<path>`.
+
+## Subagent Delegation (customize)
+
+- **Delegate:** changes spanning 3+ files, security-sensitive fixes,
+  full test suite runs, large refactors
+- **Run in parallel:** independent analyses; lint, test, and type-check
+  runs; reviews of separate modules
+- **Keep in the main conversation:** orchestration, user questions,
+  quick single-file edits, plan updates
+
+## Quality Checks
+
+cpf enforces its checks through these hooks. The lint, project, and
+commit-message checks live in `.cpf/runtime/` (`verify.sh`,
+`commit-check.sh`), shared with CI.
+
+| Hook           | Trigger               | Action                                                                                                     |
+| -------------- | --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| protect-files  | Before Write/Edit     | Block edits to keys, credentials, `.env`, lock files                                                       |
+| validate-bash  | Before Bash           | Block destructive commands (`rm -rf /`, force push, `reset --hard`)                                        |
+| validate-pr    | Before `gh pr create` | Apply commit/PR rules to title and description                                                             |
+| post-edit      | After Write/Edit      | Format the edited file                                                                                     |
+| format-changed | Stop                  | Format all changed files                                                                                   |
+| verify-quality | Stop                  | `verify.sh --boundary agent`: linters plus the orchestrator in `.cpf/policy.json`; failure blocks the stop |
+| check-upgrade  | Prompt submit         | Notice when the plugin is newer than the project                                                           |
+| pre-commit     | `git commit`          | Block `main`, forbidden files, secrets; `verify.sh --boundary git --staged`                                |
+| commit-msg     | `git commit`          | `commit-check.sh` on the message                                                                           |
+| [HOOK_NAME]    | [TRIGGER]             | [PURPOSE]                                                                                                  |
+
+Install or reinstall the git hooks with `.cpf/scripts/install-hooks.sh`;
+check prerequisites with `/cpf:specforge doctor`.
+
+### cpf Files
+
+- `.cpf/policy.json` -- project-owned: per-tool include/exclude globs
+  and severity, verify-quality orchestrator (`none`, `task`, `custom`)
+- `.cpf/runtime/`, `.cpf/scripts/` -- managed by cpf; do not edit
+- `.cpf/overrides/` -- project copies of plugin-provided files
+- `.cpf/upstream-cache/` -- baselines upgrade uses to detect local edits
+- `.cpf/pending/` -- upstream versions of managed files you edited
+  locally; merge by hand, then delete
+- `.prettierignore`, `.markdownlint-cli2.yaml` (`ignores` list), and
+  `.cpf/shellcheck-excludes.txt` are generated from the policy
+
+After updating the plugin, run `/cpf:specforge upgrade`.
 
 ## Git Commit Guidelines
 
-- Branch-based development: never commit directly to
-  `main`. Create a feature branch first.
-  Opt-out: `CPF_ALLOW_MAIN_COMMIT=1` (releases only)
-- Format: Conventional Commits (`feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`)
-- Subject line: <= 72 characters
-- No emoji in commit messages or PR titles
-- No AI-isms or self-referential language
-- No Co-Authored-By trailers
+- Never commit to `main`; create a feature branch from `origin/main`.
+  `CPF_ALLOW_MAIN_COMMIT=1` is for release automation and the first
+  commit of a new repository only.
+- Conventional Commits:
+  `feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`
+- Subject <= 72 characters; the PR title must also leave room for the
+  " (#N)" suffix
+- No emoji, AI-isms, self-references, marketing adjectives, or
+  `Co-Authored-By` trailers
+- Make atomic commits and push them unsquashed; squash happens at merge
 
-### Commit Strategy
+### PR Workflow
 
-- Make atomic commits with clear messages as you work
-- Push individual commits (do not squash before push)
-- Squash happens at PR merge time (configured in GitHub)
-
-### MR/PR Workflow
-
-Before committing to a branch, verify the MR/PR has not
-been merged (`glab mr view` / `gh pr view`). If merged,
-create a new branch from `origin/main`.
-
-Before opening a merge request or pull request:
-
-1. `git fetch origin`
-2. `git rebase origin/main`
-3. Verify CI passes on the rebased branch
-4. Open the MR/PR -- diff should contain only branch work
+Before each commit, check that the branch's PR is not merged
+(`gh pr view` or `glab mr view`); if it is, start a new branch from
+`origin/main`. Before opening a PR, `git fetch origin`,
+`git rebase origin/main`, and confirm CI passes; the diff must contain
+only this branch's work.
 
 ## Error Handling
 
-When a command fails, report the error and diagnose the
-root cause before taking any further action. Never silently
-recover by splitting a failing command or retrying without
-disclosing the failure.
+When a command fails, report the error and diagnose the root cause
+before acting further. Do not silently retry or split a failing command.
 
 ## Communication Style
 
-- Technical and direct
-- No emoji
-- No AI-isms ("I have", "Certainly", "seamless", "robust", "elegant")
-- No marketing adjectives
-- Terse: prefer short, factual statements
+Technical, direct, terse. No emoji, no AI-isms ("I have", "Certainly"),
+no marketing adjectives ("seamless", "robust", "elegant").

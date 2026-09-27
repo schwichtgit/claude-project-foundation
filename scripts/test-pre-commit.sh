@@ -199,6 +199,22 @@ else
 fi
 
 echo ""
+echo "=== install-hooks.sh works from a git worktree ==="
+R="$(new_repo wt-main)"
+(cd "$R" && git commit -q --allow-empty --no-verify -m "chore: base" \
+    && git worktree add -q "$WORKDIR/wt-linked" -b feat/wt 2>/dev/null)
+mkdir -p "$WORKDIR/wt-linked/.cpf"
+cp -R "$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/scripts" "$WORKDIR/wt-linked/.cpf/scripts"
+rc=0
+(cd "$WORKDIR/wt-linked" && bash .cpf/scripts/install-hooks.sh) >/dev/null 2>&1 || rc=$?
+HOOKS_DIR="$(cd "$WORKDIR/wt-linked" && git rev-parse --path-format=absolute --git-path hooks)"
+if [[ "$rc" -eq 0 && -x "$HOOKS_DIR/pre-commit" && -x "$HOOKS_DIR/commit-msg" ]]; then
+    pass "hooks installed into the repository's hooks dir from a worktree"
+else
+    fail "install-hooks.sh in a worktree (rc=$rc, hooks dir $HOOKS_DIR)"
+fi
+
+echo ""
 echo "=== shellcheck the hook ==="
 if "$SHELLCHECK" -x "$HOOK" >/dev/null 2>&1; then
     pass "shellcheck clean"

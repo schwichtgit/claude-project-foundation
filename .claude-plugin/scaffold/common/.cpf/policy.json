@@ -1,15 +1,15 @@
 {
-  "_comment": "cpf hook policy. Schema: .claude-plugin/lib/cpf-policy.schema.json. Loader: .claude-plugin/lib/cpf-policy.sh. Edit include/exclude globs, orchestrator, and severity to customize quality-gate behavior. init seeds this file; upgrade never overwrites.",
+  "_comment": "cpf hook policy, owned by this project: init seeds it and upgrade never overwrites it. Edit include/exclude globs, severity, and the verify-quality orchestrator here; .prettierignore, .markdownlint-cli2.yaml, and .cpf/shellcheck-excludes.txt are generated from it. The checks runtime (.cpf/runtime/) reads it at every boundary.",
   "hooks": {
     "prettier": {
       "include": ["**/*.md", "**/*.yml", "**/*.yaml", "**/*.json"],
       "exclude": [
-        "claude-project-foundation-PLAN.md",
+        "PLAN.md",
         ".claude/PLAN.md",
         ".claude/mind.*",
         "LICENSE",
-        "scripts/hooks/pre-commit",
-        "scripts/hooks/commit-msg"
+        ".cpf/scripts/hooks/pre-commit",
+        ".cpf/scripts/hooks/commit-msg"
       ],
       "orchestrator": "none",
       "severity": "error"

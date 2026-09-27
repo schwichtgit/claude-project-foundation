@@ -1,73 +1,86 @@
 # Commit Gate
 
-Abstract requirements every commit must satisfy, regardless of CI platform.
+Requirements every commit must satisfy, regardless of CI platform.
 
-## 1. Lint Changed Files
+cpf enforces this gate with two git hooks installed by
+`.cpf/scripts/install-hooks.sh`:
 
-Run the appropriate linter for each changed file's language:
+- `pre-commit`: branch rule, forbidden files, secrets, then
+  `.cpf/runtime/verify.sh --boundary git --staged`
+- `commit-msg`: `.cpf/runtime/commit-check.sh --message-file <file>`
 
-| Language   | Linter          | Command                        |
-| ---------- | --------------- | ------------------------------ |
-| TypeScript | ESLint          | `npx eslint <files>`           |
-| Python     | Ruff            | `ruff check <files>`           |
-| Rust       | Clippy          | `cargo clippy -D warnings`     |
-| Shell      | ShellCheck      | `shellcheck <files>`           |
-| Go         | go vet          | `go vet ./...`                 |
-| Ruby       | RuboCop         | `rubocop <files>`              |
-| Java       | google-java-fmt | `google-java-format --dry-run` |
+CI re-runs the same runtime (`--boundary ci`) and commit-check over the
+branch's commits.
 
-Only lint files in the changeset, not the entire project.
+## 1. No Commits to Main
 
-## 2. No Secrets in Diff
+Commits on `main` or `master` are blocked. Work on a feature branch.
+`CPF_ALLOW_MAIN_COMMIT=1` overrides the check for release automation and
+the initial project commit only.
 
-Scan staged changes for patterns:
+## 2. Lint Staged Files
+
+Only staged files are checked, not the whole project:
+
+| Files                   | Check                                                                  |
+| ----------------------- | ---------------------------------------------------------------------- |
+| Policy-scoped file sets | Prettier, markdownlint, ShellCheck (globs in `.cpf/policy.json`)       |
+| JS/TS                   | ESLint (when installed)                                                |
+| Python                  | `ruff check` + `ruff format --check` (`.venv`, else `uv run --frozen`) |
+| Go                      | `gofmt -l`, then `golangci-lint` (else `go vet`)                       |
+| YAML                    | Syntax check (when PyYAML is importable)                               |
+
+Other languages are not linted by cpf; add them to the project's own
+tooling.
+
+## 3. No Secrets in Staged Content
+
+Blocked patterns:
 
 - AWS keys: `AKIA[0-9A-Z]{16}`
 - OpenAI keys: `sk-[a-zA-Z0-9]{48}`
-- GitHub tokens: `ghp_`, `gho_`
+- GitHub tokens: `ghp_` / `gho_` followed by 36 characters
 - GitLab tokens: `glpat-`
 - Slack tokens: `xoxb-`
-- Generic: high-entropy strings near keywords `password`,
-  `secret`, `token`, `api_key`
+- Quoted values of 8+ characters assigned to `password`, `secret`,
+  `api_key`, or `token`
 
-Block the commit if any match is found.
+## 4. No Forbidden Files
 
-## 3. No Forbidden Files
+Blocked by file name:
 
-Block commits that include:
+- `.env`, `.env.*` (allowed: `.env.sample`, `.env.example`,
+  `.env.template`, `.env.dist`)
+- `id_rsa*`, `id_ed25519*`, `id_ecdsa*`, `authorized_keys`, `known_hosts`
+- `*.pem`, `*.key`, `*.crt`, `*.p12`, `*.pfx`, `*.keystore`
+- `credentials.json`, `service-account*.json`, `aws-credentials`
+- Anything under `.ssh/`, `.gnupg/`, `.aws/`, or `.gcloud/`
 
-`.env*`, `*.pem`, `*.key`, `*.crt`, `*.p12`, `*.pfx`,
-`id_rsa*`, `id_ed25519*`, `credentials.json`,
-`service-account*.json`, `*.keystore`
+## 5. Conventional Commit Format
 
-## 4. Conventional Commit Format
-
-Subject line must match:
+The subject line must match:
 
 ```text
 ^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+
 ```
 
-- Subject line: <= 72 characters
-- Body lines: <= 100 characters (warning, not block)
+Subjects over 72 characters and body lines over 100 characters warn.
 
-## 5. No AI-isms
+## 6. Prose Rules
 
-Block (case-insensitive):
+Errors (case-insensitive):
 
-- **Self-references:** "I have", "I've", "I updated", "I fixed"
-- **Filler:** "Certainly", "I'd be happy to", "As an AI"
-- **Marketing adjectives:** "seamless", "robust", "powerful",
-  "elegant", "streamlined", "polished", "enhanced", "refined"
+- **Emoji** anywhere in the message
+- **Self-references:** "I have", "I've", "I updated", "I fixed",
+  "I added", "I removed", "I refactored"
+- **Filler:** "Certainly", "I'd be happy to", "As an AI", "Happy to help"
+- **Marketing adjectives:** "seamless", "robust", "powerful", "elegant",
+  "streamlined", "polished", "enhanced", "refined"
 - **AI branding:** "Anthropic", "GPT", "OpenAI", "Copilot"
-- **Standalone "Claude"** (allow "Claude Code" as product reference)
-- **Co-Authored-By trailers**
+- **Standalone "Claude":** allowed only as "Claude Code"; identifiers and
+  paths such as `CLAUDE_PROJECT_DIR` or `.claude/` are fine
+- **`Co-Authored-By:` trailers**
 
-## 6. No Emoji
+## 7. Draft Markers
 
-Block Unicode emoji in commit messages: U+1F300-U+1F9FF,
-U+2600-U+27BF, and related ranges.
-
-## 7. No Draft Markers
-
-Warn (not block): WIP, FIXME, TODO, XXX, DO NOT MERGE, temp, temporary, debug.
+`WIP`, `FIXME`, `TODO`, `XXX`, and `DO NOT MERGE` warn but do not block.

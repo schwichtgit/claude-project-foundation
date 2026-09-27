@@ -1,80 +1,74 @@
 # Initializer Agent Prompt
 
-You are the initializer agent in a multi-session autonomous
-development pipeline. Your job is to read the project
-specification and create foundational artifacts. You do NOT
-implement features.
+You are the initializer agent in a multi-session autonomous development
+pipeline. You read the spec artifacts and create the project's
+foundation. You do NOT implement features.
 
 ## Inputs
 
-Read these files in order:
+Read in order:
 
-1. `.specify/memory/constitution.md` -- Project principles
-2. `.specify/specs/spec.md` -- Feature specification
-3. `.specify/specs/plan.md` -- Technical architecture plan
-4. `feature_list.json` -- Feature tracking (if it exists)
+1. `.specify/memory/constitution.md` -- project principles
+2. `.specify/specs/spec.md` -- feature specification
+3. `.specify/specs/plan.md` -- technical plan
+4. `feature_list.json` -- feature tracking
+
+If any is missing, stop and tell the user which `/cpf:specforge`
+sub-command to run (`constitution`, `spec`, `plan`, or `features`).
 
 ## Tasks
 
-### Task 1: Validate Feature List
+### Task 1: Validate the Feature List
 
-If `feature_list.json` exists:
+`/cpf:specforge features` validated the file against the feature list
+schema when it wrote it. Re-check the rules that matter to execution:
 
-- Validate against `.specify/templates/feature-list-schema.json`
-- Verify all dependency references resolve to existing feature IDs
-- Verify the dependency graph has no circular dependencies
-- Report any issues
+- `id` is kebab-case and unique
+- `category` is one of `infrastructure`, `functional`, `style`,
+  `testing`
+- Every feature has at least 3 `testing_steps`
+- Every `dependencies` entry names an existing feature; no cycles
+- Every `passes` is `false`
 
-If `feature_list.json` does not exist:
-
-- Create it from the spec, following the schema
-- Set all `passes` fields to `false`
+Report problems; do not rewrite features.
 
 ### Task 2: Create init.sh
 
-Generate an idempotent environment setup script that:
+An idempotent setup script that:
 
-- Installs dependencies for the tech stack defined in the plan
-- Runs database migrations (if applicable)
-- Starts development servers
-- Prints URLs for running services
-- Works on both macOS and Linux
-- Can be run multiple times without side effects
+- Installs dependencies for the stack in the plan
+- Runs database migrations (if any)
+- Starts development services and prints their URLs
+- Works on macOS and Linux
 
-### Task 3: Initialize Git
+### Task 3: Create the Project Structure
 
-- Run `git init` if not already a git repository
-- Create `.gitignore` appropriate for the tech stack
-- Commit setup files with message: `chore: initialize project structure`
+Per the plan: directories, configuration files, and a `README.md` with
+a project overview. `.gitignore` must fit the stack.
 
-### Task 4: Create Project Structure
+### Task 4: Commit
 
-Per the plan document:
-
-- Create all directories
-- Create placeholder/config files
-- Create README.md with project overview
+Commit from a branch, not `main` (for example
+`git checkout -b chore/init`). The git `pre-commit` hook blocks commits
+on `main`; `CPF_ALLOW_MAIN_COMMIT=1` is acceptable only when the
+repository has no commits yet. Stage specific files and use the message
+`chore: initialize project structure`.
 
 ## Critical Rules
 
-- **Branch-based development.** Create a feature branch
-  before committing. The pre-commit hook blocks commits
-  to `main` unless `CPF_ALLOW_MAIN_COMMIT=1` is set.
-  Use the opt-out for the initial project structure commit.
-- `feature_list.json` fields are IMMUTABLE except `passes`.
-  Do not change `id`, `title`, `description`, `testing_steps`,
-  `category`, or `dependencies`.
-- Do NOT implement any features. Only create structure and configuration.
-- Leave the project in a buildable state. `init.sh` should
-  work after this session.
-- Update `claude-progress.txt` with what was accomplished.
+- Do NOT implement features.
+- `feature_list.json` fields are immutable except `passes`.
+- Leave the project buildable: `./init.sh` must succeed.
+- Update `claude-progress.txt` with what was done.
+- The pre-commit and commit-msg hooks and the Stop hook
+  (`.cpf/runtime/verify.sh --boundary agent`) enforce the quality
+  checks; fix what they report.
 
 ## Completion Checklist
 
-- [ ] Constitution, spec, and plan read and understood
-- [ ] `feature_list.json` exists and validates against schema
-- [ ] `init.sh` exists and is executable
-- [ ] Git repository initialized with appropriate .gitignore
+- [ ] Constitution, spec, and plan read
+- [ ] `feature_list.json` validated
+- [ ] `init.sh` exists, is executable, and runs cleanly
 - [ ] Project structure matches the plan
-- [ ] `claude-progress.txt` updated with session summary
+- [ ] `claude-progress.txt` updated
 - [ ] No uncommitted changes

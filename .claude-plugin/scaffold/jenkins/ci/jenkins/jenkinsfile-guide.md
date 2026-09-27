@@ -1,118 +1,48 @@
 # Jenkins Pipeline Guide
 
-This guide documents the Jenkins pipeline for specforge
-projects. The pipeline enforces the same quality gates as the
-GitHub Actions CI workflow, providing platform parity across
-CI systems.
+`/cpf:specforge init` projects a declarative `Jenkinsfile` at the
+project root. It runs the same checks as the GitHub and GitLab
+templates through the cpf checks runtime in `.cpf/runtime/`, the same
+code as the Claude Code Stop hook and the git pre-commit hook. The
+files each linter covers come from `.cpf/policy.json`; tool versions
+come from `package-lock.json` (prettier, markdownlint-cli2) and
+`.tool-versions` (shellcheck). At the CI boundary a linter the policy
+needs but cannot be found fails the build instead of being skipped.
 
-## Jenkinsfile Location
+## Stages
 
-The production-ready Jenkinsfile is at:
-
-```text
-.claude-plugin/scaffold/jenkins/Jenkinsfile
-```
-
-Copy it to the root of your repository when setting up Jenkins CI.
-
-## Pipeline Stages
-
-| Stage             | Trigger            | Purpose                                     |
-| ----------------- | ------------------ | ------------------------------------------- |
-| Install           | Always             | Install Node.js dependencies and CLI tools  |
-| Lint (parallel)   | Always             | ShellCheck, Markdownlint, Prettier          |
-| Commit Standards  | PRs only           | Validate conventional commit format         |
-| Test              | Always             | Run project test suite (placeholder)        |
-| Build             | Always             | Run project build step (placeholder)        |
-| Plugin Validation | Always             | Validate plugin.json, hooks.json, file refs |
-| Release           | Tagged builds only | Version check + release artifact creation   |
-
-## Quality Gates
-
-### ShellCheck
-
-Runs `shellcheck -x` on all `.sh` files in the repository
-(excluding `.git/`). Catches common shell scripting errors,
-undefined variables, and quoting issues.
-
-### Markdownlint
-
-Runs `markdownlint-cli2` against all Markdown files (excluding
-`node_modules/`). Enforces consistent heading style, list
-formatting, and line length rules defined in
-`.markdownlint-cli2.yaml`.
-
-### Prettier
-
-Runs `prettier --check .` to verify all Markdown, YAML, and
-JSON files match the project formatting rules defined in
-`.prettierrc.json`. Does not modify files -- fails if
-formatting drifts.
-
-### Commit Standards
-
-Active only on change-request (PR) builds. Validates that
-every commit message follows
-[Conventional Commits](https://www.conventionalcommits.org/)
-format:
-
-```text
-type(scope)?: description
-```
-
-Where `type` is one of: `feat`, `fix`, `docs`, `style`,
-`refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
-Subject lines over 72 characters produce a warning. Merge
-commits are skipped.
-
-### Plugin Validation
-
-Validates the plugin manifest structure:
-
-- `plugin.json` is valid JSON with required fields (`name`, `version`, `hooks`)
-- All referenced skill and agent file paths exist on disk
-- `hooks.json` is valid JSON and all hook script paths resolve
-
-## Release Pipeline
-
-The `Release` stage runs only on tagged builds (when `buildingTag()` is true). It:
-
-1. Extracts the version from the git tag (stripping the `v` prefix)
-2. Reads the version from `.claude-plugin/plugin.json`
-3. Fails the build if the two versions do not match
-4. Creates a tarball (`specforge-<version>.tar.gz`) containing
-   the `.claude-plugin/` directory
-5. Archives the tarball as a Jenkins build artifact with fingerprinting
-
-To trigger a release:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+| Stage             | Runs                                         | Does                                                                                                                 |
+| ----------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Install           | Always                                       | `npm ci` (or unpinned `prettier@3 markdownlint-cli2` without a lockfile); `apt-get` for `jq`/`shellcheck` if missing |
+| Lint              | Always                                       | `bash .cpf/runtime/verify.sh --boundary ci`                                                                          |
+| _marker_          |                                              | `PROJECT-SPECIFIC STAGES`; everything below is project-editable                                                      |
+| Commit Standards  | Change requests (`changeRequest()`)          | `commit-check.sh --range "origin/${CHANGE_TARGET}..HEAD"` and `--title "$CHANGE_TITLE"`                              |
+| Test              | Always                                       | Placeholder; replace with the test command                                                                           |
+| Build             | Always                                       | Placeholder; replace with the build command                                                                          |
+| Plugin Validation | Commented out                                | Opt-in for projects that author their own Claude Code plugin                                                         |
+| Release           | Tag builds with `.claude-plugin/plugin.json` | Tag/manifest version check, tarball, `archiveArtifacts`                                                              |
 
 ## Prerequisites
 
-### Jenkins Plugins
+- **Multibranch Pipeline job** with script path `Jenkinsfile`.
+  `changeRequest()`, `CHANGE_TARGET`, and `CHANGE_TITLE` exist only in
+  multibranch builds of pull/merge requests. The checkout must include
+  `origin/<target branch>`; enable fetching of the target branch in the
+  branch source if the clone is shallow or single-branch.
+- **Jenkins plugins:** Pipeline, NodeJS (a NodeJS 22 installation named
+  `NodeJS-22` under global tool configuration), Timestamper
+  (`timestamps()`), Workspace Cleanup (`cleanWs()`).
+- **Agent tools:** `bash`, `git`, `jq`, `curl`. The runtime downloads
+  and checksum-verifies the shellcheck version pinned in
+  `.tool-versions`; the Install stage's `apt-get` fallback only covers
+  unpinned projects and needs a Debian-based agent with root. With
+  `python3` on the agent, commit checks also detect emoji.
 
-- **NodeJS Plugin** -- provides `tools { nodejs 'NodeJS-22' }`
-  support. Configure a NodeJS 22 installation named `NodeJS-22`
-  in Jenkins global tool configuration.
-- **Pipeline** -- Declarative Pipeline support (included in
-  most Jenkins installations).
+## Project-Specific Stages
 
-### System Dependencies
-
-The Install stage conditionally installs `shellcheck` and `jq`
-via `apt-get` if they are not already present on the build
-agent. If your agents use a non-Debian base image, adjust the
-install commands accordingly.
-
-## Customization
-
-### Adding Your Test Suite
-
-Replace the placeholder in the Test stage:
+Replace the Test and Build placeholders and add stages below the
+`PROJECT-SPECIFIC STAGES` marker. Keep Install and Lint as shipped so
+the CI boundary stays identical to the local hooks.
 
 ```groovy
 stage('Test') {
@@ -120,72 +50,31 @@ stage('Test') {
         sh 'npm test'
     }
     post {
-        always {
-            junit 'test-results/**/*.xml'
-        }
+        always { junit 'test-results/**/*.xml' }
     }
 }
 ```
 
-### Adding Your Build Step
+## Upgrades
 
-Replace the placeholder in the Build stage:
+`Jenkinsfile` is in the review tier. `/cpf:specforge upgrade` diffs
+the previously shipped version (cached at
+`.cpf/upstream-cache/Jenkinsfile`) against the new one, so the diff
+shows only upstream changes, never local edits. Then it asks:
 
-```groovy
-stage('Build') {
-    steps {
-        sh 'npm run build'
-    }
-    archiveArtifacts artifacts: 'dist/**', fingerprint: true
-}
-```
+- **Accept** replaces `Jenkinsfile` with the new version. Stages added
+  locally are not carried over; re-apply them after accepting.
+- **Decline** keeps the local file. Merge the shown changes by hand.
 
-### Path-Based Filtering
+Either answer refreshes the cache, so the same diff is not shown again.
+For a project with local stages, declining and merging by hand is
+usually less work.
 
-Add `when { changeset }` blocks to skip stages when irrelevant files change:
+## Splitting Base and Project Stages
 
-```groovy
-stage('ShellCheck') {
-    when { changeset '**/*.sh' }
-    steps {
-        sh 'find . -name "*.sh" -not -path "./.git/*" -print0 | xargs -0 shellcheck -x'
-    }
-}
-```
-
-### Notifications
-
-Add notification steps to the `post` block:
-
-```groovy
-post {
-    failure {
-        slackSend channel: '#ci', message: "Build failed: ${env.BUILD_URL}"
-    }
-    success {
-        slackSend channel: '#ci', message: "Build passed: ${env.BUILD_URL}"
-    }
-}
-```
-
-### Multibranch Pipeline
-
-For automatic PR detection, configure a Multibranch Pipeline job in Jenkins:
-
-1. Create a new Multibranch Pipeline job
-2. Add your repository as a branch source (GitHub, Bitbucket, or Git)
-3. Set the build configuration to "by Jenkinsfile" with script path `Jenkinsfile`
-4. Jenkins will automatically discover branches and PRs
-
-## Splitting Base and Project Configuration
-
-For projects that need to separate plugin-owned stages from
-project-specific stages, convert from declarative to scripted
-pipeline using the `load` step:
-
-1. Create `ci/jenkins/base.groovy` with your shared stages
-   as a closure
-2. In `Jenkinsfile`, use scripted pipeline syntax:
+A declarative pipeline cannot include a second `pipeline {}` block.
+Projects that want the cpf stages in a separate file can switch to a
+scripted pipeline and `load` them:
 
 ```groovy
 node {
@@ -196,23 +85,24 @@ node {
 }
 ```
 
-The `load` step requires `checkout scm` first (the file
-must exist in the workspace). This pattern works with
-scripted pipelines only -- declarative pipelines cannot
-merge two `pipeline {}` blocks.
+`ci/jenkins/base.groovy` is project-owned (cpf does not ship or
+upgrade it) and must return a closure that runs the Install, Lint, and
+Commit Standards steps. For pipelines shared across repositories, see
+[Pipeline: Shared Libraries](https://www.jenkins.io/doc/book/pipeline/shared-libraries/).
 
-See the Jenkins documentation on
-[Pipeline: Shared Groovy Libraries](https://www.jenkins.io/doc/book/pipeline/shared-libraries/)
-for team-wide shared pipelines.
+## Release
+
+The Release stage runs only on tag builds (`buildingTag()`) in
+projects that ship their own Claude Code plugin manifest. It fails when
+the tag (without the `v` prefix) differs from the `version` in
+`.claude-plugin/plugin.json`, then archives a tarball of
+`.claude-plugin/`. Other projects never run it.
 
 ## Parity with GitHub Actions
 
-| Quality Gate       | GitHub Actions Job  | Jenkins Stage         |
-| ------------------ | ------------------- | --------------------- |
-| ShellCheck         | `shellcheck`        | `Lint > ShellCheck`   |
-| Markdownlint       | `markdownlint`      | `Lint > Markdownlint` |
-| Prettier           | `prettier`          | `Lint > Prettier`     |
-| Commit Standards   | `commit-standards`  | `Commit Standards`    |
-| Plugin Validation  | `plugin-validation` | `Plugin Validation`   |
-| Version Validation | `validate-version`  | `Release`             |
-| Release Artifact   | `release`           | `Release`             |
+| Check                | GitHub (`ci-base.yml`) | GitLab (`gitlab-ci-base.yml`) | Jenkins          |
+| -------------------- | ---------------------- | ----------------------------- | ---------------- |
+| Linters (policy)     | `checks`               | `checks`                      | Install, Lint    |
+| Commits and PR title | `commit-standards`     | `commit-standards`            | Commit Standards |
+| Merge gate           | `summary`              | `summary`                     | Build result     |
+| Tag/manifest version | `release.yml`          | `release`                     | Release          |

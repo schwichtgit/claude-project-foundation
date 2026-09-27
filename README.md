@@ -1,306 +1,132 @@
-# Claude Project Foundation
+# Claude Project Foundation (cpf)
 
-A spec-driven scaffold that produces high-quality
-specifications for autonomous Claude Code development.
-Define what you want to build through guided
-conversation, then hand the spec artifacts to
-[AutoForge](https://github.com/AutoForgeAI/autoforge)
-or any two-agent pattern for multi-session autonomous
-implementation with production-grade quality
-enforcement.
-
-**Status:** All 95 features passing (v0.1.0-alpha.14).
-Full CI parity across GitHub, GitLab, and Jenkins.
-The foundation applies its own quality gates in CI.
+A Claude Code plugin for spec-driven projects: guided spec authoring
+(`/cpf:specforge`) and one set of quality checks enforced by Claude Code
+hooks, git hooks, and CI.
 
 [![CI](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml/badge.svg)](https://github.com/schwichtgit/claude-project-foundation/actions/workflows/ci.yml)
 
-## The Problem
+## Status: maintenance
 
-[AutoForge](https://github.com/AutoForgeAI/autoforge)
-and similar autonomous coding harnesses can implement
-entire applications across multiple Claude Code
-sessions -- but their output quality depends entirely
-on the spec quality going in. A vague spec produces
-vague code.
+cpf is being sunset. Its successor is
+[spec-gates](https://github.com/schwichtgit/spec-gates), a
+[Spec Kit](https://github.com/github/spec-kit) extension with the same
+one-policy, every-boundary design.
 
-Writing a spec that an autonomous agent can actually
-execute against requires assembling patterns from
-scattered sources: Anthropic's two-agent quickstart
-for session management, AutoForge's feature tracking
-for progress persistence, and production CI/CD
-practices for quality enforcement.
-Each source covers part of the picture. None covers
-all of it, and none generalizes beyond a single
-project.
+- Existing projects can stay on the latest cpf release; only critical
+  and security fixes land here.
+- New projects should start with spec-gates.
 
-Claude Project Foundation closes the spec quality gap.
-It provides an interactive workflow that walks you
-through defining principles, features, architecture,
-and acceptance criteria -- producing artifacts that
-AutoForge and similar tools consume directly for
-autonomous execution.
+## Install
 
-## What You Get
-
-- **Interactive spec authoring** -- the
-  `/cpf:specforge` skill walks you through defining
-  principles, features, architecture, and acceptance
-  criteria, producing artifacts that AutoForge
-  consumes directly
-- **AutoForge-compatible output** -- constitution.md,
-  spec.md, plan.md, and feature_list.json match the
-  artifact structure expected by AutoForge's
-  initializer and coding agents
-- **Quality gates at every layer** -- Claude Code
-  hooks, git hooks, and CI workflows enforce
-  conventional commits, test coverage, linting,
-  secret scanning, and communication standards
-- **Full CI parity** -- GitHub Actions, GitLab CI,
-  and Jenkins all ship with equivalent quality gates
-  (shellcheck, markdownlint, prettier, release
-  pipelines)
-- **Stack-agnostic auto-detection** -- all scripts
-  detect your project type from config files
-  (package.json, Cargo.toml, pyproject.toml, go.mod).
-  No hardcoded paths, no framework lock-in
-- **Self-hosting** -- this repository applies its own
-  quality gates: markdownlint, Prettier, shellcheck,
-  and commit-standards run in CI on every push and PR
-- **Zero runtime dependencies** -- pure shell scripts,
-  markdown, and JSON/YAML. The scaffold itself uses
-  Node.js only for development tooling (Prettier
-  formatting)
-
-## How It Works
-
-```text
- Phase 1: Interactive Planning (you + Claude Code)
- ┌────────────────────────────────────────────────────────----───┐
- │  /cpf:specforge constitution  -->  Define project principles  │
- │  /cpf:specforge spec          -->  Document features          │
- │  /cpf:specforge clarify       -->  Resolve ambiguities        │
- │  /cpf:specforge plan          -->  Architecture decisions     │
- │  /cpf:specforge features      -->  Generate feature list      │
- │  /cpf:specforge analyze       -->  Score autonomous-readiness │
- └──────────────────────────────┬──────────────────────────----──┘
-                                │
-                                v  Spec artifacts
-                         ┌──────┴──────┐
-                         │  Handover   │
-                         └──────┬──────┘
-                                │
- Phase 2: Autonomous Execution (AutoForge or equivalent)
- ┌──────────────────────────────┴───────────────────────────┐
- │  Session 1 (Initializer Agent):                          │
- │    Reads spec artifacts --> creates project structure,   │
- │    validates feature_list.json                           │
- │                                                          │
- │  Session 2..N (Coding Agent):                            │
- │    10-step loop: orient, verify, select feature,         │
- │    implement, test, commit, document, repeat             │
- └──────────────────────────────────────────────────────────┘
-```
-
-## Installation
-
-**Prerequisites:**
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code)
-installed and authenticated.
-
-### As a Claude Code plugin
+Requires [Claude Code](https://docs.anthropic.com/en/docs/claude-code),
+`git`, and `jq`.
 
 ```bash
-# Add the specforge marketplace (one-time)
 /plugin marketplace add schwichtgit/claude-project-foundation
-
-# Install the cpf plugin
 /plugin install cpf@specforge
 ```
 
-After installation, the `/cpf:specforge` skill and all
-hooks are available in any Claude Code session.
+Update later with `claude plugin update cpf@specforge`, then
+`/reload-plugins`.
 
-## Quick Start: Spec a New Project
+## Use
 
-Open Claude Code in your project directory and run the
-spec workflow:
+In a project, run `/cpf:specforge init` once. It projects the quality
+gates and asks for the CI platform (GitHub, GitLab, or Jenkins). Then
+write the spec:
 
-```bash
-/cpf:specforge constitution    # Define project principles and quality standards
-/cpf:specforge spec            # Document features with acceptance criteria
-/cpf:specforge clarify         # Surface and resolve ambiguities
-/cpf:specforge plan            # Make architecture and tech stack decisions
-/cpf:specforge features        # Generate feature_list.json for autonomous tracking
-/cpf:specforge analyze         # Score spec readiness (target: 80+)
-```
+| Sub-command    | Produces                                        |
+| -------------- | ----------------------------------------------- |
+| `constitution` | `.specify/memory/constitution.md` (principles)  |
+| `spec`         | `.specify/specs/spec.md` (features, criteria)   |
+| `clarify`      | resolved ambiguities in `spec.md`               |
+| `plan`         | `.specify/specs/plan.md` (architecture)         |
+| `features`     | `feature_list.json` (machine-readable features) |
+| `analyze`      | readiness score (target 80+)                    |
 
-Run `/cpf:specforge doctor` to verify your dev
-environment has the required tools.
+Also available: `setup` (platform checklist), `upgrade`, `doctor`
+(prerequisites), and `help`. The spec artifacts drive autonomous
+execution with the bundled initializer and coder agents
+(`.claude-plugin/agents/`) or any two-agent harness.
 
-When the spec scores 80 or above, hand off to
-[AutoForge](https://github.com/AutoForgeAI/autoforge)
-for autonomous execution. Alternatively, use the
-included agent definitions directly
-(`.claude-plugin/agents/initializer.md` for first
-session, `.claude-plugin/agents/coder.md` for
-subsequent sessions).
+## Quality gates
 
-Each coding session picks up where the last left off
-via `feature_list.json`. Features are implemented one
-at a time, tested against their acceptance criteria,
-and committed with conventional commit messages.
+Every check lives in one checks runtime that `init` projects into the
+project at `.cpf/runtime/`:
 
-## The /cpf:specforge Workflow
+- `verify.sh --boundary agent|git|ci` runs the checks.
+- `commit-check.sh` holds the commit and PR rules.
 
-| Sub-command    | What it does                               | Artifact produced                    |
-| -------------- | ------------------------------------------ | ------------------------------------ |
-| `constitution` | Define immutable project principles        | `.specify/memory/constitution.md`    |
-| `spec`         | Document features and acceptance criteria  | `.specify/specs/spec.md`             |
-| `clarify`      | Surface ambiguities, get human decisions   | Updated `spec.md`                    |
-| `plan`         | Architecture, tech stack, testing strategy | `.specify/specs/plan.md`             |
-| `features`     | Generate machine-readable feature list     | `feature_list.json`                  |
-| `analyze`      | Score spec for autonomous-readiness        | Score report with remediation        |
-| `setup`        | Generate platform-specific setup checklist | Actionable `gh` CLI commands         |
-| `init`         | Project scaffold into host project         | Directory structure + hooks          |
-| `upgrade`      | Update scaffold with three-tier merge      | Updated files + `.specforge-version` |
-| `doctor`       | Check dev environment prerequisites        | Compliance report (stdout)           |
-| `help`         | Print sub-command reference card           | Quick reference (conversation)       |
+Three boundaries call the same code, so a change that passes at one
+passes at the next:
 
-Run `constitution` through `analyze` in order. Use
-`init` to bootstrap a new project, `upgrade` to pull
-in scaffold updates, `doctor` to validate prerequisites,
-and `help` for a quick reference card.
+| Boundary | Caller                                                                              |
+| -------- | ----------------------------------------------------------------------------------- |
+| agent    | Claude Code Stop hook; PR hook on `gh pr create`                                    |
+| git      | `pre-commit` (staged content; blocks commits to `main`), `commit-msg`               |
+| ci       | GitHub `ci-base.yml`, GitLab `gitlab-ci-base.yml`, `Jenkinsfile`; require `summary` |
 
-## Autonomous Execution
+What runs:
 
-The spec artifacts produced by `/cpf:specforge` are
-designed for consumption by
-[AutoForge](https://github.com/AutoForgeAI/autoforge),
-which implements a two-agent pattern adapted from
-[Anthropic's autonomous coding harness](https://github.com/anthropics/claude-quickstarts/tree/main/autonomous-coding).
+- **Static linters:** prettier, markdownlint, and shellcheck, scoped
+  by `.cpf/policy.json`.
+- **Staged files:** per-file lint (eslint, ruff, gofmt/go vet, YAML).
+- **Agent project checks:** the policy's orchestrator: a built-in walk
+  per language, `task lint` / `task test`, or a custom command.
+- **Commit rules:** conventional commits; no emoji, AI-isms, or
+  Co-Authored-By trailers.
 
-For users who prefer a standalone approach without
-AutoForge, the foundation includes equivalent agent
-definitions:
+Tools come from the project's pins (`package-lock.json`, `.venv` or
+`uv.lock`, `.tool-versions`). CI fails if a linter the policy needs is
+missing.
 
-**Initializer agent**
-(`.claude-plugin/agents/initializer.md`, first
-session): Reads the spec artifacts, creates `init.sh`
-for environment setup, scaffolds the project directory
-structure, and validates `feature_list.json`. Does not
-implement features.
+Other hooks block destructive shell commands and edits to sensitive
+files, format files on save, and point out a pending upgrade.
 
-**Coding agent**
-(`.claude-plugin/agents/coder.md`, all subsequent
-sessions): Runs a 10-step loop per feature -- orient,
-start servers, verify previously passing features,
-select the next eligible feature, implement, test each
-acceptance criterion, update tracking, commit,
-document progress, clean shutdown.
+### Project layout
 
-Quality is enforced automatically:
+| Path                                                                         | Owner     | Purpose                                                        |
+| ---------------------------------------------------------------------------- | --------- | -------------------------------------------------------------- |
+| `.cpf/policy.json`                                                           | project   | per-tool include/exclude/severity; verify-quality orchestrator |
+| `.cpf/runtime/`                                                              | cpf       | the checks runtime                                             |
+| `.cpf/scripts/`                                                              | cpf       | git hooks, `install-hooks.sh`, `doctor.sh`                     |
+| `.prettierignore`, `.markdownlint-cli2.yaml`, `.cpf/shellcheck-excludes.txt` | generated | from the policy (markdownlint: only `ignores:`)                |
+| `.cpf/overrides/<path>`                                                      | project   | replaces a plugin-provided template or prompt                  |
+| `.cpf/upstream-cache/`, `.cpf/pending/`                                      | cpf       | upgrade baselines; upstream versions of files you edited       |
 
-- Claude Code hooks block destructive commands,
-  protect sensitive files, auto-format on save, and
-  run quality checks before session ends
-- Git hooks validate conventional commit format, scan
-  for secrets, and lint staged files
-- CI workflows (GitHub Actions, GitLab CI, and Jenkins
-  all provided) enforce the same gates on every push
-  and PR
+Put project-specific CI jobs in the host file (`ci.yml`,
+`.gitlab-ci.yml`, or the Jenkinsfile below its project marker), not in
+the managed base file.
 
-## Self-Applied Quality Gates
-
-This repository applies its own quality gates. The CI
-pipeline (`.github/workflows/ci.yml`) runs on every
-push and PR:
-
-| Check             | Tool                        | What it enforces                           |
-| ----------------- | --------------------------- | ------------------------------------------ |
-| Path filtering    | dorny/paths-filter          | Skip jobs when irrelevant files change     |
-| Markdown lint     | markdownlint-cli2           | Consistent markdown style                  |
-| Format check      | Prettier                    | Consistent formatting (md, yaml, json)     |
-| Shell lint        | ShellCheck                  | Shell script correctness                   |
-| Commit standards  | Custom validation (PR only) | Conventional commits, no emoji, no AI-isms |
-| Plugin validation | jq + path checks            | plugin.json, hooks.json, file references   |
+## Upgrade
 
 ```bash
-# Install dev dependencies (contributors only)
-npm install
-
-# Format all files
-npm run format
-
-# Check formatting without modifying
-npm run format:check
+claude plugin update cpf@specforge   # then, on a branch:
+/cpf:specforge upgrade
 ```
 
-## Documentation
-
-| Document                                                                                    | Purpose                                                 |
-| ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                                                          | How to contribute: setup, commit standards, PR process  |
-| [SECURITY.md](SECURITY.md)                                                                  | Security policy and vulnerability reporting             |
-| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)                                                    | Contributor Covenant 2.1                                |
-| [CHANGELOG.md](CHANGELOG.md)                                                                | Release history and change details                      |
-| [scaffold/common/ci/principles/](.claude-plugin/scaffold/common/ci/principles/)             | Abstract quality gate definitions (commit, PR, release) |
-| [scaffold/common/prompts/](.claude-plugin/scaffold/common/prompts/)                         | Session prompts for initializer and coding agents       |
-| [scaffold/common/.specify/WORKFLOW.md](.claude-plugin/scaffold/common/.specify/WORKFLOW.md) | Tool-agnostic process documentation                     |
-
-## Customization
-
-**Coverage threshold:** Edit the coverage percentage in
-your project's constitution (default: 85%). The
-verify-quality.sh hook and CI workflows reference this
-value.
-
-**Hook checks:** The plugin provides 6 hooks via
-`.claude-plugin/hooks/`. Each is a standalone shell
-script with fail-open behavior. When developing on
-this repo, `.claude/hooks/` is a symlink to them, so
-the repo runs its own current hooks.
-
-**Language support:** All hooks auto-detect project
-type from configuration files (package.json,
-Cargo.toml, pyproject.toml, go.mod). To add a
-language: extend the detection logic in
-verify-quality.sh, post-edit.sh, and the pre-commit
-hook.
-
-**Spec workflow:** Modify
-`.claude-plugin/skills/cpf:specforge/SKILL.md` to
-adjust the interactive planning flow. Add or remove
-sub-commands, change prompting strategy, or adjust
-scoring weights.
-
-**CI platform:** `/cpf:specforge init` lets you choose
-GitHub, GitLab, or Jenkins. All three ship with fully
-templated CI configs (shellcheck, markdownlint,
-prettier, release pipelines). See the scaffold
-directories under `.claude-plugin/scaffold/github/`,
-`gitlab/`, and `jenkins/`.
+Each project keeps running the runtime it committed until it upgrades.
+Upgrade replaces cpf-owned files only if they are unchanged, or match a
+released version. It keeps files you edited and writes the new version
+to `.cpf/pending/<path>`: merge by hand, re-run
+`.cpf/scripts/install-hooks.sh` if a hook changed, then delete
+`.cpf/pending/`. [CHANGELOG.md](CHANGELOG.md) lists behavior changes
+per release.
 
 ## Troubleshooting
 
-**"UserPromptSubmit hook error" from semgrep plugin.**
-If you installed the specforge marketplace, the bundled
-semgrep plugin registers a hook that requires the
-`semgrep` binary. If semgrep is not installed, the hook
-errors on every prompt. Fix: install semgrep
-(`uv tool install semgrep` or `pip install semgrep`),
-or uninstall the semgrep plugin if you don't need it.
-This is a semgrep plugin issue, not a cpf issue.
+- **Hooks do nothing.** They need `jq`; run `/cpf:specforge doctor`.
+- **Stop is blocked by existing lint debt.** Set `"severity": "warning"`
+  on that tool's section in `.cpf/policy.json` while you fix it.
+- **A plugin update changed nothing.** Expected: the project's committed
+  runtime is used until `/cpf:specforge upgrade`.
 
-**Hooks appear to do nothing.** All cpf hooks require
-`jq` to parse input. If `jq` is missing, hooks warn
-to stderr and exit (fail-open). Run
-`/cpf:specforge doctor` to check prerequisites.
+## Developing cpf
 
-**Scaffold files are outdated.** After updating the
-plugin, run `/cpf:specforge upgrade` to update
-projected files. A session-start notification appears
-when the scaffold version is behind the plugin version.
+See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `npm ci`, then
+`npm run lint`, which runs the same runtime at the ci boundary. Also
+run `scripts/test-*.sh` (CI runs every one).
 
 ## License
 
