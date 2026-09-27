@@ -135,14 +135,16 @@ else
 fi
 
 # ===========================================================================
-# Step 2: remove .venv from one service; uv is on PATH -> resolver returns
-# `uv run --project <dir> <tool>`.
+# Step 2: remove .venv from one service; uv is on PATH and uv.lock exists ->
+# resolver returns `uv run --frozen --project <dir> <tool>`. --frozen keeps
+# the hook from re-locking (uv.lock is read, never written).
 # ===========================================================================
 echo ""
 echo "=== step 2: uv fallback when .venv missing ==="
 FIX="$WORKDIR/fix2"
 mkdir -p "$FIX/svc-uv"
 printf '[project]\nname="uv-svc"\n' >"$FIX/svc-uv/pyproject.toml"
+printf 'version = 1\n' >"$FIX/svc-uv/uv.lock"
 # No .venv installed.
 write_policy "$FIX" '{
   "hooks": { "verify-quality": { "orchestrator": "none", "severity": "error" } }
@@ -151,15 +153,44 @@ run_hook "$FIX" \
     CPF_TEST_VENV_LOG="$FIX/venv.log" \
     CPF_TEST_UV_LOG="$FIX/uv.log"
 
-if grep -q "uv run --project $FIX/svc-uv pytest" "$FIX/uv.log" 2>/dev/null; then
-    pass "step 2: pytest routed through uv run --project"
+if grep -q "uv run --frozen --project $FIX/svc-uv pytest" "$FIX/uv.log" 2>/dev/null; then
+    pass "step 2: pytest routed through uv run --frozen --project"
 else
     fail "step 2: pytest not routed through uv: $(cat "$FIX/uv.log" 2>/dev/null || echo MISSING)"
 fi
-if grep -q "uv run --project $FIX/svc-uv ruff" "$FIX/uv.log" 2>/dev/null; then
-    pass "step 2: ruff routed through uv run --project"
+if grep -q "uv run --frozen --project $FIX/svc-uv ruff" "$FIX/uv.log" 2>/dev/null; then
+    pass "step 2: ruff routed through uv run --frozen --project"
 else
     fail "step 2: ruff not routed through uv"
+fi
+
+# ===========================================================================
+# Step 2b: uv on PATH but no uv.lock -> `uv run --frozen` would error, so the
+# resolver treats the tool as unresolved (WARN per on_missing_runner) and
+# never invokes uv. A lock-less service is not silently re-locked.
+# ===========================================================================
+echo ""
+echo "=== step 2b: no uv.lock -> uv not invoked, WARN no resolver ==="
+FIX="$WORKDIR/fix2b"
+mkdir -p "$FIX/svc-nolock"
+printf '[project]\nname="nolock"\n' >"$FIX/svc-nolock/pyproject.toml"
+write_policy "$FIX" '{
+  "hooks": { "verify-quality": { "orchestrator": "none", "severity": "error" } }
+}'
+run_hook "$FIX" \
+    CPF_TEST_VENV_LOG="$FIX/venv.log" \
+    CPF_TEST_UV_LOG="$FIX/uv.log"
+
+if [[ ! -s "$FIX/uv.log" ]]; then
+    pass "step 2b: uv not invoked without uv.lock"
+else
+    fail "step 2b: uv invoked without uv.lock: $(cat "$FIX/uv.log")"
+fi
+if grep -q "WARN: no resolver for svc-nolock" <<<"$LAST_OUT"; then
+    pass "step 2b: WARN no resolver emitted"
+else
+    fail "step 2b: expected WARN no resolver"
+    printf '    %s\n' "${LAST_OUT//$'\n'/$'\n    '}"
 fi
 
 # ===========================================================================
@@ -263,13 +294,13 @@ fi
 
 # ===========================================================================
 # Step 6: grep verify-quality.sh for any bare pytest|ruff|mypy|black
-# invocation outside .venv/bin/ or `uv run --project` prefix.
+# invocation outside .venv/bin/ or `uv run --frozen --project` prefix.
 # ===========================================================================
 echo ""
 # shellcheck disable=SC2016  # literal $PATH in echo banner is intentional
 echo '=== step 6: bare-tool guard (no $PATH fallback) ==='
 BARE_HITS="$(grep -nE '(\b)(pytest|ruff|mypy|black) ' "$HOOK" \
-    | grep -vE '(\.venv/bin/|uv run --project|# .*pytest|"pytest"|cpf_pyproject_skip_list)' \
+    | grep -vE '(\.venv/bin/|uv run --frozen --project|# .*pytest|"pytest"|cpf_pyproject_skip_list)' \
     || true)"
 if [[ -z "$BARE_HITS" ]]; then
     pass "step 6: zero bare-tool invocations in verify-quality.sh"
@@ -429,6 +460,93 @@ if grep -q "$FIX/svc-min/.venv/bin/black" "$FIX/venv.log" 2>/dev/null; then
     fail "bonus: black invoked despite missing pyproject section"
 else
     pass "bonus: black skipped silently without pyproject section"
+fi
+
+# ===========================================================================
+# Bonus 4: a failing check shows the tool's output (file + rule) on stderr,
+# not just "FAIL: Ruff lint". Output is tail-capped at CPF_OUTPUT_TAIL_LINES.
+# ===========================================================================
+echo ""
+echo "=== bonus: failing check surfaces tool output ==="
+FIX="$WORKDIR/fix-output"
+mkdir -p "$FIX/svc-lint/.venv/bin"
+printf '[project]\nname="lint"\n' >"$FIX/svc-lint/pyproject.toml"
+install_fake_venv_tool "$FIX/svc-lint" pytest
+cat >"$FIX/svc-lint/.venv/bin/ruff" <<'MOCK'
+#!/bin/bash
+if [[ "$1" == "check" ]]; then
+    for i in $(seq 1 30); do echo "noise line $i"; done
+    echo "app/models.py:12:1: F401 [*] \`os\` imported but unused"
+    echo "Found 1 error."
+    exit 1
+fi
+exit 0
+MOCK
+chmod +x "$FIX/svc-lint/.venv/bin/ruff"
+write_policy "$FIX" '{
+  "hooks": { "verify-quality": { "orchestrator": "none", "severity": "error" } }
+}'
+run_hook "$FIX" CPF_TEST_VENV_LOG="$FIX/venv.log"
+
+if [[ "$LAST_RC" -eq 2 ]] && grep -q "app/models.py:12:1: F401" <<<"$LAST_OUT"; then
+    pass "bonus: FAIL output names the file and rule"
+else
+    fail "bonus: expected rc=2 with file+rule in output (rc=$LAST_RC)"
+    printf '    %s\n' "${LAST_OUT//$'\n'/$'\n    '}"
+fi
+if grep -q "noise line 1$" <<<"$LAST_OUT"; then
+    fail "bonus: output not tail-capped (line 1 of 32 present)"
+else
+    pass "bonus: output tail-capped"
+fi
+
+# ===========================================================================
+# Bonus 5 (real uv, skipped when absent): with pyproject and uv.lock out of
+# sync, the hook's uv fallback leaves uv.lock byte-identical.
+# ===========================================================================
+echo ""
+echo "=== bonus: real uv leaves a mismatched uv.lock unchanged ==="
+REAL_UV="$(PATH="/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin:$HOME/.local/bin:$HOME/.cargo/bin" command -v uv || true)"
+if [[ -z "$REAL_UV" ]]; then
+    echo "SKIP: uv not installed"
+else
+    FIX="$WORKDIR/fix-lock"
+    mkdir -p "$FIX/svc-real" "$FIX/realbin"
+    ln -s "$REAL_UV" "$FIX/realbin/uv"
+    cat >"$FIX/svc-real/pyproject.toml" <<'TOML'
+[project]
+name = "real"
+version = "0.0.0"
+requires-python = ">=3.9"
+dependencies = []
+TOML
+    if (cd "$FIX/svc-real" && "$REAL_UV" lock -q) >/dev/null 2>&1; then
+        # Introduce a mismatch uv can re-lock offline (no new packages), so
+        # a missing --frozen would visibly rewrite the lock.
+        sed -i.bak 's/^requires-python = ">=3.9"/requires-python = ">=3.10"/' \
+            "$FIX/svc-real/pyproject.toml"
+        rm -f "$FIX/svc-real/pyproject.toml.bak"
+        BEFORE="$(cksum <"$FIX/svc-real/uv.lock")"
+        write_policy "$FIX" '{
+  "hooks": { "verify-quality": { "orchestrator": "none", "severity": "error" } }
+}'
+        LAST_OUT="$(
+            env -i HOME="$HOME" \
+                PATH="$FIX/realbin:/usr/bin:/bin" \
+                CLAUDE_PROJECT_DIR="$FIX" \
+                CPF_POLICY_FILE="$FIX/.cpf/policy.json" \
+                UV_OFFLINE=1 \
+                bash "$HOOK" <<<'{"stop_hook_active":false}' 2>&1
+        )" || true
+        AFTER="$(cksum <"$FIX/svc-real/uv.lock")"
+        if [[ "$BEFORE" == "$AFTER" ]]; then
+            pass "bonus: uv.lock unchanged after hook run"
+        else
+            fail "bonus: uv.lock rewritten by hook"
+        fi
+    else
+        echo "SKIP: uv lock failed in this environment"
+    fi
 fi
 
 echo ""
