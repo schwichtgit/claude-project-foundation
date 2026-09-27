@@ -7,6 +7,8 @@ set -euo pipefail
 # upgrade session required.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Pinned shellcheck (.tool-versions); never the OS binary.
+SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 GEN="$REPO_ROOT/.claude-plugin/lib/cpf-generate-configs.sh"
 BUNDLED_POLICY="$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/policy.json"
 TIERS_FILE="$REPO_ROOT/.claude-plugin/upgrade-tiers.json"
@@ -260,11 +262,11 @@ fi
 echo ""
 echo "=== shellcheck the generator ==="
 
-if shellcheck "$GEN" >/dev/null 2>&1; then
+if "$SHELLCHECK" "$GEN" >/dev/null 2>&1; then
     pass "shellcheck clean on cpf-generate-configs.sh"
 else
     fail "shellcheck reported issues:"
-    shellcheck "$GEN" || true
+    "$SHELLCHECK" "$GEN" || true
 fi
 
 # --- 9: INFRA-031 ADR-002 compliance: third-party tool config registry ---

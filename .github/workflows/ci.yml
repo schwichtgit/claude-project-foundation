@@ -17,10 +17,14 @@ jobs:
   markdownlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: DavidAnson/markdownlint-cli2-action@v23
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          globs: '**/*.md'
+          node-version: '22'
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
+      - name: markdownlint (pinned version, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh markdownlint
 
   # ---------------------------------------------------------------------------
   # Prettier format check
@@ -28,12 +32,14 @@ jobs:
   prettier:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - run: npm install
-      - run: npx prettier --check .
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
+      - name: prettier (pinned version, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh prettier
 
   # ---------------------------------------------------------------------------
   # Shell script lint
@@ -41,24 +47,9 @@ jobs:
   shellcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: Install shellcheck
-        run: sudo apt-get install -y shellcheck
-      - name: Seed shellcheck-excludes from bundled policy
-        run: |
-          # The cpf source repo has a hand-edited .markdownlint-cli2.yaml and
-          # .prettierignore that the generator would overwrite. Stage the
-          # generator output in a temp dir and copy just the excludes file.
-          STAGE="$(mktemp -d)"
-          CPF_POLICY_FILE=.claude-plugin/scaffold/common/.cpf/policy.json \
-            bash .claude-plugin/lib/cpf-generate-configs.sh --project-dir "$STAGE"
-          mkdir -p .cpf
-          cp "$STAGE/.cpf/shellcheck-excludes.txt" .cpf/shellcheck-excludes.txt
-      - name: Run shellcheck
-        run: |
-          FRAGMENT="$(bash .claude-plugin/lib/cpf-shellcheck-fragment.sh emit-find-fragment .)"
-          eval "find . -name '*.sh' $FRAGMENT -print0" | xargs -0 shellcheck -x
-          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 shellcheck -x
+      - uses: actions/checkout@v7
+      - name: shellcheck (pinned in .tool-versions, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh shellcheck
       - name: Resolver-usage lint
         run: bash .claude-plugin/lib/lint-resolver-usage.sh
       - name: Namespace discipline check
@@ -85,6 +76,12 @@ jobs:
         run: bash scripts/test-pytest-classification.sh
       - name: Upgrade migration guide test
         run: bash scripts/test-upgrade-migration.sh
+      - name: CI platform parity test
+        run: bash scripts/test-ci-parity.sh
+      - name: Scaffold structure test
+        run: bash scripts/test-scaffold.sh
+      - name: Upgrade tier and skill contract test
+        run: bash scripts/test-upgrade.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)
@@ -93,7 +90,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Validate commits
@@ -152,7 +149,7 @@ jobs:
   plugin-validation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Validate plugin.json
         run: |
           echo "--- plugin.json structure ---"

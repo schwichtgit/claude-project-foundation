@@ -11,6 +11,8 @@ config:
 ignores:
   - 'claude-project-foundation-PLAN.md'
   - '.claude/PLAN.md'
-  - '.specify/memory/'
-  - '.specify/specs/'
+  - '.specify/memory/**'
+  - '.specify/specs/**'
   - '.specify/restart-prompt.md'
+  - 'node_modules/**'
+  - '**/node_modules/**'

@@ -3,10 +3,12 @@
   "name": "claude-project-foundation",
   "description": "Development tooling for the Claude Project Foundation scaffold.",
   "devDependencies": {
-    "prettier": "^3.5.0"
+    "markdownlint-cli2": "0.23.3",
+    "prettier": "3.9.9"
   },
   "scripts": {
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "bash scripts/lint.sh --fix prettier markdownlint",
+    "format:check": "bash scripts/lint.sh prettier markdownlint",
+    "lint": "bash scripts/lint.sh"
   }
 }
