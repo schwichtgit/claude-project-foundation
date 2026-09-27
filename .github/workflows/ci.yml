@@ -96,6 +96,8 @@ jobs:
         run: bash scripts/test-pre-commit.sh
       - name: Known-upstream hashes up to date
         run: bash scripts/gen-known-upstream.sh --check
+      - name: End-to-end upgrade from alpha.10
+        run: bash scripts/test-upgrade-e2e.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)
