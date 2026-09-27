@@ -321,6 +321,21 @@ else
   FAILED=$((FAILED + 1))
 fi
 
+# --- 14: runtime VERSION matches the plugin version ---
+echo ""
+echo "=== Runtime version ==="
+
+TOTAL=$((TOTAL + 1))
+RUNTIME_VERSION="$(cat "$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/runtime/VERSION" 2>/dev/null)"
+PLUGIN_VERSION="$(jq -r .version "$REPO_ROOT/.claude-plugin/plugin.json")"
+if [[ "$RUNTIME_VERSION" == "$PLUGIN_VERSION" ]]; then
+  echo "PASS: .cpf/runtime/VERSION ($RUNTIME_VERSION) matches plugin.json"
+  PASSED=$((PASSED + 1))
+else
+  echo "FAIL: .cpf/runtime/VERSION ($RUNTIME_VERSION) != plugin.json ($PLUGIN_VERSION)"
+  FAILED=$((FAILED + 1))
+fi
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 [[ "$FAILED" -eq 0 ]] && exit 0 || exit 1

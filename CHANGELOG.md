@@ -7,16 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0-alpha.14] - 2026-09-27
 
-Completes upgrade safety for projects coming from alpha.10: moved git
-hooks keep their local fixes, untouched files upgrade without prompts,
-and the projected pre-commit hook matches the Stop hook. Upgrade to
-this release rather than alpha.12 or alpha.13.
+One checks runtime for every boundary, and a safe upgrade path from
+alpha.10. Upgrade to this release rather than alpha.12 or alpha.13.
+
+cpf's checks used to be implemented separately in the Claude Code hooks,
+the git hooks, and each CI template (shellcheck in six places, prettier
+in five, the commit rules in four), and the copies had drifted. They
+now live once, in a runtime projected into each project at
+`.cpf/runtime/`:
+
+- `verify.sh --boundary agent|git|ci [--staged]` runs every check.
+- `commit-check.sh` holds the commit and PR rules.
+
+The Claude Code Stop and PR hooks, the git `pre-commit` and
+`commit-msg` hooks, and the GitHub, GitLab, and Jenkins templates only
+call these, so a change that passes at one boundary passes at the next
+(tested per boundary).
+
+### Behavior changes (read before upgrading)
+
+- **Each project runs the runtime it committed.** The plugin hooks use
+  the project's `.cpf/runtime/`. A plugin update changes nothing in a
+  project until that project runs `/cpf:specforge upgrade` and merges
+  the result; the Stop hook prints a one-line note when the plugin
+  ships a newer runtime. Projects without `.cpf/runtime/` use the copy
+  bundled with the plugin.
+- **The Stop hook and `pre-commit` also run prettier and markdownlint**
+  when `.cpf/policy.json` has a section for them, as CI always did.
+  Without a section, the tool is not run.
+- **CI templates** have one `checks` job instead of separate
+  markdownlint, prettier, and shellcheck jobs; `summary` is still the
+  only job to require. Node linters come from `package-lock.json` when
+  present. Put project-specific jobs in the host `ci.yml` /
+  `.gitlab-ci.yml` / Jenkinsfile stage marker, not in the managed base
+  file.
+- **Release templates** check the tag against `.claude-plugin/plugin.json`
+  and attach a plugin tarball only when that manifest exists; other
+  projects no longer fail every tag build.
+- **Scaffold CODEOWNERS and issue templates** are project-neutral
+  (`@OWNER` placeholder) instead of copies of this repository's own.
+- The runtime never lints its own files under `.cpf/runtime/`.
 
 ### Upgrading from 0.1.0-alpha.10, alpha.12, or alpha.13
 
 1. Update the plugin: `claude plugin update cpf@specforge`, then
    `/reload-plugins` in open sessions.
 2. On a clean branch, run `/cpf:specforge upgrade`.
+   - The runtime arrives as new files under `.cpf/runtime/`.
    - Git hooks from alpha.10 at `scripts/hooks/`,
      `scripts/install-hooks.sh`, and `scripts/doctor.sh` are adopted
      to their `.cpf/scripts/` paths, local edits included. The old
@@ -28,6 +65,10 @@ this release rather than alpha.12 or alpha.13.
    - Answer the CI platform prompt, and accept or reject each
      review-tier diff.
 3. Merge what you want from `.cpf/pending/` by hand, then delete it.
+   A kept `pre-commit`, `commit-msg`, or CI base file does not call the
+   runtime until you merge the new version; for alpha.10 projects the
+   new `pre-commit` already includes the `.env` template and ruff
+   fixes. Re-run `.cpf/scripts/install-hooks.sh` after changing a hook.
 4. Review `git diff`, run lint and tests, commit, and open a PR.
 
 ### Fixed
@@ -55,6 +96,12 @@ this release rather than alpha.12 or alpha.13.
   way instead of using `$PATH`.
 - `ci/gitlab/gitlab-ci-base.yml` is upgraded again. It was also
   covered by the plugin-cache prefix `ci/gitlab/`, which upgrade skips.
+- The `commit-msg` emoji check never ran: its argument was parsed as a
+  separate command after the heredoc. Identifiers and paths that
+  contain the product name (`CLAUDE_PROJECT_DIR`, `.claude/`) no
+  longer count as a standalone mention.
+- `.cpf/pending/` ignores itself (`.cpf/pending/.gitignore`), so merge
+  aids never reach commits or lint scope.
 - The asset resolver, `doctor.sh`, and the skill's commands resolve
   plugin files from the install root that Claude Code sets.
   `cpf_resolve_asset` previously failed for every template when the

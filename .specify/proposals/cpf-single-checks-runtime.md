@@ -1,9 +1,8 @@
-# CPF Proposal: One Checks Runtime for Every Boundary
+# CPF Design Record: One Checks Runtime for Every Boundary
 
 **Source:** review of plugin-provided vs. projected files, 2026-09-27
-**Status:** Proposed. Decide together with
-`cr-golden-release-and-spec-gates-exit-ramp.md`: spec-gates already
-implements this design.
+**Status:** Implemented in 0.1.0-alpha.14 (scaffold
+`common/.cpf/runtime/`, projected to `.cpf/runtime/`).
 
 ## Problem
 
@@ -60,18 +59,43 @@ Consequences:
    name when an installed version differs from its pin (see
    `cpf-pinned-linters-downstream.md`).
 
-## Decision
+## Implementation (alpha.14)
 
-This is the spec-gates architecture (one policy, three boundaries,
-`verify.sh` everywhere, a parity gate). The options:
+- `verify.sh --boundary agent|git|ci [--staged]` carries every check:
+  - policy-scoped prettier, markdownlint, and shellcheck at every
+    boundary;
+  - staged-file language lint at git;
+  - the verify-quality orchestrators at agent.
+- `commit-check.sh` carries the commit and PR rules.
+- The runtime resolves project paths from `CLAUDE_PROJECT_DIR` or git
+  and never references the plugin tree.
+- Thin callers:
+  - the plugin Stop and PR hooks (project runtime first, bundled copy
+    as fallback, with a version note);
+  - `pre-commit` and `commit-msg`;
+  - GitHub `ci-base.yml`, `release.yml`, and `commit-standards.yml`;
+  - the GitLab base;
+  - the Jenkinsfile.
+- The runtime files are in the overwrite tier, so upgrade projects
+  them and `cpf-managed-file.sh` protects local edits.
+- Not built:
+  - policy extension points (`orchestrator: custom` and the host CI
+    files cover project-specific needs);
+  - a pin-drift gate for downstream projects (the runtime notes
+    unpinned tools).
+- Tests:
+  - `test-boundary-parity.sh`: one verdict per violation across
+    boundaries;
+  - `test-commit-rules.sh`: four entry points agree;
+  - `test-ci-parity.sh`: every template calls the runtime and invokes
+    no linter directly;
+  - `test-upgrade-e2e.sh`: a real alpha.10 project upgrades, then runs
+    its own runtime at ci, git, and agent.
 
-- **Build it in CPF.** Run it through specforge; it takes several PRs
-  and duplicates spec-gates.
-- **Adopt the golden-release CR.** Freeze CPF after the containment
-  releases and move projects to spec-gates with the planned migrator.
+## Relation to spec-gates
 
-Until then, alpha.13 and alpha.14 contain the damage: upgrade never
-discards local edits, moved files keep their fixes, lint configs the
-policy does not own are left alone, the `pre-commit` hook and the Stop
-hook use the same pinned tools, and the migration from alpha.10 is
-tested end to end.
+This is the spec-gates architecture (one policy, three boundaries, one
+`verify.sh`), built into CPF so that projects still on CPF get the same
+guarantees before CPF is sunset. The planned exit-ramp migrator moves
+projects from CPF's `.cpf/runtime/` to spec-gates' runtime; both keep
+the policy as the only project-owned file.

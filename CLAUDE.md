@@ -85,10 +85,15 @@ not positional arguments. Stop hooks use exit code 2 to block
 (not exit 1). Stop hooks must check `stop_hook_active` to
 prevent infinite loops.
 
-Git hooks (`scripts/hooks/`) are source copies installed to
-`.git/hooks/` via `install-hooks.sh`. Pre-commit discovers
-staged files via `git diff --cached`. Commit-msg receives
-file path as `$1`.
+All checks live in the checks runtime,
+`.claude-plugin/scaffold/common/.cpf/runtime/` (projected to
+`.cpf/runtime/` in host projects; symlinked here). `verify.sh
+--boundary agent|git|ci` runs them and `commit-check.sh` holds the
+commit/PR rules. The Stop and PR hooks, the git hooks
+(`.cpf/scripts/hooks/`, installed to `.git/hooks/` by
+`install-hooks.sh`), and every CI template only call the runtime.
+The runtime must never reference `.claude-plugin/`: host projects
+have no plugin tree.
 
 ### Auto-Detection
 

@@ -738,7 +738,11 @@ host).
     overwrite-tier files kept because of local changes, each with its
     `.cpf/pending/<path>` merge target, and every adopted legacy file
     (for example `scripts/hooks/pre-commit`) as "no longer used by cpf;
-    remove after checking nothing else references it".
+    remove after checking nothing else references it". If a kept file
+    is `pre-commit`, `commit-msg`, or a CI base file, say that it does
+    not call the checks runtime (`.cpf/runtime/`) until the user merges
+    the new version from `.cpf/pending/` and re-runs
+    `.cpf/scripts/install-hooks.sh`.
 
 **Notes:**
 
