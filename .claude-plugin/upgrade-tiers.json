@@ -47,7 +47,8 @@
       ".gitignore",
       "init.sh",
       ".cpf/overrides/",
-      ".cpf/upstream-cache/"
+      ".cpf/upstream-cache/",
+      ".cpf/pending/"
     ],
     "plugin-cache": [
       ".specify/templates/",

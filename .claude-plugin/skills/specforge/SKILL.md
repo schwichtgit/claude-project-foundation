@@ -195,6 +195,11 @@ principles needed for spec-driven development.
     - If the existing file differs, show `diff -u <existing> <scaffold>` and
       ask "Overwrite <file>? [y/n/d(iff)]". On `y`, overwrite. On `n`, skip.
       On `d`, show the diff again.
+    - Overwrite-tier files (see `upgrade-tiers.json`) go through
+      `$CLAUDE_PLUGIN_ROOT/lib/cpf-managed-file.sh` so the projected
+      version is cached at `.cpf/upstream-cache/<path>`: `apply` for new
+      or identical files, `accept` on `y`, `keep` on `n`. Upgrade uses
+      that baseline to tell untouched files from locally edited ones.
 11. **CLAUDE.md parameterization:** If `CLAUDE.md` does not exist, create it
     from `CLAUDE.md.template` with these placeholders replaced:
     - `{{PROJECT_NAME}}` -- from `basename $PWD` or git remote name
@@ -609,8 +614,22 @@ host).
    the plugin and are never projected or reviewed; hosts read them
    via `cpf_resolve_asset` and shadow them with `.cpf/overrides/`.
    Migration messaging for the reorg lives in INFRA-029 (step 5).
-9. **Overwrite tier:** For each file in the "overwrite" list, replace it
-   with the latest version from the plugin without prompting.
+9. **Overwrite tier (never discards local edits):** For each file in the
+   "overwrite" list, resolve the helper once with
+   `MF="$CLAUDE_PLUGIN_ROOT/lib/cpf-managed-file.sh"` and the new version
+   `NEW="$CLAUDE_PLUGIN_ROOT/scaffold/<platform-or-common>/<path>"`, then
+   run `bash "$MF" status "$CLAUDE_PROJECT_DIR" <path> "$NEW"`:
+   - `missing`, `current`, or `clean` (host still equals the version cpf
+     last projected, cached at `.cpf/upstream-cache/<path>`): run
+     `bash "$MF" apply ...` without prompting.
+   - `modified` (edited since cpf projected it) or `unknown` (no cached
+     baseline, e.g. a project set up before alpha.13, and the file
+     differs): do NOT overwrite. Show `diff -u <path> "$NEW"` and ask
+     "<path> has local changes. [keep/replace] (default keep)". On keep
+     (or no answer), run `bash "$MF" keep ...`: the host file stays, the
+     new version is written to `.cpf/pending/<path>` for a manual merge.
+     On replace, run `bash "$MF" accept ...`.
+     List every kept file in the summary with its `.cpf/pending/` path.
 10. **Review tier:** For each file in the "review" list, handle upgrade
     review. The `Jenkinsfile` entry has a dedicated flow (step 10a);
     every other review-tier entry uses the generic flow (step 10b).
@@ -680,7 +699,9 @@ host).
     `.specforge-version`. Update `.specforge-ci-platform` if the user
     switched platforms.
 19. **Summary:** Print counts of overwritten, reviewed
-    (accepted/rejected), skipped, new, and deprecated files.
+    (accepted/rejected), skipped, new, and deprecated files, and list
+    overwrite-tier files kept because of local changes, each with its
+    `.cpf/pending/<path>` merge target.
 
 **Notes:**
 
