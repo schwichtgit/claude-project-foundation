@@ -120,6 +120,9 @@ cpf_tool_files() {
     local f
     while IFS= read -r -d '' f; do
         [[ -f "$CPF_PROJECT_ROOT/$f" ]] || continue
+        # The projected runtime is cpf's code, managed by upgrade; the
+        # project cannot fix findings in it, so it is never in scope.
+        [[ "$f" == .cpf/runtime/* ]] && continue
         cpf_path_matches_any "$f" "${includes[@]}" || continue
         if [[ "${#excludes[@]}" -gt 0 ]] && cpf_path_matches_any "$f" "${excludes[@]}"; then
             continue

@@ -40,6 +40,11 @@ jobs:
         with:
           # Release tags are needed by gen-known-upstream.sh --check.
           fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
       - name: Resolver-usage lint
         run: bash .claude-plugin/lib/lint-resolver-usage.sh
       - name: Namespace discipline check
@@ -82,6 +87,18 @@ jobs:
         run: bash scripts/gen-known-upstream.sh --check
       - name: End-to-end upgrade from alpha.10
         run: bash scripts/test-upgrade-e2e.sh
+      - name: Boundary parity (agent, git, ci give one verdict)
+        run: bash scripts/test-boundary-parity.sh
+      - name: Commit-rule parity (commit-msg, PR hook, CI)
+        run: bash scripts/test-commit-rules.sh
+      - name: Commit-msg hook test
+        run: bash scripts/test-commit-msg.sh
+      - name: Hook contract test
+        run: bash scripts/test-hooks.sh
+      - name: Hook JSON key test
+        run: bash scripts/test-json-keys.sh
+      - name: Scaffold quality test
+        run: bash scripts/test-scaffold-quality.sh
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only)

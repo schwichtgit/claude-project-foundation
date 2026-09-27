@@ -69,7 +69,9 @@ printf 'config:\n  MD013:\n    line_length: 120\nignores:\n  - "docs/generated/*
     >"$HOST/.markdownlint-cli2.yaml"
 cp "$HOST/.prettierignore" "$WORKDIR/prettierignore.local"
 cp "$HOST/.markdownlint-cli2.yaml" "$WORKDIR/markdownlint.local"
-mkdir -p "$HOST/.cpf"
+mkdir -p "$HOST/.cpf" "$HOST/scripts"
+printf '#!/bin/bash\necho "project lint ok"\n' >"$HOST/scripts/lint-changed.sh"
+chmod +x "$HOST/scripts/lint-changed.sh"
 cat >"$HOST/.cpf/policy.json" <<'JSON'
 {
   "hooks": {
@@ -191,6 +193,91 @@ else
     fail "second upgrade not idempotent"
     grep 'status ' "$WORKDIR/run2.log" | sed 's/^/    /'
     diff "$WORKDIR/before2" "$WORKDIR/after2" | sed 's/^/    /' | head -10
+fi
+
+# --- 5. The upgraded project runs its projected runtime ---------------------
+# A downstream tree has no plugin source: everything below runs from the
+# project's own .cpf/runtime.
+echo ""
+echo "=== the upgraded project runs its own checks runtime ==="
+if [[ -f "$HOST/.cpf/runtime/verify.sh" && ! -e "$HOST/.claude-plugin" ]]; then
+    pass "runtime projected into .cpf/runtime; no plugin tree in the project"
+else
+    fail "runtime not projected (or a plugin tree is present)"
+fi
+
+(
+    cd "$HOST" || exit 1
+    git init -q
+    git config user.email t@e
+    git config user.name t
+    git checkout -q -b feat/upgrade
+    bash .cpf/scripts/install-hooks.sh >/dev/null
+    git add -A >/dev/null
+    git commit -q --no-verify -m "chore: baseline after upgrade"
+)
+
+rc=0
+(cd "$HOST" && CLAUDE_PROJECT_DIR="$HOST" bash .cpf/runtime/verify.sh --boundary ci) \
+    >"$WORKDIR/ci.log" 2>&1 || rc=$?
+if [[ "$rc" -eq 0 ]] && grep -q 'Quality Gate (ci)' "$WORKDIR/ci.log"; then
+    pass "ci boundary runs from the project's runtime and passes"
+else
+    fail "ci boundary (rc=$rc)"
+    tail -8 "$WORKDIR/ci.log" | sed 's/^/    /'
+fi
+
+# The project kept its customized pre-commit (the default), and that
+# alpha.10 hook does not call the runtime. Merging the upstream version
+# from .cpf/pending/ -- which already carries the .env template fix --
+# is what moves the git boundary onto the runtime.
+if ! grep -q '.cpf/runtime/verify.sh' "$HOST/.cpf/scripts/hooks/pre-commit"; then
+    pass "kept alpha.10 pre-commit does not run the runtime until merged"
+else
+    fail "kept pre-commit unexpectedly calls the runtime"
+fi
+# (.cpf/pending/ was cleared by the idempotence check above; the upstream
+# version is the scaffold copy.)
+cp "$CPF/scaffold/common/.cpf/scripts/hooks/pre-commit" "$HOST/.cpf/scripts/hooks/pre-commit"
+(cd "$HOST" && bash .cpf/scripts/install-hooks.sh >/dev/null && git add -A \
+    && git commit -q --no-verify -m "chore: merge upstream pre-commit")
+
+printf 'docs\n' >"$HOST/NOTES.txt"
+rc=0
+(cd "$HOST" && git add NOTES.txt && git commit -q -m "docs: add notes") \
+    >"$WORKDIR/git.log" 2>&1 || rc=$?
+if [[ "$rc" -eq 0 ]] && grep -q 'Quality Gate (git)' "$WORKDIR/git.log"; then
+    pass "git commit runs the installed hooks through the runtime"
+else
+    fail "commit through installed hooks (rc=$rc)"
+    tail -8 "$WORKDIR/git.log" | sed 's/^/    /'
+fi
+rc=0
+(cd "$HOST" && printf 'x\n' >>NOTES.txt && git add NOTES.txt && git commit -q -m "added notes") \
+    >"$WORKDIR/git2.log" 2>&1 || rc=$?
+if [[ "$rc" -ne 0 ]] && grep -q 'conventional commit format' "$WORKDIR/git2.log"; then
+    pass "commit-msg hook rejects a non-conventional subject via the runtime"
+else
+    fail "commit-msg did not reject a bad subject (rc=$rc)"
+fi
+
+STOP_HOOK="$CPF/hooks/verify-quality.sh"
+rc=0
+out="$(printf '{"stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$HOST" bash "$STOP_HOOK" 2>&1)" || rc=$?
+if [[ "$rc" -eq 0 ]] && grep -q 'Quality Gate (agent)' <<<"$out" \
+    && grep -q 'project lint ok' <<<"$out$(cat "$HOST/scripts/lint-changed.sh")" \
+    && ! grep -q 'project checks runtime is' <<<"$out"; then
+    pass "plugin Stop hook runs the project's runtime (custom orchestrator)"
+else
+    fail "Stop hook with the project's runtime (rc=$rc)"
+    printf '%s\n' "$out" | tail -8 | sed 's/^/    /'
+fi
+printf '0.1.0-alpha.13\n' >"$HOST/.cpf/runtime/VERSION"
+out="$(printf '{"stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$HOST" bash "$STOP_HOOK" 2>&1)" || true
+if grep -q 'project checks runtime is 0.1.0-alpha.13; plugin ships' <<<"$out"; then
+    pass "a project on an older runtime keeps it and is told about the newer one"
+else
+    fail "no version note for an older project runtime"
 fi
 
 echo ""
