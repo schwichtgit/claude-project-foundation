@@ -188,6 +188,12 @@ fi
 
 PINS_OK=1
 for tool in "${TOOLS[@]}"; do
+    # A tool with no include globs would select zero files and pass
+    # silently; treat a missing scope as a failure.
+    if [[ -z "$(cpf_policy_list "$tool" include 2>/dev/null || true)" ]]; then
+        fail "$tool: .cpf/policy.json declares no include globs"
+        PINS_OK=0
+    fi
     case "$tool" in
         prettier) check_node_pin prettier || PINS_OK=0 ;;
         markdownlint) check_node_pin markdownlint-cli2 || PINS_OK=0 ;;

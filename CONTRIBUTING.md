@@ -56,6 +56,9 @@ npm run format:check
   `.markdownlint-cli2.yaml`) drifts from its pin or the policy.
   To change lint scope, edit `.cpf/policy.json` and regenerate
   the configs; don't add path rules to workflows.
+  Locally, untracked files that aren't ignored are linted too,
+  so new files are caught before commit. CI sees only committed
+  files.
 - **Markdown:** markdownlint clean, Prettier formatted
 - **YAML/JSON:** Prettier formatted
 - **Communication:** technical and direct, no emoji,
