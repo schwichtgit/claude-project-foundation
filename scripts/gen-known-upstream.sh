@@ -66,7 +66,10 @@ done < <(jq -r '.tiers.overwrite[]' "$TIERS")
 while IFS= read -r reorg; do
     for t in "${TAGS[@]}" WORKTREE; do
         if [[ "$t" == WORKTREE ]]; then
-            list="$(cd .claude-plugin/scaffold/common && find "./${reorg%/}" -type f 2>/dev/null | sed 's|^\./||')"
+            # Tracked files only: untracked local files (editor or tool
+            # droppings) must not change the output, or CI disagrees.
+            list="$(git ls-files -- ".claude-plugin/scaffold/common/${reorg%/}" \
+                | sed 's|^\.claude-plugin/scaffold/common/||')"
         else
             list="$(git ls-tree -r --name-only "$t" -- ".claude-plugin/scaffold/common/${reorg%/}" 2>/dev/null \
                 | sed 's|^\.claude-plugin/scaffold/common/||')"
