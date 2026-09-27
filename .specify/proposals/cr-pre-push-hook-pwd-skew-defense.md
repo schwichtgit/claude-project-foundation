@@ -182,9 +182,9 @@ echo "pre-push: all CI base-job checks passed."
 ## 7. Related work + references
 
 - **accelno-halo PR #145** (`chore(hooks): add pre-push catching CI base-job
-  failures locally`) — reference implementation; merged 2026-05-17.
+failures locally`) — reference implementation; merged 2026-05-17.
 - **accelno-halo PR #144** (`docs(proposal): amend tailwind-4-upgrade — drop
-  unused flowbite plugin`) — the incident that surfaced the gap; 10 MD060
+unused flowbite plugin`) — the incident that surfaced the gap; 10 MD060
   errors caught by CI after local lint reported 0.
 - **CPF CLAUDE.md template** — worktree-confusion warning section. This hook
   is defense-in-depth for the same trap, in the case where discipline slips.
