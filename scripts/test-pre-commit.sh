@@ -10,6 +10,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Pinned shellcheck (.tool-versions); never the OS binary.
 SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 HOOK="$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/scripts/hooks/pre-commit"
+RUNTIME_SRC="$REPO_ROOT/.claude-plugin/scaffold/common/.cpf/runtime"
 
 PASSED=0
 FAILED=0
@@ -65,6 +66,9 @@ new_repo() {
         git config user.name t
         git checkout -q -b feat/test
     )
+    # A downstream project carries its projected checks runtime.
+    mkdir -p "$dir/.cpf"
+    cp -R "$RUNTIME_SRC" "$dir/.cpf/runtime"
     printf '%s\n' "$dir"
 }
 
@@ -162,7 +166,7 @@ printf 'x = 1\n' >"$R/app.py"
 (cd "$R" && git add pyproject.toml uv.lock app.py)
 : >"$WORKDIR/ruff.log"
 run_hook "$R" CPF_TEST_LOG="$WORKDIR/ruff.log"
-if grep -q '^uv run --frozen --project \. ruff check app.py' "$WORKDIR/ruff.log" \
+if grep -qE '^uv run --frozen --project .*/ruff-uv ruff check app.py' "$WORKDIR/ruff.log" \
     && ! grep -q 'PATH-ruff' "$WORKDIR/ruff.log"; then
     pass "no .venv: ruff runs via uv run --frozen (lock untouched)"
 else
@@ -179,6 +183,19 @@ if ! grep -q 'PATH-ruff' "$WORKDIR/ruff.log"; then
     pass "no .venv and no uv.lock: PATH ruff is not used"
 else
     fail "PATH ruff used without a pinned copy"
+fi
+
+echo ""
+echo "=== no projected runtime: lint is skipped with a notice ==="
+R="$(new_repo no-runtime)"
+rm -rf "$R/.cpf/runtime"
+printf 'x = 1\n' >"$R/app.py"
+(cd "$R" && git add app.py)
+run_hook "$R"
+if [[ "$LAST_RC" -eq 0 ]] && grep -q 'verify.sh not found; lint skipped' <<<"$LAST_OUT"; then
+    pass "missing runtime: commit allowed, notice printed"
+else
+    fail "missing runtime (rc=$LAST_RC): $LAST_OUT"
 fi
 
 echo ""

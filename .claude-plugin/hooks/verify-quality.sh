@@ -25,21 +25,11 @@ if command -v jq >/dev/null 2>&1; then
 fi
 
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
-HOOK_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-BUNDLED="$HOOK_DIR/../scaffold/common/.cpf/runtime"
-PROJECT_RUNTIME="$PROJECT_ROOT/.cpf/runtime"
-
-if [[ -f "$PROJECT_RUNTIME/verify.sh" ]]; then
-    RUNTIME="$PROJECT_RUNTIME"
-    project_version="$(cat "$PROJECT_RUNTIME/VERSION" 2>/dev/null || echo unknown)"
-    bundled_version="$(cat "$BUNDLED/VERSION" 2>/dev/null || echo unknown)"
-    if [[ "$project_version" != "$bundled_version" ]]; then
-        echo "cpf: project checks runtime is $project_version; plugin ships" \
-            "$bundled_version (run /cpf:specforge upgrade to adopt it)" >&2
-    fi
-else
-    RUNTIME="$BUNDLED"
-fi
+# shellcheck source=_runtime.sh
+# shellcheck disable=SC1091
+source "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/_runtime.sh"
+RUNTIME="$(cpf_runtime_dir "$PROJECT_ROOT")"
+cpf_runtime_version_note "$PROJECT_ROOT"
 
 if [[ ! -f "$RUNTIME/verify.sh" ]]; then
     echo "cpf: checks runtime not found at $RUNTIME; skipping" >&2

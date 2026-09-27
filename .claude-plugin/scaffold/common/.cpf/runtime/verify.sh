@@ -753,7 +753,8 @@ _cpf_lint_one_staged_file() {
     esac
     dir="$(dirname "$file")"
     root="$(_cpf_find_marker_root "$dir")" || return 0
-    local abs_root="$PROJECT_ROOT/$root"
+    local abs_root="$PROJECT_ROOT"
+    [[ "$root" != "." ]] && abs_root="$PROJECT_ROOT/$root"
 
     case "$ext" in
         ts | tsx | js | jsx)

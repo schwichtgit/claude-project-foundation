@@ -97,140 +97,6 @@ check_for_secrets() {
     return 0
 }
 
-# --- Find nearest project root for a file ---
-find_project_root() {
-    local dir="$1"
-    while [[ "$dir" != "." ]] && [[ "$dir" != "/" ]]; do
-        if [[ -f "$dir/package.json" ]] || [[ -f "$dir/Cargo.toml" ]] || \
-           [[ -f "$dir/pyproject.toml" ]] || [[ -f "$dir/go.mod" ]]; then
-            echo "$dir"
-            return 0
-        fi
-        dir=$(dirname "$dir")
-    done
-    # Check current directory
-    for marker in package.json Cargo.toml pyproject.toml go.mod; do
-        if [[ -f "./$marker" ]]; then
-            echo "."
-            return 0
-        fi
-    done
-    return 1
-}
-
-# --- Resolve a project's pinned Python tool ---
-# Same contract as the verify-quality Stop hook: <root>/.venv/bin/<tool>,
-# else `uv run --frozen` when a uv.lock exists (never re-locks). Never a
-# bare <tool> from $PATH, whose version can differ from the lock and CI.
-# Prints the command prefix, one argument per line; returns 1 if none.
-resolve_python_tool() {
-    local root="$1" tool="$2"
-    if [[ -x "$root/.venv/bin/$tool" ]]; then
-        printf '%s\n' "$root/.venv/bin/$tool"
-        return 0
-    fi
-    if command -v uv >/dev/null 2>&1 \
-        && [[ -f "$root/uv.lock" || -f "./uv.lock" ]]; then
-        printf '%s\n' uv run --frozen --project "$root" "$tool"
-        return 0
-    fi
-    return 1
-}
-
-# Python interpreter for the YAML check: the project venv first, then
-# python3. Prints nothing if neither can import yaml (PyYAML), so a
-# missing module skips the check instead of failing every YAML file.
-yaml_python() {
-    local root="$1" py
-    for py in "$root/.venv/bin/python" "./.venv/bin/python" python3; do
-        if command -v "$py" >/dev/null 2>&1 \
-            && "$py" -c "import yaml" >/dev/null 2>&1; then
-            printf '%s\n' "$py"
-            return 0
-        fi
-    done
-    return 1
-}
-
-# --- Lint staged files ---
-lint_staged_files() {
-    local file="$1"
-    local ext="${file##*.}"
-    local dir
-    dir=$(dirname "$file")
-
-    # Skip generated files
-    case "$file" in
-        *_pb2.py|*_pb2_grpc.py) return 0 ;;
-    esac
-
-    local project_root
-    project_root=$(find_project_root "$dir") || return 0
-
-    case "$ext" in
-        ts|tsx|js|jsx)
-            if [[ -f "$project_root/node_modules/.bin/eslint" ]]; then
-                npx --prefix "$project_root" eslint "$file" --quiet 2>/dev/null || return 1
-            fi
-            ;;
-        py)
-            local ruff_cmd=()
-            local part
-            while IFS= read -r part; do
-                ruff_cmd+=("$part")
-            done < <(resolve_python_tool "$project_root" ruff || true)
-            if [[ "${#ruff_cmd[@]}" -gt 0 ]]; then
-                "${ruff_cmd[@]}" check "$file" 2>/dev/null || return 1
-                "${ruff_cmd[@]}" format --check "$file" 2>/dev/null || return 1
-            fi
-            ;;
-        rs)
-            # Clippy runs on the whole crate, skip per-file
-            ;;
-        sh)
-            if command -v shellcheck >/dev/null 2>&1; then
-                shellcheck "$file" 2>/dev/null || return 1
-            fi
-            ;;
-        go)
-            if command -v gofmt >/dev/null 2>&1; then
-                if [[ -n "$(gofmt -l "$file" 2>/dev/null)" ]]; then
-                    gofmt -w "$file"
-                    git add "$file"
-                    echo "  FORMATTED: $file"
-                fi
-            fi
-            if command -v golangci-lint >/dev/null 2>&1; then
-                (cd "$project_root" && golangci-lint run "./$dir/...") || return 1
-            elif command -v go >/dev/null 2>&1; then
-                (cd "$project_root" && go vet "./$dir/..." 2>/dev/null) || return 1
-            fi
-            ;;
-        md)
-            if [[ -f "$project_root/node_modules/.bin/markdownlint-cli2" ]]; then
-                git show ":$file" 2>/dev/null \
-                    | npx --prefix "$project_root" markdownlint-cli2 - 2>/dev/null || return 1
-            fi
-            ;;
-        yml|yaml)
-            local py
-            if py="$(yaml_python "$project_root")"; then
-                git show ":$file" 2>/dev/null \
-                    | "$py" -c "
-import sys, yaml
-try:
-    yaml.safe_load(sys.stdin.read())
-except yaml.YAMLError as e:
-    print(f'  YAML error: {e}', file=sys.stderr)
-    sys.exit(1)
-" 2>/dev/null || return 1
-            fi
-            ;;
-    esac
-
-    return 0
-}
-
 # --- Main ---
 echo "Pre-commit: checking staged files..."
 
@@ -247,13 +113,20 @@ for file in $STAGED_FILES; do
         ERRORS=$((ERRORS + 1))
         continue
     fi
+done
 
-    # Lint
-    if ! lint_staged_files "$file"; then
-        echo "LINT FAIL: $file" >&2
+# Lint: the cpf checks runtime (the same checks the Stop hook and CI run),
+# on staged content.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+RUNTIME="$REPO_ROOT/.cpf/runtime/verify.sh"
+if [[ -f "$RUNTIME" ]]; then
+    if ! CLAUDE_PROJECT_DIR="$REPO_ROOT" bash "$RUNTIME" --boundary git --staged; then
         ERRORS=$((ERRORS + 1))
     fi
-done
+else
+    echo "Pre-commit: .cpf/runtime/verify.sh not found; lint skipped" \
+        "(run /cpf:specforge upgrade)" >&2
+fi
 
 if [[ "$ERRORS" -gt 0 ]]; then
     echo "" >&2
