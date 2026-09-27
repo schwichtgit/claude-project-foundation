@@ -9,7 +9,7 @@ set -euo pipefail
 # the policy-seed prompt non-interactively.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+# Pinned shellcheck (.tool-versions); never the OS binary.
 SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 LIB_DIR="$REPO_ROOT/.claude-plugin/lib"
 MIGRATE="$LIB_DIR/cpf-migrate-alpha12.sh"

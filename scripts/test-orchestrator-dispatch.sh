@@ -7,7 +7,7 @@ set -euo pipefail
 # never requires real go-task on CI.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+# Pinned shellcheck (.tool-versions); never the OS binary.
 SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 HOOK="$REPO_ROOT/.claude-plugin/hooks/verify-quality.sh"
 DETECT="$REPO_ROOT/.claude-plugin/lib/cpf-taskfile-detect.sh"

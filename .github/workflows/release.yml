@@ -44,24 +44,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install pinned shellcheck
-        # Version and checksums live in scripts/dev-tool-versions.env; the
-        # same wrapper is used locally. Never use the runner's apt package.
-        run: |
-          dirname "$(bash scripts/shellcheck.sh --print-path)" >> "$GITHUB_PATH"
-          bash scripts/shellcheck.sh --version
-      - name: Run shellcheck
-        run: |
-          find . -name '*.sh' -not -path './.git/*' -not -path './node_modules/*' -print0 | xargs -0 bash scripts/shellcheck.sh -x
-          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 bash scripts/shellcheck.sh -x
+      - name: shellcheck (pinned in .tool-versions, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh shellcheck
 
   markdownlint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: DavidAnson/markdownlint-cli2-action@v24
+      - uses: actions/setup-node@v7
         with:
-          globs: '**/*.md'
+          node-version: '22'
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
+      - name: markdownlint (pinned version, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh markdownlint
 
   prettier:
     runs-on: ubuntu-latest
@@ -70,8 +66,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - run: npm install
-      - run: npx prettier --check .
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
+      - name: prettier (pinned version, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh prettier
 
   plugin-validation:
     runs-on: ubuntu-latest

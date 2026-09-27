@@ -18,9 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: DavidAnson/markdownlint-cli2-action@v24
+      - uses: actions/setup-node@v7
         with:
-          globs: '**/*.md'
+          node-version: '22'
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
+      - name: markdownlint (pinned version, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh markdownlint
 
   # ---------------------------------------------------------------------------
   # Prettier format check
@@ -32,8 +36,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - run: npm install
-      - run: npx prettier --check .
+      - name: Install pinned linters (package-lock.json)
+        run: npm ci
+      - name: prettier (pinned version, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh prettier
 
   # ---------------------------------------------------------------------------
   # Shell script lint
@@ -42,27 +48,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Install pinned shellcheck
-        # Version and checksums live in scripts/dev-tool-versions.env; the
-        # same wrapper is used locally. Never use the runner's apt package.
-        run: |
-          dirname "$(bash scripts/shellcheck.sh --print-path)" >> "$GITHUB_PATH"
-          bash scripts/shellcheck.sh --version
-      - name: Seed shellcheck-excludes from bundled policy
-        run: |
-          # The cpf source repo has a hand-edited .markdownlint-cli2.yaml and
-          # .prettierignore that the generator would overwrite. Stage the
-          # generator output in a temp dir and copy just the excludes file.
-          STAGE="$(mktemp -d)"
-          CPF_POLICY_FILE=.claude-plugin/scaffold/common/.cpf/policy.json \
-            bash .claude-plugin/lib/cpf-generate-configs.sh --project-dir "$STAGE"
-          mkdir -p .cpf
-          cp "$STAGE/.cpf/shellcheck-excludes.txt" .cpf/shellcheck-excludes.txt
-      - name: Run shellcheck
-        run: |
-          FRAGMENT="$(bash .claude-plugin/lib/cpf-shellcheck-fragment.sh emit-find-fragment .)"
-          eval "find . -name '*.sh' $FRAGMENT -print0" | xargs -0 bash scripts/shellcheck.sh -x
-          find .claude-plugin/scaffold/common/.cpf/scripts/hooks -type f -not -name '*.md' -print0 | xargs -0 bash scripts/shellcheck.sh -x
+      - name: shellcheck (pinned in .tool-versions, scope from .cpf/policy.json)
+        run: bash scripts/lint.sh shellcheck
       - name: Resolver-usage lint
         run: bash .claude-plugin/lib/lint-resolver-usage.sh
       - name: Namespace discipline check

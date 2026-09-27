@@ -102,6 +102,12 @@ instead of running anything.
   INFRA-027)
 - Jenkinsfile moved to a review-with-upstream-cache flow (#49,
   INFRA-028)
+- cpf source repo lint (CI, release, `npm run lint`) runs through
+  one `scripts/lint.sh`: exact prettier and markdownlint-cli2 pins
+  from `package-lock.json`, shellcheck from `.tool-versions`
+  (upstream release, not apt), file sets from the repo's own
+  `.cpf/policy.json`, and a drift check on pins and generated
+  configs. Downstream scaffold behavior is unchanged.
 
 ## [0.1.0-alpha.10] - 2026-04-10
 

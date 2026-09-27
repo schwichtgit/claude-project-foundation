@@ -106,14 +106,15 @@ paths.
 # Make Claude Code hooks executable (done by install-hooks.sh)
 chmod +x .claude/hooks/*.sh
 
-# Format all files (markdown, YAML, JSON)
+# Install pinned linters (exact versions from package-lock.json)
+npm ci
+
+# Lint exactly as CI does: pinned prettier, markdownlint-cli2, and
+# shellcheck (.tool-versions), file sets from .cpf/policy.json
+npm run lint
+
+# Apply prettier/markdownlint fixes over the same file sets
 npm run format
-
-# Check formatting (CI)
-npm run format:check
-
-# Pinned ShellCheck (same version as CI; see scripts/dev-tool-versions.env)
-scripts/shellcheck.sh -x path/to/script.sh
 ```
 
 ## Quality Standards

@@ -9,7 +9,7 @@ set -uo pipefail
 # install via .venv/bin/<tool> and a mocked uv at <workdir>/bin/uv.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+# Pinned shellcheck (.tool-versions); never the OS binary.
 SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 HOOK="$REPO_ROOT/.claude-plugin/hooks/verify-quality.sh"
 POLICY_LIB="$REPO_ROOT/.claude-plugin/lib/cpf-policy.sh"

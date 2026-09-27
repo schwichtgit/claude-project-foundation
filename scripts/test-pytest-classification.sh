@@ -8,7 +8,7 @@ set -uo pipefail
 # honors CPF_TEST_PYTEST_EXIT to exit with the requested code.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+# Pinned shellcheck (.tool-versions); never the OS binary.
 SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 HOOK="$REPO_ROOT/.claude-plugin/hooks/verify-quality.sh"
 POLICY_LIB="$REPO_ROOT/.claude-plugin/lib/cpf-policy.sh"

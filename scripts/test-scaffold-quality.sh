@@ -5,7 +5,7 @@ set -euo pipefail
 # Validates quality of scaffold files: syntax, linting, non-empty content.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+# Pinned shellcheck (.tool-versions); never the OS binary.
 SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 
 PASSED=0

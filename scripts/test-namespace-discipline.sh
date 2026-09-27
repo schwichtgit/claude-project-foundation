@@ -7,7 +7,7 @@ set -euo pipefail
 # tiers JSON (fail path).
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# Pinned shellcheck (scripts/dev-tool-versions.env); never the OS binary.
+# Pinned shellcheck (.tool-versions); never the OS binary.
 SHELLCHECK="$REPO_ROOT/scripts/shellcheck.sh"
 LINT="$REPO_ROOT/scripts/check-namespace-discipline.sh"
 SOURCE_TIERS="$REPO_ROOT/.claude-plugin/upgrade-tiers.json"

@@ -1,0 +1,42 @@
+{
+  "_comment": "Policy for the cpf source repo itself. scripts/lint.sh (CI, release, npm run lint) takes each linter's file set from these include/exclude globs; workflows carry no path rules. Globs match repo-relative paths from git ls-files.",
+  "hooks": {
+    "prettier": {
+      "include": ["**/*.md", "**/*.yml", "**/*.yaml", "**/*.json"],
+      "exclude": [
+        "claude-project-foundation-PLAN.md",
+        ".claude/PLAN.md",
+        ".claude/mind.*",
+        "LICENSE",
+        ".claude-plugin/scaffold/common/.cpf/scripts/hooks/pre-commit",
+        ".claude-plugin/scaffold/common/.cpf/scripts/hooks/commit-msg"
+      ],
+      "orchestrator": "none",
+      "severity": "error"
+    },
+    "markdownlint": {
+      "include": ["**/*.md"],
+      "exclude": [
+        "claude-project-foundation-PLAN.md",
+        ".claude/PLAN.md",
+        ".specify/memory/**",
+        ".specify/specs/**",
+        ".specify/restart-prompt.md",
+        "node_modules/**",
+        "**/node_modules/**"
+      ],
+      "orchestrator": "none",
+      "severity": "error"
+    },
+    "shellcheck": {
+      "include": [
+        "**/*.sh",
+        ".claude-plugin/scaffold/common/.cpf/scripts/hooks/pre-commit",
+        ".claude-plugin/scaffold/common/.cpf/scripts/hooks/commit-msg"
+      ],
+      "exclude": ["node_modules/**", "**/node_modules/**", "**/.venv/**"],
+      "orchestrator": "none",
+      "severity": "error"
+    }
+  }
+}
