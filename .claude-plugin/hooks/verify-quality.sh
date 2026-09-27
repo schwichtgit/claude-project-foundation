@@ -60,11 +60,11 @@ _cpf_capture() {
     _CPF_OUT="$("$@" 2>&1)" || _CPF_RC=$?
 }
 
-# Run "$@" from $PROJECT_ROOT. Only called through _cpf_capture, whose
-# command substitution is a subshell, so the cd does not leak.
-# shellcheck disable=SC2329  # invoked indirectly via _cpf_capture
-_cpf_in_root() {
-    cd "$PROJECT_ROOT" && "$@"
+# Same as _cpf_capture, but runs "$@" from $PROJECT_ROOT. The cd happens
+# inside the command substitution's subshell, so it does not leak.
+_cpf_capture_in_root() {
+    _CPF_RC=0
+    _CPF_OUT="$(cd "$PROJECT_ROOT" && "$@" 2>&1)" || _CPF_RC=$?
 }
 
 # Print the tail of the last captured output to stderr so the agent can see
@@ -456,7 +456,7 @@ run_task_orchestrator() {
     echo "Task orchestrator (cwd: $PROJECT_ROOT)"
 
     echo "  [check] task lint"
-    _cpf_capture _cpf_in_root task lint
+    _cpf_capture_in_root task lint
     if [[ "$_CPF_RC" -eq 0 ]]; then
         echo "    PASS"
     else
@@ -467,7 +467,7 @@ run_task_orchestrator() {
     CHECKS_RUN=$((CHECKS_RUN + 1))
 
     echo "  [optional] task test"
-    _cpf_capture _cpf_in_root task test
+    _cpf_capture_in_root task test
     if [[ "$_CPF_RC" -eq 0 ]]; then
         echo "    PASS"
     else
@@ -498,7 +498,7 @@ run_custom_orchestrator() {
     echo "Custom orchestrator (cwd: $PROJECT_ROOT, severity: $severity)"
     echo "  [check] $custom_command"
 
-    _cpf_capture _cpf_in_root sh -c "$custom_command"
+    _cpf_capture_in_root sh -c "$custom_command"
     local rc="$_CPF_RC"
     CHECKS_RUN=$((CHECKS_RUN + 1))
 
