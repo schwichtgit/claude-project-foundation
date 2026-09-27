@@ -308,6 +308,43 @@ else
     fail "rerun-migration on fresh fixture: $RERUN2_OUT"
 fi
 
+# --- infer reads hand-written markdownlint ignores (quoted, plain, flow) ---
+echo ""
+echo "=== infer parses hand-written markdownlint ignores ==="
+FIX_MD="$(make_fixture infer-md-quoting)"
+cat >"$FIX_MD/.markdownlint-cli2.yaml" <<'YAML'
+config:
+  MD013:
+    line_length: 120
+ignores:
+  - 'single/**'
+  - "double/**"
+- plain/** # trailing comment
+  # a comment inside the list
+YAML
+CPF_MIGRATE_ANSWER=infer run_migrate "$FIX_MD" >/dev/null 2>&1
+GOT="$(jq -c '.hooks.markdownlint.exclude' "$FIX_MD/.cpf/policy.json" 2>/dev/null || echo MISSING)"
+if [[ "$GOT" == '["single/**","double/**","plain/**"]' ]]; then
+    pass "infer keeps single-quoted, double-quoted, and plain ignores"
+else
+    fail "infer markdownlint.exclude = $GOT"
+fi
+bash "$GENERATE" --project-dir "$FIX_MD" >/dev/null 2>&1
+if grep -q 'line_length: 120' "$FIX_MD/.markdownlint-cli2.yaml"; then
+    pass "regenerating after infer keeps the host markdownlint rules"
+else
+    fail "host markdownlint rules lost after regeneration"
+fi
+FIX_FLOW="$(make_fixture infer-md-flow)"
+printf '%s\n' "ignores: [\"a/**\", 'b/**', c/**]" >"$FIX_FLOW/.markdownlint-cli2.yaml"
+CPF_MIGRATE_ANSWER=infer run_migrate "$FIX_FLOW" >/dev/null 2>&1
+GOT="$(jq -c '.hooks.markdownlint.exclude' "$FIX_FLOW/.cpf/policy.json" 2>/dev/null || echo MISSING)"
+if [[ "$GOT" == '["a/**","b/**","c/**"]' ]]; then
+    pass "infer parses flow-form ignores"
+else
+    fail "infer flow-form markdownlint.exclude = $GOT"
+fi
+
 echo ""
 echo "$PASSED of $TOTAL tests passed"
 if [[ "$FAILED" -eq 0 ]]; then
