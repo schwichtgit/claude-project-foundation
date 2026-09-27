@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Suggest improvements to the Claude Project Foundation.
+        Suggest an improvement.
         Search existing issues before submitting.
 
   - type: dropdown
@@ -15,11 +15,9 @@ body:
       label: Area
       description: Which area does this feature relate to?
       options:
-        - Quality gates (hooks, CI)
-        - Spec workflow (/cpf:specforge)
-        - Autonomous execution (prompts, feature tracking)
-        - Bootstrap / project setup
-        - Platform support (GitHub, GitLab, Jenkins)
+        - Application features
+        - Tests
+        - Quality gates (.cpf/, git hooks, CI)
         - Documentation
         - Other
     validations:

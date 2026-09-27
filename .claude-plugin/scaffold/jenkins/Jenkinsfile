@@ -30,71 +30,37 @@ pipeline {
 
     stages {
         // -------------------------------------------------------------------
-        // Install
+        // Install: node linters (pinned by package-lock.json when present)
+        // and the tools the cpf checks runtime needs.
         // -------------------------------------------------------------------
         stage('Install') {
             steps {
                 sh '''
-                    if [ -f package.json ]; then
+                    if [ -f package-lock.json ]; then
                         npm ci
                     else
-                        echo "SKIP: no root package.json; node deps will be fetched via npx"
+                        echo "No package-lock.json: installing unpinned node linters"
+                        npm install --no-save --no-package-lock prettier@3 markdownlint-cli2
                     fi
                 '''
                 sh '''
-                    if ! command -v shellcheck > /dev/null 2>&1; then
-                        echo "Installing shellcheck..."
-                        apt-get update -qq && apt-get install -y -qq shellcheck
-                    fi
-                '''
-                sh '''
-                    if ! command -v jq > /dev/null 2>&1; then
-                        echo "Installing jq..."
-                        apt-get update -qq && apt-get install -y -qq jq
-                    fi
+                    for tool in jq shellcheck; do
+                        if ! command -v "$tool" > /dev/null 2>&1; then
+                            apt-get update -qq && apt-get install -y -qq "$tool"
+                        fi
+                    done
                 '''
             }
         }
 
         // -------------------------------------------------------------------
-        // Lint (parallel quality gates)
+        // Lint: the cpf checks runtime (.cpf/runtime/), the same code the
+        // Claude Code hooks and git hooks run. Scope comes from
+        // .cpf/policy.json.
         // -------------------------------------------------------------------
         stage('Lint') {
-            parallel {
-                stage('ShellCheck') {
-                    steps {
-                        sh '''
-                            echo "--- ShellCheck ---"
-                            find . -name "*.sh" \
-                                -not -path "./.git/*" \
-                                -not -path "*/.venv/*" \
-                                -not -path "*/node_modules/*" \
-                                -not -path "*/target/*" \
-                                -not -path "*/dist/*" \
-                                -print0 \
-                                | xargs -0 shellcheck -x
-                            echo "PASS: ShellCheck"
-                        '''
-                    }
-                }
-                stage('Markdownlint') {
-                    steps {
-                        sh '''
-                            echo "--- Markdownlint ---"
-                            npx markdownlint-cli2 "**/*.md" "#node_modules"
-                            echo "PASS: Markdownlint"
-                        '''
-                    }
-                }
-                stage('Prettier') {
-                    steps {
-                        sh '''
-                            echo "--- Prettier ---"
-                            npx --yes prettier@^3 --check .
-                            echo "PASS: Prettier"
-                        '''
-                    }
-                }
+            steps {
+                sh 'bash .cpf/runtime/verify.sh --boundary ci'
             }
         }
 
@@ -110,42 +76,12 @@ pipeline {
         stage('Commit Standards') {
             when { changeRequest() }
             steps {
-                script {
-                    def commits = sh(
-                        script: "git log --format='%s' origin/${env.CHANGE_TARGET}..HEAD",
-                        returnStdout: true
-                    ).trim()
-
-                    if (!commits) {
-                        echo 'No commits to check.'
-                        return
-                    }
-
-                    def pattern = ~/^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+/
-                    def errors = 0
-
-                    commits.split('\n').each { msg ->
-                        // Skip merge commits
-                        if (msg.startsWith('Merge ')) {
-                            return
-                        }
-
-                        if (!(msg ==~ pattern)) {
-                            echo "FAIL: Not conventional commit format: ${msg}"
-                            errors++
-                        }
-
-                        if (msg.length() > 72) {
-                            echo "WARN: Subject exceeds 72 chars: ${msg}"
-                        }
-                    }
-
-                    if (errors > 0) {
-                        error "Commit standards check failed: ${errors} error(s)."
-                    }
-
-                    echo 'PASS: Commit standards'
-                }
+                sh 'bash .cpf/runtime/commit-check.sh --range "origin/${CHANGE_TARGET}..HEAD"'
+                sh '''
+                    if [ -n "${CHANGE_TITLE:-}" ]; then
+                        bash .cpf/runtime/commit-check.sh --title "$CHANGE_TITLE"
+                    fi
+                '''
             }
         }
 
@@ -211,8 +147,15 @@ pipeline {
         // -------------------------------------------------------------------
         // Release (tagged builds only)
         // -------------------------------------------------------------------
+        // Only for projects that author their own Claude Code plugin
+        // (a plugin manifest at .claude-plugin/plugin.json).
         stage('Release') {
-            when { buildingTag() }
+            when {
+                allOf {
+                    buildingTag()
+                    expression { fileExists('.claude-plugin/plugin.json') }
+                }
+            }
             steps {
                 script {
                     def tagVersion = env.TAG_NAME.replaceFirst('^v', '')

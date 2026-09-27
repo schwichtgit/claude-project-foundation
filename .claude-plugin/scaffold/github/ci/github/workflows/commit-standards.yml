@@ -17,95 +17,12 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Validate commit messages
-        run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-
-          ERRORS=0
-          while IFS= read -r sha; do
-            MSG=$(git log --format='%s' -n 1 "$sha")
-
-            # Skip merge commits (e.g. from branch updates, Dependabot)
-            if echo "$MSG" | grep -qE '^Merge '; then
-              continue
-            fi
-
-            # Conventional commit format
-            if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
-              echo "FAIL [$sha]: Not conventional commit: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-            # Subject length
-            if [ ${#MSG} -gt 72 ]; then
-              echo "WARN [$sha]: Subject > 72 chars: $MSG"
-            fi
-
-            # Emoji
-            if echo "$MSG" | python3 -c "
-          import sys, re
-          text = sys.stdin.read()
-          if re.search('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', text, re.UNICODE):
-              sys.exit(0)
-          sys.exit(1)
-          " 2>/dev/null; then
-              echo "FAIL [$sha]: Emoji detected: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-            # AI-isms
-            if echo "$MSG" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
-              echo "FAIL [$sha]: AI-ism detected: $MSG"
-              ERRORS=$((ERRORS + 1))
-            fi
-
-          done < <(git rev-list "$BASE".."$HEAD")
-
-          if [ $ERRORS -gt 0 ]; then
-            exit 1
-          fi
-          echo "All commits pass standards check."
-      - name: Validate PR title (squash-merge subject)
-        # A squash merge uses the PR title as the commit subject on main and
-        # appends " (#N)". Hold the title to the same rules as commits, with
-        # the length budget reduced by that suffix.
+      - name: Validate commits and PR title (cpf checks runtime)
         env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
           TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          ERRORS=0
-          SUFFIX=" (#${PR_NUMBER})"
-          MAX=$((72 - ${#SUFFIX}))
-
-          if ! echo "$TITLE" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
-            echo "FAIL: PR title is not conventional commit format: $TITLE"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if [ ${#TITLE} -gt "$MAX" ]; then
-            echo "FAIL: PR title is ${#TITLE} chars; max $MAX so the squash subject (title + \"$SUFFIX\") stays within 72: $TITLE"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if echo "$TITLE" | python3 -c "
-          import sys, re
-          text = sys.stdin.read()
-          pattern = re.compile('[\U0001F300-\U0001F9FF\U00002600-\U000027BF]+', re.UNICODE)
-          sys.exit(0 if pattern.search(text) else 1)
-          " 2>/dev/null; then
-            echo "FAIL: Emoji in PR title: $TITLE"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if echo "$TITLE" | grep -qiE '\b(I have|I'\''ve|I updated|I fixed|Certainly|seamless|robust|powerful|elegant)\b'; then
-            echo "FAIL: AI-ism in PR title: $TITLE"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if [ $ERRORS -gt 0 ]; then
-            echo ""
-            echo "PR title check failed: $ERRORS error(s). Edit the PR title to re-run."
-            exit 1
-          fi
-          echo "PASS: PR title ($TITLE)"
+          bash .cpf/runtime/commit-check.sh --range "$BASE..$HEAD"
+          bash .cpf/runtime/commit-check.sh --title "$TITLE" --pr "$PR_NUMBER"

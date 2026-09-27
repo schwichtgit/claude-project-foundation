@@ -1,153 +1,107 @@
 #!/bin/bash
 set -euo pipefail
 
-# TEST-008: CI Platform Parity Test
-# Validates that all 3 CI platforms implement equivalent quality gates.
+# TEST-008: CI platform parity.
+# Every CI platform template runs its checks through the cpf checks
+# runtime -- the same entry points the Claude Code hooks and git hooks
+# use -- and none invokes a linter directly. That is what makes the
+# platforms equivalent: they cannot drift because they share one
+# implementation.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCAFFOLD="$REPO_ROOT/.claude-plugin/scaffold"
 
 PASSED=0
 FAILED=0
 TOTAL=0
 
-assert_exit() {
-  local name="$1" expected="$2" actual="$3"
+pass() {
+  echo "PASS: $1"
+  PASSED=$((PASSED + 1))
   TOTAL=$((TOTAL + 1))
-  if [[ "$actual" -eq "$expected" ]]; then
-    echo "PASS: $name"
-    PASSED=$((PASSED + 1))
-  else
-    echo "FAIL: $name (expected exit $expected, got $actual)"
-    FAILED=$((FAILED + 1))
-  fi
 }
 
-assert_contains() {
-  local name="$1" haystack="$2" needle="$3"
+fail() {
+  echo "FAIL: $1"
+  FAILED=$((FAILED + 1))
   TOTAL=$((TOTAL + 1))
-  if echo "$haystack" | grep -qF "$needle"; then
-    echo "PASS: $name"
-    PASSED=$((PASSED + 1))
-  else
-    echo "FAIL: $name (expected to contain '$needle')"
-    FAILED=$((FAILED + 1))
-  fi
 }
 
-assert_contains_ci() {
-  local name="$1" haystack="$2" needle="$3"
-  TOTAL=$((TOTAL + 1))
-  if echo "$haystack" | grep -qiF "$needle"; then
-    echo "PASS: $name"
-    PASSED=$((PASSED + 1))
-  else
-    echo "FAIL: $name (expected to contain '$needle', case-insensitive)"
-    FAILED=$((FAILED + 1))
-  fi
-}
-
-assert_file_exists() {
-  local name="$1" path="$2"
-  TOTAL=$((TOTAL + 1))
-  if [[ -f "$path" ]]; then
-    echo "PASS: $name"
-    PASSED=$((PASSED + 1))
-  else
-    echo "FAIL: $name (file not found: $path)"
-    FAILED=$((FAILED + 1))
-  fi
-}
-
-SCAFFOLD="$REPO_ROOT/.claude-plugin/scaffold"
-
-GITHUB_CI="$SCAFFOLD/github/.github/workflows/ci.yml"
-GITLAB_CI="$SCAFFOLD/gitlab/.gitlab-ci.yml"
-# Since the base/host split (#45), plugin-owned lint jobs live in the base
-# file and the host file only references it. Parity is checked against the
-# host + base pair, which is what a downstream pipeline actually runs.
-GITHUB_CI_BASE="$SCAFFOLD/github/.github/workflows/ci-base.yml"
-GITLAB_CI_BASE="$SCAFFOLD/gitlab/ci/gitlab/gitlab-ci-base.yml"
-JENKINS_CI="$SCAFFOLD/jenkins/Jenkinsfile"
+GITHUB_BASE="$SCAFFOLD/github/.github/workflows/ci-base.yml"
+GITHUB_HOST="$SCAFFOLD/github/.github/workflows/ci.yml"
 GITHUB_RELEASE="$SCAFFOLD/github/.github/workflows/release.yml"
+GITHUB_COMMITS="$SCAFFOLD/github/ci/github/workflows/commit-standards.yml"
+GITLAB_BASE="$SCAFFOLD/gitlab/ci/gitlab/gitlab-ci-base.yml"
+GITLAB_HOST="$SCAFFOLD/gitlab/.gitlab-ci.yml"
+JENKINS="$SCAFFOLD/jenkins/Jenkinsfile"
 
-# --- 1-3: CI config files exist ---
-echo "=== CI config file existence ==="
+# Non-comment lines only (YAML `#`, Groovy `//`).
+code() { grep -vE '^[[:space:]]*(#|//)' "$1"; }
 
-assert_file_exists "GitHub ci.yml exists" "$GITHUB_CI"
-assert_file_exists "GitLab .gitlab-ci.yml exists" "$GITLAB_CI"
-assert_file_exists "Jenkins Jenkinsfile exists" "$JENKINS_CI"
-assert_file_exists "GitHub ci-base.yml exists" "$GITHUB_CI_BASE"
-assert_file_exists "GitLab gitlab-ci-base.yml exists" "$GITLAB_CI_BASE"
+echo "=== templates exist ==="
+for f in "$GITHUB_BASE" "$GITHUB_HOST" "$GITHUB_RELEASE" "$GITHUB_COMMITS" \
+  "$GITLAB_BASE" "$GITLAB_HOST" "$JENKINS"; do
+  if [[ -f "$f" ]]; then
+    pass "${f#"$SCAFFOLD"/} exists"
+  else
+    fail "${f#"$SCAFFOLD"/} missing"
+  fi
+done
 
-# Read file contents for string matching
-GITHUB_CONTENT=""
-GITLAB_CONTENT=""
-JENKINS_CONTENT=""
-RELEASE_CONTENT=""
-
-[[ -f "$GITHUB_CI" ]] && GITHUB_CONTENT=$(cat "$GITHUB_CI")
-[[ -f "$GITHUB_CI_BASE" ]] && GITHUB_CONTENT+=$'\n'$(cat "$GITHUB_CI_BASE")
-[[ -f "$GITLAB_CI" ]] && GITLAB_CONTENT=$(cat "$GITLAB_CI")
-[[ -f "$GITLAB_CI_BASE" ]] && GITLAB_CONTENT+=$'\n'$(cat "$GITLAB_CI_BASE")
-[[ -f "$JENKINS_CI" ]] && JENKINS_CONTENT=$(cat "$JENKINS_CI")
-[[ -f "$GITHUB_RELEASE" ]] && RELEASE_CONTENT=$(cat "$GITHUB_RELEASE")
-
-# --- 4-6: ShellCheck present in all platforms ---
 echo ""
-echo "=== ShellCheck parity ==="
+echo "=== every platform runs the checks runtime at the ci boundary ==="
+for f in "$GITHUB_BASE" "$GITHUB_RELEASE" "$GITLAB_BASE" "$JENKINS"; do
+  if code "$f" | grep -qF 'bash .cpf/runtime/verify.sh --boundary ci'; then
+    pass "${f#"$SCAFFOLD"/} calls verify.sh --boundary ci"
+  else
+    fail "${f#"$SCAFFOLD"/} does not call verify.sh --boundary ci"
+  fi
+done
 
-assert_contains_ci "GitHub ci.yml + ci-base.yml contains shellcheck" "$GITHUB_CONTENT" "shellcheck"
-assert_contains_ci "GitLab .gitlab-ci.yml + base contains shellcheck" "$GITLAB_CONTENT" "shellcheck"
-assert_contains_ci "Jenkins Jenkinsfile contains shellcheck" "$JENKINS_CONTENT" "shellcheck"
-
-# --- 7-9: Markdownlint present in all platforms ---
 echo ""
-echo "=== Markdownlint parity ==="
+echo "=== every platform checks commits through the shared rules ==="
+for f in "$GITHUB_BASE" "$GITHUB_COMMITS" "$GITLAB_BASE" "$JENKINS"; do
+  if code "$f" | grep -qF '.cpf/runtime/commit-check.sh --range'; then
+    pass "${f#"$SCAFFOLD"/} calls commit-check.sh --range"
+  else
+    fail "${f#"$SCAFFOLD"/} does not call commit-check.sh --range"
+  fi
+done
 
-assert_contains "GitHub ci.yml + ci-base.yml contains markdownlint" "$GITHUB_CONTENT" "markdownlint"
-assert_contains "GitLab .gitlab-ci.yml + base contains markdownlint" "$GITLAB_CONTENT" "markdownlint"
-assert_contains "Jenkins Jenkinsfile contains markdownlint" "$JENKINS_CONTENT" "markdownlint"
-
-# --- 10-12: Prettier present in all platforms ---
 echo ""
-echo "=== Prettier parity ==="
+echo "=== no template invokes a linter or re-implements a rule directly ==="
+DIRECT='xargs (-0 )?shellcheck|npx (--yes )?prettier|npx markdownlint|markdownlint-cli2-action|conventional commit format|grep -qiE .*(seamless|I have)'
+for f in "$GITHUB_BASE" "$GITHUB_RELEASE" "$GITHUB_COMMITS" "$GITLAB_BASE" "$JENKINS"; do
+  hits="$(code "$f" | grep -nE "$DIRECT" || true)"
+  if [[ -z "$hits" ]]; then
+    pass "${f#"$SCAFFOLD"/} has no direct linter or rule invocation"
+  else
+    fail "${f#"$SCAFFOLD"/} invokes a check directly: $hits"
+  fi
+done
 
-assert_contains "GitHub ci.yml + ci-base.yml contains prettier" "$GITHUB_CONTENT" "prettier"
-assert_contains "GitLab .gitlab-ci.yml + base contains prettier" "$GITLAB_CONTENT" "prettier"
-assert_contains "Jenkins Jenkinsfile contains prettier" "$JENKINS_CONTENT" "prettier"
-
-# --- 13: GitHub release.yml contains version validation ---
 echo ""
-echo "=== Release/tag validation ==="
-
-TOTAL=$((TOTAL + 1))
-if echo "$RELEASE_CONTENT" | grep -qF "plugin.json" && echo "$RELEASE_CONTENT" | grep -qiE '(TAG_VERSION|GITHUB_REF_NAME|tag)'; then
-  echo "PASS: GitHub release.yml contains version validation (tag vs plugin.json)"
-  PASSED=$((PASSED + 1))
+echo "=== the host files wire in the base ==="
+if code "$GITHUB_HOST" | grep -qF './.github/workflows/ci-base.yml'; then
+  pass "GitHub host ci.yml calls ci-base.yml"
 else
-  echo "FAIL: GitHub release.yml missing version validation"
-  FAILED=$((FAILED + 1))
+  fail "GitHub host ci.yml does not call ci-base.yml"
+fi
+if code "$GITLAB_HOST" | grep -qF 'gitlab-ci-base.yml'; then
+  pass "GitLab host .gitlab-ci.yml includes the base"
+else
+  fail "GitLab host .gitlab-ci.yml does not include the base"
 fi
 
-# --- 14: GitLab .gitlab-ci.yml contains release/tag validation ---
-TOTAL=$((TOTAL + 1))
-if echo "$GITLAB_CONTENT" | grep -qF "plugin.json" && echo "$GITLAB_CONTENT" | grep -qiE '(CI_COMMIT_TAG|TAG_VERSION|tag)'; then
-  echo "PASS: GitLab .gitlab-ci.yml contains release/tag validation"
-  PASSED=$((PASSED + 1))
-else
-  echo "FAIL: GitLab .gitlab-ci.yml missing release/tag validation"
-  FAILED=$((FAILED + 1))
-fi
-
-# --- 15: Jenkins Jenkinsfile contains release/tag validation ---
-TOTAL=$((TOTAL + 1))
-if echo "$JENKINS_CONTENT" | grep -qiE '(buildingTag|TAG_NAME)'; then
-  echo "PASS: Jenkins Jenkinsfile contains release/tag validation (buildingTag or TAG_NAME)"
-  PASSED=$((PASSED + 1))
-else
-  echo "FAIL: Jenkins Jenkinsfile missing release/tag validation (buildingTag or TAG_NAME)"
-  FAILED=$((FAILED + 1))
-fi
+echo ""
+echo "=== plugin-only release steps are guarded for downstream projects ==="
+for f in "$GITHUB_RELEASE" "$GITLAB_BASE" "$JENKINS"; do
+  if grep -qE "! -f \.claude-plugin/plugin\.json|fileExists\('\.claude-plugin/plugin\.json'\)" "$f"; then
+    pass "${f#"$SCAFFOLD"/} only uses the plugin manifest when it exists"
+  else
+    fail "${f#"$SCAFFOLD"/} reads the plugin manifest unconditionally"
+  fi
+done
 
 echo ""
 echo "$PASSED of $TOTAL tests passed"

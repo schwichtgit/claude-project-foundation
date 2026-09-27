@@ -321,13 +321,13 @@ else
 hook:    [$HOOK_FRAGMENT]
 inline:  [$INLINE_FRAGMENT]"
 fi
-# The ci-base.yml file embeds the same loop verbatim. Verify the YAML
-# contains the loop body so a refactor cannot silently drift the two.
-if grep -qF 'while IFS= read -r glob' "$CI_BASE" \
-    && grep -qF "FRAGMENT=\"\$FRAGMENT -not -path '\$glob'\"" "$CI_BASE"; then
-    pass "ci-base.yml embeds the same exclude-loop body"
+# ci-base.yml no longer embeds its own copy of the exclude logic: it runs
+# the checks runtime, which reads the same policy the hooks read.
+if grep -qF 'bash .cpf/runtime/verify.sh --boundary ci' "$CI_BASE" \
+    && ! grep -qF 'while IFS= read -r glob' "$CI_BASE"; then
+    pass "ci-base.yml runs the checks runtime instead of an inline copy"
 else
-    fail "ci-base.yml does not embed the expected loop body"
+    fail "ci-base.yml still carries its own exclude logic"
 fi
 
 # ===========================================================================

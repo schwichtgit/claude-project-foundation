@@ -18,132 +18,48 @@ default:
   image: node:${NODE_VERSION}-slim
 
 # ===========================================================================
-# Lint stage
+# Lint stage: the cpf checks runtime (.cpf/runtime/), the same code the
+# Claude Code hooks and git hooks run. Scope comes from .cpf/policy.json;
+# tool versions from package-lock.json and .tool-versions. Project-specific
+# jobs belong in the host .gitlab-ci.yml, not in this file.
 # ===========================================================================
 
-# ---------------------------------------------------------------------------
-# Shell script lint
-# ---------------------------------------------------------------------------
-shellcheck:
-  stage: lint
-  image: koalaman/shellcheck-alpine:stable
-  script:
-    - |
-      find . -name '*.sh' \
-        -not -path './.git/*' \
-        -not -path '*/.venv/*' \
-        -not -path '*/node_modules/*' \
-        -not -path '*/target/*' \
-        -not -path '*/dist/*' \
-        | xargs shellcheck -x
-    - |
-      if [ -d scripts/hooks ]; then
-        find scripts/hooks -type f -not -name '*.md' | xargs shellcheck -x
-      fi
-  rules:
-    - if: $CI_MERGE_REQUEST_IID
-      changes:
-        - '**/*.sh'
-        - scripts/hooks/*
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes:
-        - '**/*.sh'
-        - scripts/hooks/*
-    - if: $CI_COMMIT_TAG
-
-# ---------------------------------------------------------------------------
-# Markdown lint
-# ---------------------------------------------------------------------------
-markdownlint:
+checks:
   stage: lint
   before_script:
-    - npm ci --ignore-scripts
-  script:
-    - npx markdownlint-cli2 "**/*.md" "#node_modules"
-  rules:
-    - if: $CI_MERGE_REQUEST_IID
-      changes:
-        - '**/*.md'
-        - .markdownlint-cli2.yaml
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes:
-        - '**/*.md'
-        - .markdownlint-cli2.yaml
-    - if: $CI_COMMIT_TAG
-
-# ---------------------------------------------------------------------------
-# Prettier format check
-# ---------------------------------------------------------------------------
-prettier:
-  stage: lint
-  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends bash git jq curl xz-utils ca-certificates shellcheck >/dev/null
     - |
-      if [ -f package.json ]; then
+      if [ -f package-lock.json ]; then
         npm ci --ignore-scripts
       else
-        echo "SKIP: no root package.json; prettier will be fetched via npx"
+        echo "No package-lock.json: installing unpinned node linters"
+        npm install --no-save --no-package-lock prettier@3 markdownlint-cli2
       fi
   script:
-    - npx --yes prettier@^3 --check .
+    - bash .cpf/runtime/verify.sh --boundary ci
   rules:
     - if: $CI_MERGE_REQUEST_IID
-      changes:
-        - '**/*.md'
-        - '**/*.yml'
-        - '**/*.yaml'
-        - '**/*.json'
-        - .prettierrc*
-        - .prettierignore
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes:
-        - '**/*.md'
-        - '**/*.yml'
-        - '**/*.yaml'
-        - '**/*.json'
-        - .prettierrc*
-        - .prettierignore
     - if: $CI_COMMIT_TAG
 
-# ---------------------------------------------------------------------------
-# Commit standards (merge requests only)
-# ---------------------------------------------------------------------------
 commit-standards:
   stage: lint
   image: alpine:latest
   script:
-    - apk add --no-cache git
-    - |
-      ERRORS=0
-      for MSG in $(git log --format='%s' "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..HEAD"); do
-        # Skip merge commits
-        echo "$MSG" | grep -qE '^Merge ' && continue
-
-        # Conventional commit format
-        if ! echo "$MSG" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+'; then
-          echo "FAIL: Not conventional commit format: $MSG"
-          ERRORS=$((ERRORS + 1))
-        fi
-
-        # Subject length
-        if [ ${#MSG} -gt 72 ]; then
-          echo "WARN: Subject exceeds 72 chars: $MSG"
-        fi
-      done
-
-      if [ "$ERRORS" -gt 0 ]; then
-        echo ""
-        echo "Commit standards check failed: $ERRORS error(s)."
-        exit 1
-      fi
+    - apk add --no-cache bash git python3 >/dev/null
+    - git fetch --quiet origin "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    - bash .cpf/runtime/commit-check.sh --range "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}..HEAD"
+    # GitLab uses the MR title as the squash commit message.
+    - bash .cpf/runtime/commit-check.sh --title "$CI_MERGE_REQUEST_TITLE"
   rules:
     - if: $CI_MERGE_REQUEST_IID
 
 # ---------------------------------------------------------------------------
 # Plugin validation is NOT part of the scaffold base. Downstream projects
 # consume the cpf plugin from the Claude Code plugin cache and have no
-# .claude-plugin/ directory of their own. Projects that author their own
-# Claude Code plugin can add a plugin-validation job to the host
-# .gitlab-ci.yml (see the commented example there).
+# plugin source of their own. Projects that author their own Claude Code
+# plugin can add a plugin-validation job to the host .gitlab-ci.yml (see
+# the commented example there).
 # ---------------------------------------------------------------------------
 
 # ===========================================================================
@@ -154,22 +70,16 @@ commit-standards:
 # Summary -- single merge-gate check
 # ---------------------------------------------------------------------------
 # Require ONLY this job in protected-branch pipeline-success rules.
-# Conditional lint jobs that are skipped (not created) do not block the
-# pipeline when only the summary job is required.
 # ---------------------------------------------------------------------------
 summary:
   stage: test
   needs:
-    - job: shellcheck
-      optional: true
-    - job: markdownlint
-      optional: true
-    - job: prettier
+    - job: checks
       optional: true
     - job: commit-standards
       optional: true
   script:
-    - echo "All upstream lint jobs passed (or were skipped by path rules)."
+    - echo "All upstream lint jobs passed (or were not created)."
   rules:
     - if: $CI_MERGE_REQUEST_IID
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -189,8 +99,14 @@ release:
     - apk add --no-cache jq
   script:
     - TAG_VERSION="${CI_COMMIT_TAG#v}"
-    - PLUGIN_VERSION=$(jq -r '.version' .claude-plugin/plugin.json 2>/dev/null || echo "")
     - |
+      # Only projects that author a Claude Code plugin have a plugin
+      # manifest to compare against; others skip the version check.
+      if [ ! -f .claude-plugin/plugin.json ]; then
+        echo "No plugin manifest: tag version check skipped."
+        exit 0
+      fi
+      PLUGIN_VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
       echo "Tag version:    $TAG_VERSION"
       echo "Plugin version: $PLUGIN_VERSION"
 
