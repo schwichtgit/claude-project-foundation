@@ -1560,7 +1560,7 @@
         "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml'))\"` and verify exit 0",
         "Run `npx prettier@^3 --check .claude-plugin/scaffold/github/.github/workflows/ci-base.yml .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1578,7 +1578,7 @@
         "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/github/.github/workflows/ci-base.yml'))\"` and verify exit 0",
         "Run `npx prettier@^3 --check .claude-plugin/scaffold/github/.github/workflows/ci-base.yml .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
@@ -1603,7 +1603,7 @@
         "Run `python3 -c \"import yaml; yaml.safe_load(open('.claude-plugin/scaffold/gitlab/.gitlab-ci.yml'))\"` and verify exit 0",
         "Run `npx prettier@^3 --check .claude-plugin/scaffold/github/.github/workflows/ci-base.yml .claude-plugin/scaffold/github/.github/workflows/ci.yml .claude-plugin/scaffold/gitlab/ci/gitlab/gitlab-ci-base.yml .claude-plugin/scaffold/gitlab/.gitlab-ci.yml` and verify exit 0"
       ],
-      "passes": false,
+      "passes": true,
       "dependencies": []
     },
     {
