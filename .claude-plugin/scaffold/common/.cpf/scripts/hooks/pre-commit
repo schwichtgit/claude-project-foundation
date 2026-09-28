@@ -124,8 +124,13 @@ if [[ -f "$RUNTIME" ]]; then
         ERRORS=$((ERRORS + 1))
     fi
 else
-    echo "Pre-commit: .cpf/runtime/verify.sh not found; lint skipped" \
-        "(run /cpf:specforge upgrade)" >&2
+    # .git/hooks is shared by every worktree: a branch cut before the
+    # runtime was added gets this hook without the runtime.
+    BASE="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)"
+    echo "Pre-commit: .cpf/runtime/ is missing; this branch predates the cpf checks runtime." >&2
+    echo "  Rebase onto the default branch: git rebase $BASE" >&2
+    echo "  To commit without checks: git commit --no-verify" >&2
+    ERRORS=$((ERRORS + 1))
 fi
 
 if [[ "$ERRORS" -gt 0 ]]; then

@@ -49,6 +49,23 @@ check "73-char subject (warning)"      0 "$LONG_SUBJECT"
 check "WIP marker in body (warning)"   0 "$(printf 'feat: start auth\n\nWIP: still working on token refresh')"
 
 echo ""
+echo "=== Branch without .cpf/runtime/ (hook shared from another worktree) ==="
+TOTAL=$((TOTAL + 1))
+NR_DIR="$(mktemp -d)"
+git -C "$NR_DIR" init -q
+printf 'feat: add login' >"$NR_DIR/msg"
+NR_OUT="$(cd "$NR_DIR" && bash "$HOOK" "$NR_DIR/msg" 2>&1)" && NR_RC=0 || NR_RC=$?
+rm -rf "$NR_DIR"
+if [[ "$NR_RC" -eq 1 ]] && grep -q 'predates the cpf checks runtime' <<<"$NR_OUT" \
+    && grep -q -- '--no-verify' <<<"$NR_OUT"; then
+    echo "PASS: missing runtime fails with a rebase hint"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: missing runtime (exit=$NR_RC): $NR_OUT"
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
 echo "$PASS of $TOTAL tests passed."
 
 if [[ "$FAIL" -gt 0 ]]; then

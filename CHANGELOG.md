@@ -48,6 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Reported by a CPF downstream project.
 - The Jenkins template installs `curl` and `xz`, which the pinned
   shellcheck download needs.
+- On a branch cut before `.cpf/runtime/` existed, the shared git hooks
+  skipped lint (`pre-commit`) and every commit rule (`commit-msg`) and
+  suggested re-running upgrade. Both now fail and say to rebase onto the
+  default branch, or to commit with `--no-verify`. The forbidden-file
+  and secret checks still run first. Reported by a CPF downstream
+  project.
 
 ### Upgrading
 

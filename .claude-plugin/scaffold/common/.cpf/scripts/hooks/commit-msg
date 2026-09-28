@@ -8,8 +8,13 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 CHECK="$REPO_ROOT/.cpf/runtime/commit-check.sh"
 if [[ ! -f "$CHECK" ]]; then
-    echo "commit-msg: .cpf/runtime/commit-check.sh not found; checks skipped" \
-        "(run /cpf:specforge upgrade)" >&2
-    exit 0
+    # .git/hooks is shared by every worktree: a branch cut before the
+    # runtime was added gets this hook without the runtime. Fail rather
+    # than skip every rule.
+    BASE="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)"
+    echo "commit-msg: .cpf/runtime/ is missing; this branch predates the cpf checks runtime." >&2
+    echo "  Rebase onto the default branch: git rebase $BASE" >&2
+    echo "  To commit without checks: git commit --no-verify" >&2
+    exit 1
 fi
 exec bash "$CHECK" --message-file "$1"
