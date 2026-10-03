@@ -26,11 +26,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `verify.sh`. Doctor and upgrade show the report.
 - A project can pin a shellcheck version cpf has no checksum for by
   adding the release checksums to `.cpf/shellcheck-checksums`.
+- `"node": {"root": "<dir>"}` in `.cpf/policy.json` names where the node
+  linters are pinned and installed, for monorepos whose tooling lives in
+  a subdirectory such as `frontend/`. The runtime, `pins.sh`, and the CI
+  templates' `npm ci` use it. Reported by a CPF downstream project.
 
 ### Changed
 
 - `verify.sh` reports an unpinned linter as a warning at every boundary
   instead of a note. Warnings never block a stop, a commit, or CI.
+- A declared pin that is not honored is a broken pin, distinct from no
+  pin: the `.tool-versions` shellcheck cannot be installed, a locked
+  `shellcheck-py` has no environment, or `package.json` pins a node
+  linter that is not installed. At the ci boundary `verify.sh` fails and
+  does not run an unpinned fallback; at the agent and git boundaries it
+  warns and runs the fallback. `pins.sh check` fails on broken pins
+  whatever `pins.severity` says; `severity` governs undeclared pins
+  only. Reported by a CPF downstream project.
+- A node linter in `node_modules` that `package.json` does not declare
+  (for example a CI fallback install) counts as unpinned.
 - shellcheck resolves `shellcheck-py` from `.venv` or `uv run --frozen`
   when `uv.lock` lists it.
 - Doctor install hints for prettier, markdownlint-cli2, and shellcheck
@@ -48,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Reported by a CPF downstream project.
 - The Jenkins template installs `curl` and `xz`, which the pinned
   shellcheck download needs.
+- The Taskfile orchestrator puts `~/.cargo/bin` on `PATH`, as the legacy
+  checks did. Without it, `task lint` and `task test` failed with exit
+  127 in the Claude Code Stop hook for Rust projects. Reported by a CPF
+  downstream project.
 - On a branch cut before `.cpf/runtime/` existed, the shared git hooks
   skipped lint (`pre-commit`) and every commit rule (`commit-msg`) and
   suggested re-running upgrade. Both now fail and say to rebase onto the

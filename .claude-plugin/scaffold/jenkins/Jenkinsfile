@@ -35,14 +35,6 @@ pipeline {
         // -------------------------------------------------------------------
         stage('Install') {
             steps {
-                sh '''
-                    if [ -f package-lock.json ]; then
-                        npm ci
-                    else
-                        echo "No package-lock.json: installing unpinned node linters"
-                        npm install --no-save --no-package-lock prettier@3 markdownlint-cli2 # cpf: unpinned fallback
-                    fi
-                '''
                 // curl and xz fetch the shellcheck pinned in .tool-versions;
                 // an apt shellcheck is only the unpinned fallback.
                 sh '''
@@ -51,6 +43,15 @@ pipeline {
                             apt-get update -qq && apt-get install -y -qq "${pkg#*:}"
                         fi
                     done
+                '''
+                sh '''
+                    root="$(jq -r '.node.root // "."' .cpf/policy.json 2>/dev/null || echo .)"
+                    if [ -f "$root/package-lock.json" ]; then
+                        npm ci --prefix "$root"
+                    else
+                        echo "No $root/package-lock.json: installing unpinned node linters"
+                        npm install --no-save --no-package-lock --prefix "$root" prettier@3 markdownlint-cli2 # cpf: unpinned fallback
+                    fi
                 '''
             }
         }

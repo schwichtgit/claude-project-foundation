@@ -138,6 +138,24 @@ cpf_validate_policy() {
     if [[ -n "$pin_errors" ]]; then
         errors="${errors:+$errors$'\n'}$pin_errors"
     fi
+    local node_errors
+    node_errors="$(jq -r '
+        if has("node") | not then empty
+        elif (.node | type) != "object" then "node: must be an object"
+        else
+          ( .node | keys[] | select(. != "root") | "node: unknown field \"\(.)\"" ),
+          ( .node.root as $r
+            | if (.node | has("root")) | not then empty
+              elif ($r | type) != "string" or ($r | length) == 0
+                then "node: root must be a non-empty string"
+              elif ($r | startswith("/")) or ($r | test("(^|/)\\.\\.(/|$)"))
+                then "node: root must be a path inside the project (\"\($r)\")"
+              else empty end )
+        end
+    ' "$file" 2>/dev/null)"
+    if [[ -n "$node_errors" ]]; then
+        errors="${errors:+$errors$'\n'}$node_errors"
+    fi
 
     if [[ -n "$errors" ]]; then
         echo "ERROR: policy validation failed in $file:" >&2

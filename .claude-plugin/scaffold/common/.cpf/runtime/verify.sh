@@ -476,6 +476,11 @@ run_legacy_walk_and_detect() {
 # test failures count as WARNING. Both targets are invoked unconditionally.
 # ---------------------------------------------------------------------------
 run_task_orchestrator() {
+    # Same as the legacy walk: rustup installs cargo in ~/.cargo/bin, which
+    # the Claude Code Stop hook's PATH does not include.
+    if [[ -d "$HOME/.cargo/bin" && ":$PATH:" != *":$HOME/.cargo/bin:"* ]]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
     if ! command -v task >/dev/null 2>&1; then
         echo "  WARN: task binary not on PATH; skipping task orchestrator" >&2
         WARNINGS=$((WARNINGS + 1))
@@ -592,6 +597,22 @@ _cpf_unpinned() {
     WARNINGS=$((WARNINGS + 1))
 }
 
+# The project declares a pin that cannot be honored. At the ci boundary
+# this fails and the tool is not run (returns 1): running an unpinned
+# fallback is the drift the pin exists to prevent. Locally it warns and the
+# caller may run the fallback, so an offline laptop does not block.
+_cpf_pin_broken() {
+    local tool="$1" why="$2"
+    if [[ "$BOUNDARY" == "ci" ]]; then
+        echo "  FAIL: $tool $why; no unpinned fallback at the ci boundary" >&2
+        FAILED=$((FAILED + 1))
+        return 1
+    fi
+    echo "  WARN: $tool $why; using an unpinned fallback" >&2
+    WARNINGS=$((WARNINGS + 1))
+    return 0
+}
+
 # Map a nonzero tool result through a severity. Args: label severity.
 _cpf_report_failure() {
     local label="$1" severity="$2"
@@ -621,15 +642,10 @@ _cpf_tool_severity() {
 }
 
 run_shellcheck_pass() {
-    if ! cpf_shellcheck_tool; then
-        _cpf_tool_missing "shellcheck binary not on PATH; skipping shell lint"
-        return 0
-    fi
-    local sc_cmd=("${CPF_TOOL_CMD[@]}")
-    local sc_unpinned=""
-    if [[ "$CPF_TOOL_PINNED" -ne 1 ]]; then
-        sc_unpinned="${CPF_TOOL_PIN_ERROR:-using $CPF_TOOL_SOURCE}"
-    fi
+    local have=1 sc_cmd=()
+    cpf_shellcheck_tool || have=0
+    local pin_error="$CPF_TOOL_PIN_ERROR" pinned="$CPF_TOOL_PINNED" source="$CPF_TOOL_SOURCE"
+    [[ "$have" -eq 1 ]] && sc_cmd=("${CPF_TOOL_CMD[@]}")
 
     local files=() f
     while IFS= read -r -d '' f; do
@@ -649,7 +665,15 @@ run_shellcheck_pass() {
     fi
 
     echo "Shellcheck (${#files[@]} file(s))"
-    [[ -z "$sc_unpinned" ]] || _cpf_unpinned shellcheck "$sc_unpinned"
+    if [[ -n "$pin_error" ]]; then
+        _cpf_pin_broken shellcheck "$pin_error" || return 0
+        [[ "$have" -eq 1 ]] || return 0
+    elif [[ "$have" -eq 0 ]]; then
+        _cpf_tool_missing "shellcheck binary not on PATH; skipping shell lint"
+        return 0
+    elif [[ "$pinned" -ne 1 ]]; then
+        _cpf_unpinned shellcheck "using $source"
+    fi
     CHECKS_RUN=$((CHECKS_RUN + 1))
     _cpf_capture_in_root "${sc_cmd[@]}" -x -f gcc "${files[@]}"
     if [[ "$_CPF_RC" -eq 0 ]]; then
@@ -676,14 +700,19 @@ run_prettier_pass() {
     done < <(cpf_tool_files prettier "$FILE_MODE")
     [[ "${#files[@]}" -eq 0 ]] && return 0
     echo ""
-    if ! cpf_node_tool prettier; then
-        echo "Prettier (${#files[@]} file(s))"
+    local have=1 cmd=()
+    cpf_node_tool prettier || have=0
+    echo "Prettier (${#files[@]} file(s))"
+    if [[ -n "$CPF_TOOL_PIN_ERROR" ]]; then
+        _cpf_pin_broken prettier "$CPF_TOOL_PIN_ERROR" || return 0
+        [[ "$have" -eq 1 ]] || return 0
+    elif [[ "$have" -eq 0 ]]; then
         _cpf_tool_missing "prettier not installed (npm ci); files not checked"
         return 0
+    elif [[ "$CPF_TOOL_PINNED" -ne 1 ]]; then
+        _cpf_unpinned prettier "using $CPF_TOOL_SOURCE"
     fi
-    local cmd=("${CPF_TOOL_CMD[@]}")
-    echo "Prettier (${#files[@]} file(s))"
-    [[ "$CPF_TOOL_PINNED" -eq 1 ]] || _cpf_unpinned prettier "using $CPF_TOOL_SOURCE, no node_modules"
+    cmd=("${CPF_TOOL_CMD[@]}")
     CHECKS_RUN=$((CHECKS_RUN + 1))
     if [[ "$STAGED_MODE" == "--staged" ]]; then
         # Check the staged content, not the working tree.
@@ -712,14 +741,19 @@ run_markdownlint_pass() {
     done < <(cpf_tool_files markdownlint "$FILE_MODE")
     [[ "${#files[@]}" -eq 0 ]] && return 0
     echo ""
-    if ! cpf_node_tool markdownlint-cli2; then
-        echo "Markdownlint (${#files[@]} file(s))"
+    local have=1 cmd=()
+    cpf_node_tool markdownlint-cli2 || have=0
+    echo "Markdownlint (${#files[@]} file(s))"
+    if [[ -n "$CPF_TOOL_PIN_ERROR" ]]; then
+        _cpf_pin_broken markdownlint-cli2 "$CPF_TOOL_PIN_ERROR" || return 0
+        [[ "$have" -eq 1 ]] || return 0
+    elif [[ "$have" -eq 0 ]]; then
         _cpf_tool_missing "markdownlint-cli2 not installed (npm ci); files not checked"
         return 0
+    elif [[ "$CPF_TOOL_PINNED" -ne 1 ]]; then
+        _cpf_unpinned markdownlint-cli2 "using $CPF_TOOL_SOURCE"
     fi
-    local cmd=("${CPF_TOOL_CMD[@]}")
-    echo "Markdownlint (${#files[@]} file(s))"
-    [[ "$CPF_TOOL_PINNED" -eq 1 ]] || _cpf_unpinned markdownlint-cli2 "using $CPF_TOOL_SOURCE, no node_modules"
+    cmd=("${CPF_TOOL_CMD[@]}")
     CHECKS_RUN=$((CHECKS_RUN + 1))
     if [[ "$STAGED_MODE" == "--staged" ]]; then
         local out="" rc=0 one
