@@ -30,9 +30,11 @@ jobs:
         run: npm ci
       - name: Install node linters (no lockfile; unpinned)
         if: hashFiles('package-lock.json') == ''
-        run: npm install --no-save --no-package-lock prettier@3 markdownlint-cli2
+        run: npm install --no-save --no-package-lock prettier@3 markdownlint-cli2 # cpf: unpinned fallback
       - name: cpf checks (ci boundary)
         run: bash .cpf/runtime/verify.sh --boundary ci
+      - name: Pin compliance
+        run: bash .cpf/runtime/pins.sh check
 
   release:
     needs: [checks]

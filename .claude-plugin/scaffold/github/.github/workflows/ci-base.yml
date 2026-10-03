@@ -4,7 +4,9 @@ name: CI Base
 # .cpf/runtime/ (projected by /cpf:specforge), the same code the Claude
 # Code hooks and git hooks run, so a change that passes locally passes
 # here. Scope comes from .cpf/policy.json; tool versions from the
-# project's package-lock.json and .tool-versions.
+# project's pins (package-lock.json, .tool-versions, uv.lock). The project
+# chooses its pins; pins.sh reports what is unpinned and, with
+# "pins": {"severity": "error"} in the policy, fails the job.
 #
 # Project-specific jobs belong in the host ci.yml that calls this
 # workflow, not in this file (upgrade manages it).
@@ -34,9 +36,11 @@ jobs:
         run: npm ci
       - name: Install node linters (no lockfile; unpinned)
         if: hashFiles('package-lock.json') == ''
-        run: npm install --no-save --no-package-lock prettier@3 markdownlint-cli2
+        run: npm install --no-save --no-package-lock prettier@3 markdownlint-cli2 # cpf: unpinned fallback
       - name: cpf checks (ci boundary)
         run: bash .cpf/runtime/verify.sh --boundary ci
+      - name: Pin compliance
+        run: bash .cpf/runtime/pins.sh check
 
   # ---------------------------------------------------------------------------
   # Commit standards (PR only): every commit and the PR title, which

@@ -20,23 +20,27 @@ default:
 # ===========================================================================
 # Lint stage: the cpf checks runtime (.cpf/runtime/), the same code the
 # Claude Code hooks and git hooks run. Scope comes from .cpf/policy.json;
-# tool versions from package-lock.json and .tool-versions. Project-specific
-# jobs belong in the host .gitlab-ci.yml, not in this file.
+# tool versions from the project's pins (package-lock.json, .tool-versions,
+# uv.lock). The apt shellcheck and the unversioned npm install are
+# fallbacks for a project without pins; pins.sh reports them and, with
+# "pins": {"severity": "error"} in the policy, fails the job.
+# Project-specific jobs belong in the host .gitlab-ci.yml, not in this file.
 # ===========================================================================
 
 checks:
   stage: lint
   before_script:
-    - apt-get update -qq && apt-get install -y -qq --no-install-recommends bash git jq curl xz-utils ca-certificates shellcheck >/dev/null
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends bash git jq curl xz-utils ca-certificates shellcheck >/dev/null # cpf: unpinned fallback
     - |
       if [ -f package-lock.json ]; then
         npm ci --ignore-scripts
       else
         echo "No package-lock.json: installing unpinned node linters"
-        npm install --no-save --no-package-lock prettier@3 markdownlint-cli2
+        npm install --no-save --no-package-lock prettier@3 markdownlint-cli2 # cpf: unpinned fallback
       fi
   script:
     - bash .cpf/runtime/verify.sh --boundary ci
+    - bash .cpf/runtime/pins.sh check
   rules:
     - if: $CI_MERGE_REQUEST_IID
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

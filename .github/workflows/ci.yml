@@ -79,6 +79,10 @@ jobs:
         run: bash scripts/test-upgrade.sh
       - name: Managed overwrite-tier file test
         run: bash scripts/test-managed-file.sh
+      - name: Pin compliance test
+        run: bash scripts/test-pins.sh
+      - name: Runtime survives a bare lib/ gitignore
+        run: bash scripts/test-runtime-gitignore.sh
       - name: Asset resolver test
         run: bash scripts/test-resolve-asset.sh
       - name: Scaffold pre-commit behavior test

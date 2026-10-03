@@ -1,0 +1,5 @@
+# The checks runtime must be committed: CI and fresh clones run it. A
+# project .gitignore with a bare `lib/` (the GitHub Python template has
+# one) would otherwise drop the runtime's lib/ directory.
+!runtime/lib/
+!upstream-cache/.cpf/runtime/lib/

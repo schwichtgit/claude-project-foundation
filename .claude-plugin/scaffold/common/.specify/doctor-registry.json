@@ -73,9 +73,9 @@
       "version_flag": "--version",
       "aliases": [],
       "install": {
-        "darwin": "brew install prettier",
-        "linux": "npm install -g prettier",
-        "generic": "npm install -g prettier"
+        "darwin": "Pin it: npm install --save-dev --save-exact prettier (bash .cpf/runtime/pins.sh report)",
+        "linux": "Pin it: npm install --save-dev --save-exact prettier (bash .cpf/runtime/pins.sh report)",
+        "generic": "Pin it: npm install --save-dev --save-exact prettier (bash .cpf/runtime/pins.sh report)"
       }
     },
     {
@@ -151,9 +151,9 @@
       "version_flag": "--version",
       "aliases": [],
       "install": {
-        "darwin": "brew install shellcheck",
-        "linux": "sudo apt-get install -y shellcheck",
-        "generic": "See https://github.com/koalaman/shellcheck#installing"
+        "darwin": "Pin it: add 'shellcheck 0.11.0' to .tool-versions; cpf installs it checksum-verified (bash .cpf/runtime/pins.sh report)",
+        "linux": "Pin it: add 'shellcheck 0.11.0' to .tool-versions; cpf installs it checksum-verified (bash .cpf/runtime/pins.sh report)",
+        "generic": "Pin it: add 'shellcheck 0.11.0' to .tool-versions; cpf installs it checksum-verified (bash .cpf/runtime/pins.sh report)"
       }
     },
     {
@@ -177,9 +177,9 @@
       "version_flag": "--version",
       "aliases": [],
       "install": {
-        "darwin": "npm install -g markdownlint-cli2",
-        "linux": "npm install -g markdownlint-cli2",
-        "generic": "npm install -g markdownlint-cli2"
+        "darwin": "Pin it: npm install --save-dev --save-exact markdownlint-cli2 (bash .cpf/runtime/pins.sh report)",
+        "linux": "Pin it: npm install --save-dev --save-exact markdownlint-cli2 (bash .cpf/runtime/pins.sh report)",
+        "generic": "Pin it: npm install --save-dev --save-exact markdownlint-cli2 (bash .cpf/runtime/pins.sh report)"
       }
     },
     {

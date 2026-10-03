@@ -186,14 +186,15 @@ else
 fi
 
 echo ""
-echo "=== no projected runtime: lint is skipped with a notice ==="
+echo "=== no projected runtime: the commit fails with a rebase hint ==="
 R="$(new_repo no-runtime)"
 rm -rf "$R/.cpf/runtime"
 printf 'x = 1\n' >"$R/app.py"
 (cd "$R" && git add app.py)
 run_hook "$R"
-if [[ "$LAST_RC" -eq 0 ]] && grep -q 'verify.sh not found; lint skipped' <<<"$LAST_OUT"; then
-    pass "missing runtime: commit allowed, notice printed"
+if [[ "$LAST_RC" -ne 0 ]] && grep -q 'predates the cpf checks runtime' <<<"$LAST_OUT" \
+    && grep -q 'git rebase ' <<<"$LAST_OUT" && grep -q -- '--no-verify' <<<"$LAST_OUT"; then
+    pass "missing runtime: commit blocked, rebase and --no-verify named"
 else
     fail "missing runtime (rc=$LAST_RC): $LAST_OUT"
 fi

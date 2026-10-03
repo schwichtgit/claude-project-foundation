@@ -21,7 +21,9 @@
       ".cpf/runtime/lib/cpf-shellcheck-fragment.sh",
       ".cpf/runtime/lib/cpf-shellcheck.sh",
       ".cpf/runtime/lib/cpf-tools.sh",
-      ".cpf/runtime/commit-check.sh"
+      ".cpf/runtime/commit-check.sh",
+      ".cpf/runtime/pins.sh",
+      ".cpf/.gitignore"
     ],
     "review": [
       ".github/workflows/release.yml",

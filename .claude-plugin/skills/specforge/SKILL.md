@@ -282,7 +282,11 @@ copy when the project has no `.cpf/runtime/verify.sh`.
     prerequisites. Display the compliance report. Doctor
     failures do not block init -- the report is
     informational. Visually separate doctor output from
-    file counts with a blank line and header.
+    file counts with a blank line and header. Doctor ends with
+    the pin report from `.cpf/runtime/pins.sh report`: show it
+    and relay each finding's fix. Do not create or edit
+    `package.json`, lockfiles, `.tool-versions`, or `uv.lock`
+    yourself; the project chooses its pins.
 15. **Version tracking:** Write the plugin version (from
     `plugin.json`) to `.specforge-version` at the project
     root. Write the selected CI platform to
@@ -799,6 +803,12 @@ host).
     not call the checks runtime (`.cpf/runtime/`) until the user merges
     the new version from `.cpf/pending/` and re-runs
     `.cpf/scripts/install-hooks.sh`.
+20. **Pin report:** Run `bash .cpf/runtime/pins.sh report` and show
+    it: which linters are pinned and by what, which are not, and linter
+    installs in the project's own CI files that bypass the pins. Relay
+    each finding's fix. Do not pin anything yourself. Say that CI
+    reports findings as warnings until the project sets
+    `"pins": {"severity": "error"}` in `.cpf/policy.json`.
 
 **Notes:**
 
