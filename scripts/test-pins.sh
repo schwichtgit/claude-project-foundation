@@ -47,6 +47,8 @@ fake_tool() { # <path> <version line>
     chmod +x "$1"
 }
 fake_tool "$BIN/shellcheck" "version: 0.9.0"
+# Records each run, to prove the ci boundary never runs the fallback.
+printf '#!/bin/sh\necho ran >>"%s"\necho "version: 0.9.0"\nexit 0\n' "$WORKDIR/path-shellcheck.log" >"$BIN/shellcheck"
 export PATH="$BIN"
 export CPF_TOOLS_CACHE="$WORKDIR/cache"
 fake_tool "$CPF_TOOLS_CACHE/shellcheck-v0.11.0/shellcheck" "version: 0.11.0"
@@ -84,8 +86,9 @@ set_policy_severity() { # <host> <severity>
     mv "$tmp" "$1/.cpf/policy.json"
 }
 
-node_pkg() { # <host> <pkg> <declared> <locked> <installed>
+node_pkg() { # <dir> <pkg> <declared> <locked> <installed>
     local h="$1" pkg="$2"
+    mkdir -p "$h"
     [[ -f "$h/package.json" ]] || echo '{"private": true, "devDependencies": {}}' >"$h/package.json"
     [[ -f "$h/package-lock.json" ]] || echo '{"lockfileVersion": 3, "packages": {}}' >"$h/package-lock.json"
     local tmp
@@ -120,7 +123,7 @@ else
 fi
 OUT="$(pins "$H" check 2>&1)"
 RC=$?
-if [[ "$RC" -eq 0 ]] && grep -q 'WARN: 3 pin finding' <<<"$OUT"; then
+if [[ "$RC" -eq 0 ]] && grep -q 'WARN: 3 unpinned finding' <<<"$OUT"; then
     pass "check under the default severity warns and exits 0"
 else
     fail "default check: rc=$RC"
@@ -154,12 +157,19 @@ fi
 # --- 5. A .tool-versions version cpf has no checksum for is not a pin.
 H="$(new_host nosum)"
 echo "shellcheck 0.12.0" >"$H/.tool-versions"
-if [[ "$(field "$H" '.tools[0].status')" == unpinned ]] \
-    && has_finding "$H" 'cannot be installed' \
+if [[ "$(field "$H" '.tools[0].status')" == broken ]] \
+    && has_finding "$H" 'pinned in .tool-versions but unavailable' \
     && grep -q 'shellcheck-checksums' <<<"$(pins "$H" report 2>/dev/null)"; then
-    pass "version without a checksum: unpinned, points at .cpf/shellcheck-checksums"
+    pass "version without a checksum: broken pin, points at .cpf/shellcheck-checksums"
 else
     fail "no-checksum version: $(field "$H" '.tools[0]')"
+fi
+pins "$H" check >/dev/null 2>&1
+RC=$?
+if [[ "$RC" -eq 1 && "$(field "$H" '.severity')" == warn ]]; then
+    pass "a broken pin fails check even under severity warn"
+else
+    fail "broken pin under warn: rc=$RC"
 fi
 
 # --- 6. shellcheck-py in uv.lock with a .venv binary.
@@ -275,6 +285,80 @@ else
     fail "verify.sh warned on a pinned shellcheck"
 fi
 
+# --- 13b. A broken pin fails verify.sh at the ci boundary without
+# running the PATH fallback; locally it warns and runs the fallback.
+H="$(new_host broken-verify)"
+TMP_POL="$(mktemp)"
+jq 'del(.hooks.prettier, .hooks.markdownlint)' "$H/.cpf/policy.json" >"$TMP_POL"
+mv "$TMP_POL" "$H/.cpf/policy.json"
+printf '#!/bin/sh\necho hi\n' >"$H/run.sh"
+echo "shellcheck 0.12.0" >"$H/.tool-versions"
+git -C "$H" add -A >/dev/null
+: >"$WORKDIR/path-shellcheck.log"
+OUT="$(CLAUDE_PROJECT_DIR="$H" bash "$H/.cpf/runtime/verify.sh" --boundary ci 2>&1)"
+RC=$?
+if [[ "$RC" -eq 2 ]] && grep -q 'FAIL: shellcheck pinned in .tool-versions but unavailable' <<<"$OUT" \
+    && [[ ! -s "$WORKDIR/path-shellcheck.log" ]]; then
+    pass "ci boundary: broken shellcheck pin fails, fallback not run"
+else
+    fail "ci broken pin: rc=$RC; $(grep -i shellcheck <<<"$OUT" | head -2)"
+fi
+OUT="$(CLAUDE_PROJECT_DIR="$H" bash "$H/.cpf/runtime/verify.sh" --boundary agent 2>&1)"
+RC=$?
+if [[ "$RC" -eq 0 ]] && grep -q 'WARN: shellcheck pinned in .tool-versions but unavailable' <<<"$OUT" \
+    && [[ -s "$WORKDIR/path-shellcheck.log" ]]; then
+    pass "agent boundary: broken shellcheck pin warns and runs the fallback"
+else
+    fail "agent broken pin: rc=$RC"
+fi
+
+# --- 13c. A locked node linter that is not installed fails ci.
+H="$(new_host node-missing)"
+printf '# t\n' >"$H/README.md"
+node_pkg "$H" prettier 3.9.9 3.9.9 3.9.9
+rm -rf "$H/node_modules"
+git -C "$H" add -A >/dev/null
+OUT="$(CLAUDE_PROJECT_DIR="$H" bash "$H/.cpf/runtime/verify.sh" --boundary ci 2>&1)"
+if grep -q 'FAIL: prettier ./package.json pins prettier 3.9.9 but it is not installed' <<<"$OUT"; then
+    pass "ci boundary: declared but uninstalled prettier fails"
+else
+    fail "uninstalled prettier: $(grep -i prettier <<<"$OUT" | head -3)"
+fi
+
+# --- 13d. Installed in node_modules but not declared is not a pin.
+H="$(new_host node-undeclared)"
+printf '# t\n' >"$H/README.md"
+fake_tool "$H/node_modules/.bin/prettier" "3.9.9"
+git -C "$H" add README.md >/dev/null
+OUT="$(CLAUDE_PROJECT_DIR="$H" bash "$H/.cpf/runtime/verify.sh" --boundary agent 2>&1)"
+if grep -q 'WARN: prettier is not pinned (using node_modules, not in package.json)' <<<"$OUT"; then
+    pass "undeclared node_modules install is reported as unpinned"
+else
+    fail "undeclared install: $(grep -i prettier <<<"$OUT" | head -3)"
+fi
+
+# --- 13e. Node root: tooling in frontend/ is found and checked there.
+H="$(new_host noderoot)"
+TMP_POL="$(mktemp)"
+jq '. + {node: {root: "frontend"}}' "$H/.cpf/policy.json" >"$TMP_POL"
+mv "$TMP_POL" "$H/.cpf/policy.json"
+node_pkg "$H/frontend" prettier 3.9.9 3.9.9 3.9.9
+node_pkg "$H/frontend" markdownlint-cli2 0.23.3 0.23.3 0.23.3
+if [[ "$(field "$H" '[.node_root, (.tools[1,2] | .status)] | join(" ")')" == "frontend pinned pinned" ]] \
+    && ! has_finding "$H" '^(prettier|markdownlint-cli2):'; then
+    pass "node root frontend/: linters pinned from frontend/package-lock.json"
+else
+    fail "node root: $(field "$H" '{node_root, tools}')"
+fi
+printf '# t\n' >"$H/README.md"
+git -C "$H" add README.md >/dev/null
+OUT="$(CLAUDE_PROJECT_DIR="$H" bash "$H/.cpf/runtime/verify.sh" --boundary agent 2>&1)"
+if ! grep -q 'prettier is not pinned\|prettier not installed' <<<"$OUT"; then
+    pass "verify.sh resolves prettier from frontend/node_modules"
+else
+    fail "verify.sh node root: $(grep -i prettier <<<"$OUT" | head -3)"
+fi
+
 # --- 14. The policy validator accepts pins and rejects bad values.
 H="$(new_host validate)"
 set_policy_severity "$H" error
@@ -290,6 +374,15 @@ if ! bash "$V" validate "$H/.cpf/policy.json" >/dev/null 2>&1; then
 else
     fail "invalid pins.severity accepted"
 fi
+set_policy_severity "$H" warn
+TMP_POL="$(mktemp)"
+jq '. + {node: {root: "../outside"}}' "$H/.cpf/policy.json" >"$TMP_POL"
+if ! bash "$V" validate "$TMP_POL" >/dev/null 2>&1; then
+    pass "node.root outside the project rejected"
+else
+    fail "node.root ../outside accepted"
+fi
+rm -f "$TMP_POL"
 
 echo
 echo "Results: $PASSED passed, $FAILED failed, $TOTAL total"

@@ -31,12 +31,17 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - name: Install pinned node linters (package-lock.json)
-        if: hashFiles('package-lock.json') != ''
-        run: npm ci
-      - name: Install node linters (no lockfile; unpinned)
-        if: hashFiles('package-lock.json') == ''
-        run: npm install --no-save --no-package-lock prettier@3 markdownlint-cli2 # cpf: unpinned fallback
+      # Node linters come from the node root's lockfile ("node": {"root"}
+      # in .cpf/policy.json, default the project root).
+      - name: Install node linters
+        run: |
+          root="$(jq -r '.node.root // "."' .cpf/policy.json 2>/dev/null || echo .)"
+          if [ -f "$root/package-lock.json" ]; then
+            npm ci --prefix "$root"
+          else
+            echo "No $root/package-lock.json: installing unpinned node linters"
+            npm install --no-save --no-package-lock --prefix "$root" prettier@3 markdownlint-cli2 # cpf: unpinned fallback
+          fi
       - name: cpf checks (ci boundary)
         run: bash .cpf/runtime/verify.sh --boundary ci
       - name: Pin compliance
