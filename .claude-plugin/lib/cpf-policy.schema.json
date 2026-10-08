@@ -31,7 +31,19 @@
           "type": "string",
           "enum": ["warn", "error"],
           "default": "warn",
-          "description": "warn: pins.sh check reports findings and passes. error: pins.sh check fails CI on any finding. Set error once the project has pinned its linters."
+          "description": "warn: pins.sh check reports unpinned findings and passes. error: it fails on them too. Broken pins (a declared pin that is not honored) always fail. Set error once the project has pinned its linters."
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Where the node linters (prettier, markdownlint-cli2) are pinned and installed. Optional.",
+      "properties": {
+        "root": {
+          "type": "string",
+          "default": ".",
+          "description": "Project-relative directory holding package.json, package-lock.json, and node_modules, for monorepos whose tooling lives in a subdirectory such as frontend/. Never absolute, never outside the project."
         }
       }
     }

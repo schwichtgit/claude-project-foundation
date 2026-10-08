@@ -4,10 +4,20 @@
 #
 #   pins.sh report [--json]   how each tool is pinned, and what is not;
 #                             always exits 0
-#   pins.sh check             the same report; exits 1 when there are
-#                             findings and .cpf/policy.json sets
-#                             "pins": {"severity": "error"}. The default,
-#                             "warn", reports findings and exits 0.
+#   pins.sh check             the same report; exits 1 on any broken pin,
+#                             and on unpinned findings when .cpf/policy.json
+#                             sets "pins": {"severity": "error"}. The
+#                             default, "warn", reports those and exits 0.
+#
+# Findings have a kind:
+#   broken    the project declares a pin that is not honored: the pinned
+#             version cannot be installed or does not run, the lockfile and
+#             package.json disagree, a locked package is not installed, or
+#             two pins disagree. The project chose a pin, so this always
+#             fails check (verify.sh fails on it at the ci boundary too).
+#   unpinned  no pin is declared, or the declaration is not a pin (a range,
+#             the npm shellcheck downloader), or the project's CI installs
+#             a linter around the pins. Governed by pins.severity.
 #
 # cpf does not pin tools for a project. It reports what is and is not
 # pinned, and how to pin it; each project chooses its pins. verify.sh
@@ -24,7 +34,8 @@
 #                      (its wheel bundles the binary)
 #   prettier,          an exact version in package.json (dev)dependencies,
 #   markdownlint-cli2  the same version in package-lock.json, installed in
-#                      node_modules
+#                      node_modules, all under the node root (policy
+#                      "node": {"root": "<dir>"}, default the project root)
 # Not pins: the npm `shellcheck` package (it downloads the latest release
 # at install time), version ranges, $PATH, apt/brew/npm -g installs.
 #
@@ -71,15 +82,15 @@ fi
 SEP=$'\x1f'
 # tool SEP status SEP source SEP pinned SEP running
 TOOLS=""
-# subject SEP message SEP fix
+# kind SEP subject SEP message SEP fix
 FINDINGS=""
 
 add_tool() {
     TOOLS+="$1$SEP$2$SEP$3$SEP$4$SEP$5"$'\n'
 }
 
-add_finding() {
-    FINDINGS+="$1$SEP$2$SEP$3"$'\n'
+add_finding() { # <kind> <subject> <message> <fix>
+    FINDINGS+="$1$SEP$2$SEP$3$SEP$4"$'\n'
 }
 
 # First X.Y.Z in a command's --version output.
@@ -92,11 +103,11 @@ policy_has() {
         && jq -e --arg t "$1" '.hooks | has($t)' "$POLICY_FILE" >/dev/null 2>&1
 }
 
-pkg_declared() {
-    [[ -f "$PROJECT_ROOT/package.json" ]] || return 0
-    jq -r --arg p "$1" '.devDependencies[$p] // .dependencies[$p] // empty' \
-        "$PROJECT_ROOT/package.json" 2>/dev/null || true
-}
+NODE_ROOT="$(cpf_node_root)"
+NODE_DIR="$PROJECT_ROOT/$NODE_ROOT"
+# Display prefix for files under the node root ("" for the project root).
+NODE_PREFIX="${NODE_ROOT#.}"
+NODE_PREFIX="${NODE_PREFIX:+${NODE_PREFIX#/}/}"
 
 # --- shellcheck ---------------------------------------------------------------
 
@@ -109,14 +120,14 @@ check_shellcheck() {
     # The shellcheck-py version 0.11.0.1 ships ShellCheck 0.11.0.
     [[ -n "$py" ]] && pyv="$(awk -F. '{ print $1 "." $2 "." $3 }' <<<"$py")"
 
-    wrap="$(pkg_declared shellcheck)"
+    wrap="$(cpf_node_declared shellcheck)"
     if [[ -n "$wrap" ]]; then
-        add_finding shellcheck \
-            "package.json depends on the npm shellcheck package ($wrap), which downloads the latest shellcheck release at install time; it pins nothing" \
+        add_finding unpinned shellcheck \
+            "${NODE_PREFIX}package.json depends on the npm shellcheck package ($wrap), which downloads the latest shellcheck release at install time; it pins nothing" \
             "remove it and pin shellcheck in .tool-versions or with shellcheck-py"
     fi
     if [[ -n "$tv" && -n "$pyv" && "$tv" != "$pyv" ]]; then
-        add_finding shellcheck \
+        add_finding broken shellcheck \
             ".tool-versions pins $tv but uv.lock has shellcheck-py $py" \
             "keep one pin, or make both name the same shellcheck version"
     fi
@@ -131,9 +142,11 @@ check_shellcheck() {
         else
             expected="$pyv"
         fi
-        add_tool shellcheck pinned "$CPF_TOOL_SOURCE" "$expected" "${running:-unknown}"
-        if [[ "$running" != "$expected" ]]; then
-            add_finding shellcheck "pinned $expected ($CPF_TOOL_SOURCE) but $running runs" \
+        if [[ "$running" == "$expected" ]]; then
+            add_tool shellcheck pinned "$CPF_TOOL_SOURCE" "$expected" "$running"
+        else
+            add_tool shellcheck broken "$CPF_TOOL_SOURCE" "$expected" "${running:-unknown}"
+            add_finding broken shellcheck "pinned $expected ($CPF_TOOL_SOURCE) but ${running:-an unknown version} runs" \
                 "reinstall the pinned version (uv sync, or clear the cpf-dev-tools cache)"
         fi
         return 0
@@ -141,61 +154,68 @@ check_shellcheck() {
 
     running=""
     [[ "$CPF_TOOL_SOURCE" == PATH ]] && running="$(run_version shellcheck)"
-    add_tool shellcheck unpinned "$CPF_TOOL_SOURCE" "${tv:-${pyv:-}}" "${running:-none}"
     if [[ -n "$CPF_TOOL_PIN_ERROR" ]]; then
-        add_finding shellcheck ".tool-versions pins $tv but it cannot be installed: $CPF_TOOL_PIN_ERROR" \
-            "add its release checksums to .cpf/shellcheck-checksums (<version> <os>.<arch> <sha256>)"
-    elif [[ -n "$py" ]]; then
-        add_finding shellcheck "uv.lock has shellcheck-py $py, but neither .venv/bin/shellcheck nor uv is available here" \
-            "create the environment (uv sync) or set up uv in this job"
-    else
-        add_finding shellcheck "not pinned; runs from $CPF_TOOL_SOURCE" \
-            "add \"shellcheck 0.11.0\" to .tool-versions (installed from the upstream release, checksum-verified), or add shellcheck-py==0.11.0.1 to the project's uv dependencies"
+        add_tool shellcheck broken "$CPF_TOOL_SOURCE" "${tv:-$pyv}" "${running:-none}"
+        if [[ -n "$tv" ]]; then
+            add_finding broken shellcheck "$CPF_TOOL_PIN_ERROR" \
+                "make the pinned version installable: add its release checksums to .cpf/shellcheck-checksums (<version> <os>.<arch> <sha256>), or check that the release download works from here"
+        else
+            add_finding broken shellcheck "$CPF_TOOL_PIN_ERROR" \
+                "create the environment (uv sync) or set up uv in this job"
+        fi
+        return 0
     fi
+    add_tool shellcheck unpinned "$CPF_TOOL_SOURCE" "" "${running:-none}"
+    add_finding unpinned shellcheck "not pinned; runs from $CPF_TOOL_SOURCE" \
+        "add \"shellcheck 0.11.0\" to .tool-versions (installed from the upstream release, checksum-verified), or add shellcheck-py==0.11.0.1 to the project's uv dependencies"
 }
 
 # --- node linters -------------------------------------------------------------
 
 check_node() {
     local pkg="$1" declared locked="" installed="" running
-    declared="$(pkg_declared "$pkg")"
-    if [[ -f "$PROJECT_ROOT/package-lock.json" ]]; then
+    local pj="${NODE_PREFIX}package.json" pl="${NODE_PREFIX}package-lock.json"
+    declared="$(cpf_node_declared "$pkg")"
+    if [[ -f "$NODE_DIR/package-lock.json" ]]; then
         locked="$(jq -r --arg p "node_modules/$pkg" '.packages[$p].version // empty' \
-            "$PROJECT_ROOT/package-lock.json" 2>/dev/null || true)"
+            "$NODE_DIR/package-lock.json" 2>/dev/null || true)"
     fi
-    if [[ -f "$PROJECT_ROOT/node_modules/$pkg/package.json" ]]; then
-        installed="$(jq -r '.version // empty' "$PROJECT_ROOT/node_modules/$pkg/package.json" 2>/dev/null || true)"
+    if [[ -f "$NODE_DIR/node_modules/$pkg/package.json" ]]; then
+        installed="$(jq -r '.version // empty' "$NODE_DIR/node_modules/$pkg/package.json" 2>/dev/null || true)"
     fi
-    local fix_add="add \"$pkg\": \"<X.Y.Z>\" (exact) to devDependencies in package.json, run npm install, commit package-lock.json"
+    local fix_add="add \"$pkg\": \"<X.Y.Z>\" (exact) to devDependencies in $pj, run npm install, commit $pl; for a monorepo whose tooling lives in a subdirectory, set \"node\": {\"root\": \"<dir>\"} in .cpf/policy.json"
 
     if [[ -z "$declared" ]]; then
         running=""
         cpf_node_tool "$pkg" && running="$(run_version "${CPF_TOOL_CMD[@]}")"
         add_tool "$pkg" unpinned "${CPF_TOOL_SOURCE:-none}" "" "${installed:-${running:-none}}"
-        add_finding "$pkg" "not declared in package.json" "$fix_add"
+        add_finding unpinned "$pkg" "not declared in $pj" "$fix_add"
         return 0
     fi
     if [[ ! "$declared" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        add_tool "$pkg" unpinned package.json "$declared" "${installed:-none}"
-        add_finding "$pkg" "package.json allows a range (\"$declared\"), not one version" "$fix_add"
+        add_tool "$pkg" unpinned "$pj" "$declared" "${installed:-none}"
+        add_finding unpinned "$pkg" "$pj allows a range (\"$declared\"), not one version" "$fix_add"
         return 0
     fi
     if [[ -z "$locked" ]]; then
-        add_tool "$pkg" unpinned package.json "$declared" "${installed:-none}"
-        add_finding "$pkg" "package.json pins $declared but package-lock.json does not lock it" \
-            "run npm install and commit package-lock.json"
+        add_tool "$pkg" broken "$pj" "$declared" "${installed:-none}"
+        add_finding broken "$pkg" "$pj pins $declared but $pl does not lock it" \
+            "run npm install and commit $pl"
         return 0
     fi
     if [[ "$locked" != "$declared" ]]; then
-        add_tool "$pkg" mismatch package-lock.json "$declared" "${installed:-none}"
-        add_finding "$pkg" "package.json pins $declared, package-lock.json has $locked" "run npm install"
+        add_tool "$pkg" broken "$pl" "$declared" "${installed:-none}"
+        add_finding broken "$pkg" "$pj pins $declared, $pl has $locked" "run npm install"
         return 0
     fi
-    add_tool "$pkg" pinned package-lock.json "$declared" "${installed:-none}"
-    if [[ -z "$installed" ]]; then
-        add_finding "$pkg" "pinned $declared but not installed" "run npm ci"
-    elif [[ "$installed" != "$declared" ]]; then
-        add_finding "$pkg" "pinned $declared but $installed is installed" "run npm ci"
+    if [[ "$installed" == "$declared" ]]; then
+        add_tool "$pkg" pinned "$pl" "$declared" "$installed"
+    elif [[ -z "$installed" ]]; then
+        add_tool "$pkg" broken "$pl" "$declared" none
+        add_finding broken "$pkg" "pinned $declared but not installed" "npm ci --prefix $NODE_ROOT"
+    else
+        add_tool "$pkg" broken "$pl" "$declared" "$installed"
+        add_finding broken "$pkg" "pinned $declared but $installed is installed" "npm ci --prefix $NODE_ROOT"
     fi
 }
 
@@ -227,7 +247,7 @@ scan_ci() {
             why="uses a shellcheck image without a version tag"
         fi
         if [[ -n "$why" ]]; then
-            add_finding "$rel:$line_no" "$why: $(sed -E 's/^[[:space:]]+//' <<<"$text" | cut -c1-120)" \
+            add_finding unpinned "$rel:$line_no" "$why: $(sed -E 's/^[[:space:]]+//' <<<"$text" | cut -c1-120)" \
                 "remove it: the cpf runtime runs the pinned tools"
         fi
     done < <(awk '
@@ -245,18 +265,24 @@ policy_has markdownlint && check_node markdownlint-cli2
 scan_ci
 
 COUNT=0
-[[ -n "$FINDINGS" ]] && COUNT="$(printf '%s' "$FINDINGS" | grep -c .)"
+BROKEN=0
+if [[ -n "$FINDINGS" ]]; then
+    COUNT="$(printf '%s' "$FINDINGS" | grep -c .)"
+    BROKEN="$(printf '%s' "$FINDINGS" | grep -c "^broken$SEP" || true)"
+fi
 
 if [[ "$JSON" -eq 1 ]]; then
-    jq -n --arg sev "$SEVERITY" --arg sep "$SEP" --arg tools "$TOOLS" --arg findings "$FINDINGS" '
+    jq -n --arg sev "$SEVERITY" --arg sep "$SEP" --arg root "$NODE_ROOT" \
+        --arg tools "$TOOLS" --arg findings "$FINDINGS" '
         def rows($s): $s | split("\n") | map(select(length > 0) | split($sep));
         {
           severity: $sev,
+          node_root: $root,
           tools: [rows($tools)[] | {tool: .[0], status: .[1], source: .[2], pinned: .[3], running: .[4]}],
-          findings: [rows($findings)[] | {subject: .[0], message: .[1], fix: .[2]}]
+          findings: [rows($findings)[] | {kind: .[0], subject: .[1], message: .[2], fix: .[3]}]
         }'
 else
-    echo "Pins (pins.severity: $SEVERITY)"
+    echo "Pins (pins.severity: $SEVERITY; node root: $NODE_ROOT)"
     while IFS="$SEP" read -r tool status source pinned running; do
         [[ -n "$tool" ]] || continue
         printf '  %-18s %-9s %-26s pinned %-8s running %s\n' "$tool" "$status" \
@@ -264,22 +290,27 @@ else
     done <<<"$TOOLS"
     if [[ "$COUNT" -gt 0 ]]; then
         echo ""
-        echo "Findings ($COUNT):"
-        while IFS="$SEP" read -r subject message fix; do
+        echo "Findings ($COUNT; $BROKEN broken):"
+        while IFS="$SEP" read -r kind subject message fix; do
             [[ -n "$subject" ]] || continue
-            echo "  - $subject: $message"
+            echo "  - [$kind] $subject: $message"
             echo "    fix: $fix"
         done <<<"$FINDINGS"
     fi
 fi
 
 if [[ "$MODE" == check && "$COUNT" -gt 0 ]]; then
+    if [[ "$BROKEN" -gt 0 ]]; then
+        echo "" >&2
+        echo "pins: $BROKEN broken pin(s): a declared pin is not honored" >&2
+        exit 1
+    fi
     if [[ "$SEVERITY" == error ]]; then
         echo "" >&2
-        echo "pins: $COUNT finding(s); pins.severity is error" >&2
+        echo "pins: $COUNT unpinned finding(s); pins.severity is error" >&2
         exit 1
     fi
     [[ "$JSON" -eq 1 ]] || echo "" >&2
-    echo "WARN: $COUNT pin finding(s); set \"pins\": {\"severity\": \"error\"} in .cpf/policy.json to enforce" >&2
+    echo "WARN: $COUNT unpinned finding(s); set \"pins\": {\"severity\": \"error\"} in .cpf/policy.json to enforce" >&2
 fi
 exit 0

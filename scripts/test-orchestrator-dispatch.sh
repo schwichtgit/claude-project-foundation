@@ -380,6 +380,32 @@ else
 fi
 
 # ===========================================================================
+# orchestrator = "task" finds task and cargo in ~/.cargo/bin (rustup's
+# default), which the Stop hook's PATH does not include
+# ===========================================================================
+echo ""
+echo "=== orchestrator=task: ~/.cargo/bin on PATH ==="
+FIX="$WORKDIR/task-cargo"
+CARGO_HOME_DIR="$WORKDIR/cargo-home"
+mkdir -p "$FIX" "$CARGO_HOME_DIR/.cargo/bin"
+printf '#!/bin/sh\nexit 0\n' >"$CARGO_HOME_DIR/.cargo/bin/cargo"
+# shellcheck disable=SC2016  # the fake script body expands when it runs
+printf '#!/bin/sh\necho "task $*" >>"$CPF_TEST_TASK_LOG"\ncommand -v cargo >/dev/null || exit 127\nexit 0\n' \
+    >"$CARGO_HOME_DIR/.cargo/bin/task"
+chmod +x "$CARGO_HOME_DIR/.cargo/bin/cargo" "$CARGO_HOME_DIR/.cargo/bin/task"
+write_policy "$FIX" '{
+  "hooks": {
+    "verify-quality": { "orchestrator": "task", "severity": "error" }
+  }
+}'
+run_hook "$FIX" HOME="$CARGO_HOME_DIR" PATH="/usr/bin:/bin"
+if [[ "$LAST_RC" -eq 0 ]] && grep -qx 'task lint' "$FIX/task-invocations.log" 2>/dev/null; then
+    pass "task and cargo resolved from ~/.cargo/bin"
+else
+    fail "cargo PATH (rc=$LAST_RC): $(tail -3 <<<"$LAST_OUT")"
+fi
+
+# ===========================================================================
 # 13. shellcheck the hook
 # ===========================================================================
 echo ""

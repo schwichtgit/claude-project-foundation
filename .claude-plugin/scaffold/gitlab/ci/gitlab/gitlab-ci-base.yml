@@ -32,11 +32,12 @@ checks:
   before_script:
     - apt-get update -qq && apt-get install -y -qq --no-install-recommends bash git jq curl xz-utils ca-certificates shellcheck >/dev/null # cpf: unpinned fallback
     - |
-      if [ -f package-lock.json ]; then
-        npm ci --ignore-scripts
+      root="$(jq -r '.node.root // "."' .cpf/policy.json 2>/dev/null || echo .)"
+      if [ -f "$root/package-lock.json" ]; then
+        npm ci --ignore-scripts --prefix "$root"
       else
-        echo "No package-lock.json: installing unpinned node linters"
-        npm install --no-save --no-package-lock prettier@3 markdownlint-cli2 # cpf: unpinned fallback
+        echo "No $root/package-lock.json: installing unpinned node linters"
+        npm install --no-save --no-package-lock --prefix "$root" prettier@3 markdownlint-cli2 # cpf: unpinned fallback
       fi
   script:
     - bash .cpf/runtime/verify.sh --boundary ci
