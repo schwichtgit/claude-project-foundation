@@ -1,4 +1,9 @@
 version: 2
+# PR titles become squash-merge subjects, which the cpf commit rules limit
+# to 72 characters including " (#N)". Dependabot titles cannot be
+# templated: keep the prefix unscoped and group names short, because a
+# group with one update is titled
+# "<prefix>: bump <dep> from <a> to <b> in the <group> group".
 updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
@@ -6,9 +11,8 @@ updates:
       interval: 'weekly'
     commit-message:
       prefix: 'build'
-      include: 'scope'
     groups:
-      minor-and-patch:
+      gha:
         update-types:
           - 'minor'
           - 'patch'
@@ -20,9 +24,8 @@ updates:
   #     interval: 'weekly'
   #   commit-message:
   #     prefix: 'build'
-  #     include: 'scope'
   #   groups:
-  #     minor-and-patch:
+  #     js:
   #       update-types:
   #         - 'minor'
   #         - 'patch'
@@ -34,9 +37,8 @@ updates:
   #     interval: "weekly"
   #   commit-message:
   #     prefix: "build"
-  #     include: "scope"
   #   groups:
-  #     minor-and-patch:
+  #     py:
   #       update-types:
   #         - "minor"
   #         - "patch"
@@ -48,9 +50,8 @@ updates:
   #     interval: "weekly"
   #   commit-message:
   #     prefix: "build"
-  #     include: "scope"
   #   groups:
-  #     minor-and-patch:
+  #     rs:
   #       update-types:
   #         - "minor"
   #         - "patch"
@@ -62,9 +63,8 @@ updates:
   #     interval: "weekly"
   #   commit-message:
   #     prefix: "build"
-  #     include: "scope"
   #   groups:
-  #     minor-and-patch:
+  #     go:
   #       update-types:
   #         - "minor"
   #         - "patch"

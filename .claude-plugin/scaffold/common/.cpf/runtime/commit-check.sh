@@ -6,9 +6,13 @@
 #
 #   commit-check.sh --message-file <file>   one commit message (commit-msg)
 #   commit-check.sh --range <base>..<head>  every non-merge commit (CI)
-#   commit-check.sh --title <title> [--pr <n>]
+#   commit-check.sh --title <title> [--pr <n>] [--title-length warn]
 #                                           PR title, which becomes the
-#                                           squash-merge subject
+#                                           squash-merge subject.
+#                                           --title-length warn reports an
+#                                           over-long title as a warning
+#                                           (for bot PRs whose titles the
+#                                           project cannot template)
 #   commit-check.sh --text-file <file>      PR description (prose rules)
 #
 # Rules:
@@ -129,6 +133,7 @@ check_message() {
 MODE=""
 ARG=""
 PR_NUMBER=""
+TITLE_LENGTH="error"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --message-file | --range | --title | --text-file)
@@ -138,6 +143,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         --pr)
             PR_NUMBER="${2:-}"
+            shift 2
+            ;;
+        --title-length)
+            TITLE_LENGTH="${2:-}"
+            [[ "$TITLE_LENGTH" == error || "$TITLE_LENGTH" == warn ]] || {
+                echo "commit-check.sh: --title-length must be error or warn" >&2
+                exit 2
+            }
             shift 2
             ;;
         *)
@@ -171,7 +184,12 @@ case "$MODE" in
             max=$((72 - ${#suffix}))
         fi
         if [[ ${#ARG} -gt "$max" ]]; then
-            err "PR title is ${#ARG} chars; max $max so the squash subject stays within 72."
+            msg="PR title is ${#ARG} chars; max $max so the squash subject stays within 72."
+            if [[ "$TITLE_LENGTH" == warn ]]; then
+                warn "$msg"
+            else
+                err "$msg"
+            fi
         fi
         check_prose "$ARG" "PR title"
         ;;
@@ -179,7 +197,7 @@ case "$MODE" in
         check_prose "$(cat "$ARG")" "PR description"
         ;;
     *)
-        echo "Usage: commit-check.sh --message-file F | --range A..B | --title T [--pr N] | --text-file F" >&2
+        echo "Usage: commit-check.sh --message-file F | --range A..B | --title T [--pr N] [--title-length warn] | --text-file F" >&2
         exit 2
         ;;
 esac

@@ -45,6 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only. Reported by a CPF downstream project.
 - A node linter in `node_modules` that `package.json` does not declare
   (for example a CI fallback install) counts as unpinned.
+- Dependabot PR titles fit the 72-character squash subject. Dependabot
+  cannot template titles, and a group with one update is titled "bump
+  <dep> from <a> to <b> in the <group> group". The scaffold's
+  `dependabot.yml` files drop the `(deps)` scope and use short group
+  names (`gha`, `js`, `py`, `rs`, `go`). As a safety net,
+  `commit-check.sh --title-length warn` reports an over-long title as a
+  warning, and the GitHub commit-standards job passes it for PRs opened
+  by `dependabot[bot]`; every other title rule still applies.
 - shellcheck resolves `shellcheck-py` from `.venv` or `uv run --frozen`
   when `uv.lock` lists it.
 - Doctor install hints for prettier, markdownlint-cli2, and shellcheck

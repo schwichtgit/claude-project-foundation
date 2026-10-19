@@ -1,11 +1,17 @@
 version: 2
+# PR titles become squash-merge subjects, which commit-check.sh limits to
+# 72 characters including " (#N)". Dependabot titles cannot be templated:
+# keep the prefix unscoped and group names short, because a group with one
+# update is titled "<prefix>: bump <dep> from <a> to <b> in the <group> group".
 updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'chore'
     groups:
-      minor-and-patch:
+      gha:
         update-types:
           - 'minor'
           - 'patch'
@@ -13,8 +19,11 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'chore'
+      prefix-development: 'chore'
     groups:
-      minor-and-patch:
+      js:
         update-types:
           - 'minor'
           - 'patch'
