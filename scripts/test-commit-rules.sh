@@ -110,6 +110,27 @@ check 1 "chore: Certainly, done"
 check 1 "feat: switch to OpenAI"
 
 echo ""
+echo "=== PR title length: error by default, warning on request (bot PRs) ==="
+LONG_TITLE="chore: bump markdownlint-cli2 from 0.23.10 to 0.23.11 in the js group"
+CC="$REPO/.cpf/runtime/commit-check.sh"
+if ! bash "$CC" --title "$LONG_TITLE" --pr 62 >/dev/null 2>&1; then
+    pass "over-long PR title fails by default"
+else
+    fail "over-long PR title passed by default"
+fi
+if OUT="$(bash "$CC" --title "$LONG_TITLE" --pr 62 --title-length warn 2>&1)" \
+    && grep -q 'WARN: PR title is' <<<"$OUT"; then
+    pass "--title-length warn: over-long title warns and passes"
+else
+    fail "--title-length warn did not downgrade the length error"
+fi
+if ! bash "$CC" --title "bump prettier" --title-length warn >/dev/null 2>&1; then
+    pass "--title-length warn keeps the conventional format rule"
+else
+    fail "--title-length warn skipped the format rule"
+fi
+
+echo ""
 echo "$PASSED of $TOTAL tests passed"
 if [[ "$FAILED" -eq 0 ]]; then
     exit 0

@@ -7,6 +7,7 @@
     "f42aa323cd0630932d71ff1fefc517cf2364238dbdbe1c7d49970abcc5582fe1"
   ],
   ".cpf/runtime/commit-check.sh": [
+    "48266c7d539dcd482ee3dfc6d44a9fc34ee4ada6aa12154853930f5599e307dc",
     "d38403801011e67811214a72982f6d4389638309cf4a25802985af6b19e59fe1"
   ],
   ".cpf/runtime/lib/cpf-policy.sh": [
@@ -57,7 +58,7 @@
   ".github/workflows/ci-base.yml": [
     "03d106d6f8faca96e6b866280c987a6ae1a580bf800e92cdf1510afeae09cbdc",
     "19f6f331e00d4ee7c8a5ef74a2ed7b0c3b20dad018f8d54e21126b75afbd22b9",
-    "93406091dc1b0983e4d65f1db4f4434dc2d35def0fb4cf9252c908d3a3f30c0e",
+    "c452765e15f8b61073f5875335553133a75eadf6aae0efc35317a6f1c28fb712",
     "d98eaa5fe6a88a30e73a64d9a0985e1a85aaa0d2b20d98fadb82c37d71949bc3"
   ],
   ".specify/WORKFLOW.md": [
